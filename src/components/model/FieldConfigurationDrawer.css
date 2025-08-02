@@ -1,0 +1,80 @@
+.field-config-drawer .ant-drawer-header {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 24px;
+}
+
+.field-config-drawer .ant-drawer-body {
+  padding: 16px 24px 80px 24px; /* Extra bottom padding for footer */
+}
+
+.field-config-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.validation-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.validation-section .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.localization-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.list-elements-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.drawer-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 24px;
+  background: white;
+  border-top: 1px solid #f0f0f0;
+  z-index: 10;
+}
+
+.field-config-drawer .ant-form-item-label > label {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.field-config-drawer .ant-form-item-extra {
+  font-size: 11px;
+  color: #8c8c8c;
+}
+
+.field-config-drawer .ant-checkbox-wrapper {
+  font-size: 13px;
+}
+
+.field-config-drawer .ant-input-group-compact .ant-input {
+  border-radius: 6px 0 0 6px;
+}
+
+.field-config-drawer .ant-input-group-compact .ant-input:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+/* Dynamic text field list styles */
+.dynamic-delete-button {
+  color: #ff4d4f;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.dynamic-delete-button:hover {
+  color: #ff7875;
+} 

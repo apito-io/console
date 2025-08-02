@@ -1,0 +1,44 @@
+{
+  "name": "media-plugin",
+  "version": "1.1.0",
+  "displayName": "Media Gallery",
+  "description": "Manage and browse media files with Unsplash integration",
+  "author": "Apito Team",
+
+  "integration": {
+    "headerMenu": {
+      "label": "Media",
+      "position": "after:api",
+      "icon": "PictureOutlined"
+    },
+    "routes": [
+      {
+        "path": "/",
+        "component": "MediaGallery",
+        "title": "Media Gallery"
+      },
+      {
+        "path": "/browse",
+        "component": "MediaBrowser",
+        "title": "Browse Media"
+      },
+      {
+        "path": "/search",
+        "component": "MediaSearch",
+        "title": "Search Images"
+      }
+    ]
+  },
+  "settings": {
+    "menu": {
+      "label": "Media Configuration",
+      "path": "/console/settings/media",
+      "icon": "PictureOutlined"
+    },
+    "section": "content"
+  },
+  "permissions": ["media.read", "media.write"],
+  "dependencies": {
+    "apito-ui": "^1.0.0"
+  }
+}

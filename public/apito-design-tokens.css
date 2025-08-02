@@ -1,0 +1,301 @@
+/* Apito Design Tokens - CSS Custom Properties for Plugin Consistency */
+
+:root {
+  /* === PRIMARY COLORS === */
+  --apito-primary-50: #f0f9ff;
+  --apito-primary-100: #e0f2fe;
+  --apito-primary-200: #bae6fd;
+  --apito-primary-300: #7dd3fc;
+  --apito-primary-400: #38bdf8;
+  --apito-primary-500: #0ea5e9;
+  --apito-primary-600: #0284c7;
+  --apito-primary-700: #0369a1;
+  --apito-primary-800: #075985;
+  --apito-primary-900: #0c4a6e;
+
+  /* === NEUTRAL COLORS === */
+  --apito-neutral-0: #ffffff;
+  --apito-neutral-50: #fafafa;
+  --apito-neutral-100: #f5f5f5;
+  --apito-neutral-200: #e5e5e5;
+  --apito-neutral-300: #d4d4d4;
+  --apito-neutral-400: #a3a3a3;
+  --apito-neutral-500: #737373;
+  --apito-neutral-600: #525252;
+  --apito-neutral-700: #404040;
+  --apito-neutral-800: #262626;
+  --apito-neutral-900: #171717;
+
+  /* === SEMANTIC COLORS === */
+  --apito-success-50: #f0fdf4;
+  --apito-success-500: #22c55e;
+  --apito-success-600: #16a34a;
+  --apito-success-700: #15803d;
+
+  --apito-warning-50: #fffbeb;
+  --apito-warning-500: #f59e0b;
+  --apito-warning-600: #d97706;
+  --apito-warning-700: #b45309;
+
+  --apito-error-50: #fef2f2;
+  --apito-error-500: #ef4444;
+  --apito-error-600: #dc2626;
+  --apito-error-700: #b91c1c;
+
+  --apito-info-50: #eff6ff;
+  --apito-info-500: #3b82f6;
+  --apito-info-600: #2563eb;
+  --apito-info-700: #1d4ed8;
+
+  /* === SPACING === */
+  --apito-space-1: 0.25rem;    /* 4px */
+  --apito-space-2: 0.5rem;     /* 8px */
+  --apito-space-3: 0.75rem;    /* 12px */
+  --apito-space-4: 1rem;       /* 16px */
+  --apito-space-5: 1.25rem;    /* 20px */
+  --apito-space-6: 1.5rem;     /* 24px */
+  --apito-space-8: 2rem;       /* 32px */
+  --apito-space-10: 2.5rem;    /* 40px */
+  --apito-space-12: 3rem;      /* 48px */
+  --apito-space-16: 4rem;      /* 64px */
+  --apito-space-20: 5rem;      /* 80px */
+  --apito-space-24: 6rem;      /* 96px */
+
+  /* === TYPOGRAPHY === */
+  --apito-font-family-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --apito-font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+
+  --apito-font-size-xs: 0.75rem;    /* 12px */
+  --apito-font-size-sm: 0.875rem;   /* 14px */
+  --apito-font-size-base: 1rem;     /* 16px */
+  --apito-font-size-lg: 1.125rem;   /* 18px */
+  --apito-font-size-xl: 1.25rem;    /* 20px */
+  --apito-font-size-2xl: 1.5rem;    /* 24px */
+  --apito-font-size-3xl: 1.875rem;  /* 30px */
+  --apito-font-size-4xl: 2.25rem;   /* 36px */
+
+  --apito-font-weight-normal: 400;
+  --apito-font-weight-medium: 500;
+  --apito-font-weight-semibold: 600;
+  --apito-font-weight-bold: 700;
+
+  --apito-line-height-tight: 1.25;
+  --apito-line-height-normal: 1.5;
+  --apito-line-height-relaxed: 1.75;
+
+  /* === BORDERS === */
+  --apito-border-width-1: 1px;
+  --apito-border-width-2: 2px;
+  --apito-border-width-4: 4px;
+
+  --apito-border-radius-sm: 0.125rem;  /* 2px */
+  --apito-border-radius: 0.25rem;      /* 4px */
+  --apito-border-radius-md: 0.375rem;  /* 6px */
+  --apito-border-radius-lg: 0.5rem;    /* 8px */
+  --apito-border-radius-xl: 0.75rem;   /* 12px */
+  --apito-border-radius-2xl: 1rem;     /* 16px */
+  --apito-border-radius-full: 9999px;
+
+  /* === SHADOWS === */
+  --apito-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --apito-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --apito-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --apito-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --apito-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* === Z-INDEX === */
+  --apito-z-dropdown: 1000;
+  --apito-z-sticky: 1020;
+  --apito-z-fixed: 1030;
+  --apito-z-modal-backdrop: 1040;
+  --apito-z-modal: 1050;
+  --apito-z-popover: 1060;
+  --apito-z-tooltip: 1070;
+
+  /* === BREAKPOINTS (for reference in CSS) === */
+  --apito-breakpoint-sm: 640px;
+  --apito-breakpoint-md: 768px;
+  --apito-breakpoint-lg: 1024px;
+  --apito-breakpoint-xl: 1280px;
+  --apito-breakpoint-2xl: 1536px;
+}
+
+/* === UTILITY CLASSES === */
+
+/* Spacing utilities */
+.apito-p-0 { padding: 0; }
+.apito-p-1 { padding: var(--apito-space-1); }
+.apito-p-2 { padding: var(--apito-space-2); }
+.apito-p-3 { padding: var(--apito-space-3); }
+.apito-p-4 { padding: var(--apito-space-4); }
+.apito-p-6 { padding: var(--apito-space-6); }
+.apito-p-8 { padding: var(--apito-space-8); }
+
+.apito-m-0 { margin: 0; }
+.apito-m-1 { margin: var(--apito-space-1); }
+.apito-m-2 { margin: var(--apito-space-2); }
+.apito-m-3 { margin: var(--apito-space-3); }
+.apito-m-4 { margin: var(--apito-space-4); }
+.apito-m-6 { margin: var(--apito-space-6); }
+.apito-m-8 { margin: var(--apito-space-8); }
+
+/* Text utilities */
+.apito-text-xs { font-size: var(--apito-font-size-xs); }
+.apito-text-sm { font-size: var(--apito-font-size-sm); }
+.apito-text-base { font-size: var(--apito-font-size-base); }
+.apito-text-lg { font-size: var(--apito-font-size-lg); }
+.apito-text-xl { font-size: var(--apito-font-size-xl); }
+.apito-text-2xl { font-size: var(--apito-font-size-2xl); }
+
+.apito-font-normal { font-weight: var(--apito-font-weight-normal); }
+.apito-font-medium { font-weight: var(--apito-font-weight-medium); }
+.apito-font-semibold { font-weight: var(--apito-font-weight-semibold); }
+.apito-font-bold { font-weight: var(--apito-font-weight-bold); }
+
+.apito-text-primary { color: var(--apito-primary-600); }
+.apito-text-neutral { color: var(--apito-neutral-700); }
+.apito-text-muted { color: var(--apito-neutral-500); }
+.apito-text-success { color: var(--apito-success-600); }
+.apito-text-warning { color: var(--apito-warning-600); }
+.apito-text-error { color: var(--apito-error-600); }
+
+/* Background utilities */
+.apito-bg-white { background-color: var(--apito-neutral-0); }
+.apito-bg-neutral-50 { background-color: var(--apito-neutral-50); }
+.apito-bg-neutral-100 { background-color: var(--apito-neutral-100); }
+.apito-bg-primary { background-color: var(--apito-primary-600); }
+.apito-bg-primary-50 { background-color: var(--apito-primary-50); }
+
+/* Border utilities */
+.apito-border { border: var(--apito-border-width-1) solid var(--apito-neutral-200); }
+.apito-border-primary { border-color: var(--apito-primary-600); }
+.apito-rounded { border-radius: var(--apito-border-radius); }
+.apito-rounded-md { border-radius: var(--apito-border-radius-md); }
+.apito-rounded-lg { border-radius: var(--apito-border-radius-lg); }
+.apito-rounded-full { border-radius: var(--apito-border-radius-full); }
+
+/* Shadow utilities */
+.apito-shadow-sm { box-shadow: var(--apito-shadow-sm); }
+.apito-shadow { box-shadow: var(--apito-shadow); }
+.apito-shadow-md { box-shadow: var(--apito-shadow-md); }
+.apito-shadow-lg { box-shadow: var(--apito-shadow-lg); }
+
+/* Layout utilities */
+.apito-flex { display: flex; }
+.apito-inline-flex { display: inline-flex; }
+.apito-grid { display: grid; }
+.apito-block { display: block; }
+.apito-inline-block { display: inline-block; }
+.apito-hidden { display: none; }
+
+.apito-flex-col { flex-direction: column; }
+.apito-flex-row { flex-direction: row; }
+.apito-items-center { align-items: center; }
+.apito-items-start { align-items: flex-start; }
+.apito-items-end { align-items: flex-end; }
+.apito-justify-center { justify-content: center; }
+.apito-justify-between { justify-content: space-between; }
+.apito-justify-start { justify-content: flex-start; }
+.apito-justify-end { justify-content: flex-end; }
+
+.apito-gap-1 { gap: var(--apito-space-1); }
+.apito-gap-2 { gap: var(--apito-space-2); }
+.apito-gap-3 { gap: var(--apito-space-3); }
+.apito-gap-4 { gap: var(--apito-space-4); }
+.apito-gap-6 { gap: var(--apito-space-6); }
+.apito-gap-8 { gap: var(--apito-space-8); }
+
+/* Width & Height utilities */
+.apito-w-full { width: 100%; }
+.apito-h-full { height: 100%; }
+.apito-w-auto { width: auto; }
+.apito-h-auto { height: auto; }
+
+/* Position utilities */
+.apito-relative { position: relative; }
+.apito-absolute { position: absolute; }
+.apito-fixed { position: fixed; }
+.apito-sticky { position: sticky; }
+
+/* Plugin-specific base styles */
+.apito-plugin-container {
+  font-family: var(--apito-font-family-sans);
+  color: var(--apito-neutral-700);
+  line-height: var(--apito-line-height-normal);
+}
+
+.apito-plugin-container * {
+  box-sizing: border-box;
+}
+
+/* Common component patterns */
+.apito-card {
+  background-color: var(--apito-neutral-0);
+  border: var(--apito-border-width-1) solid var(--apito-neutral-200);
+  border-radius: var(--apito-border-radius-lg);
+  box-shadow: var(--apito-shadow-sm);
+  padding: var(--apito-space-6);
+}
+
+.apito-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--apito-space-2);
+  padding: var(--apito-space-2) var(--apito-space-4);
+  font-size: var(--apito-font-size-sm);
+  font-weight: var(--apito-font-weight-medium);
+  border-radius: var(--apito-border-radius-md);
+  border: var(--apito-border-width-1) solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-decoration: none;
+}
+
+.apito-button:hover {
+  transform: translateY(-1px);
+}
+
+.apito-button:focus {
+  outline: 2px solid var(--apito-primary-500);
+  outline-offset: 2px;
+}
+
+.apito-button-primary {
+  background-color: var(--apito-primary-600);
+  color: var(--apito-neutral-0);
+}
+
+.apito-button-primary:hover {
+  background-color: var(--apito-primary-700);
+}
+
+.apito-button-secondary {
+  background-color: var(--apito-neutral-0);
+  color: var(--apito-neutral-700);
+  border-color: var(--apito-neutral-300);
+}
+
+.apito-button-secondary:hover {
+  background-color: var(--apito-neutral-50);
+}
+
+.apito-input {
+  width: 100%;
+  padding: var(--apito-space-3) var(--apito-space-4);
+  font-size: var(--apito-font-size-sm);
+  border: var(--apito-border-width-1) solid var(--apito-neutral-300);
+  border-radius: var(--apito-border-radius-md);
+  background-color: var(--apito-neutral-0);
+  color: var(--apito-neutral-700);
+}
+
+.apito-input:focus {
+  outline: none;
+  border-color: var(--apito-primary-500);
+  box-shadow: 0 0 0 1px var(--apito-primary-500);
+}
+
+.apito-input::placeholder {
+  color: var(--apito-neutral-400);
+} 

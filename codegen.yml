@@ -1,0 +1,21 @@
+overwrite: true
+schema:
+  - '${VITE_GRAPHQL_URL}':
+      headers:
+        Authorization: '${VITE_API_TOKEN}'
+        X-Use-Cookies: 'false'
+documents:
+  - './src/graphql/**/*.{ts,tsx}'
+  - '!./src/graphql/queries/media.ts' # ignore media.ts file
+#documents: './src/**/*.{ts,tsx}'
+generates:
+  src/generated/graphql.tsx:
+    plugins:
+      - 'typescript'
+      - 'typescript-operations'
+      - 'typescript-react-apollo'
+    config:
+      withHooks: true
+      scalars:
+        JSON: '{ [key: string]: any }'
+        JSONArray: 'any[]'

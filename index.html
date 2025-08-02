@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apito Console</title>
+    
+    <!-- Plugin System Dependencies - CDN for plugin compatibility -->
+    <script crossorigin src="https://unpkg.com/react@19/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@19/umd/react-dom.production.min.js"></script>
+    <script 
+      crossorigin 
+      src="https://cdnjs.cloudflare.com/ajax/libs/antd/5.26.5/antd.min.js"
+      onload="
+        console.log('[Plugin System] Antd loaded:', typeof window.antd);
+        // Store CDN React and antd for plugins
+        if (typeof React !== 'undefined' && typeof ReactDOM !== 'undefined') {
+          window.PluginReact = React;
+          window.PluginReactDOM = ReactDOM;
+          console.log('[Plugin System] CDN React available for plugins:', React.version);
+        }
+        
+        // Ensure antd is available globally for plugins
+        if (typeof antd !== 'undefined') {
+          window.PluginAntd = antd;
+          window.antd = antd; // Ensure it's also accessible as window.antd
+          console.log('[Plugin System] CDN Antd available for plugins:', antd.version || 'version unknown');
+        } else {
+          console.warn('[Plugin System] antd not found in global scope');
+        }
+        
+        // Debug: Log all available globals
+        console.log('[Plugin System] Available globals:', {
+          React: typeof React,
+          ReactDOM: typeof ReactDOM,
+          antd: typeof antd
+        });
+        
+        // Signal that CDN is ready
+        window.PLUGIN_CDN_READY = true;
+        window.dispatchEvent(new CustomEvent('plugin-cdn-ready'));
+      "
+    ></script>
+    
+    <!-- Apito Design System (Optional for Plugins) -->
+    <link rel="stylesheet" href="/apito-design-tokens.css">
+    <script src="/apito-plugin-utils.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
