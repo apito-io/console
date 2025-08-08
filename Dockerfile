@@ -1,19 +1,38 @@
-FROM node:18.17 AS build
+# syntax=docker/dockerfile:1.7-labs
 
+FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Copy package.json and pnpm-lock.yaml (if present)
-COPY package.json ./
-COPY pnpm-lock.yaml* ./
+ENV PNPM_HOME=/usr/local/share/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
-# Install pnpm and dependencies
-RUN npm install -g pnpm
-RUN pnpm install
+# Copy lockfile first to maximize cache hits
+COPY pnpm-lock.yaml ./
+
+# Prefetch packages into the pnpm store (no node_modules yet)
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm fetch
+
+# Copy manifest(s) and install from store offline
+COPY package.json ./
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --offline --frozen-lockfile
+
+FROM node:20-alpine AS build
+WORKDIR /app
+
+ENV PNPM_HOME=/usr/local/share/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+
+# Reuse cached node_modules layer
+COPY --from=deps /app/node_modules ./node_modules
 
 # Copy the rest of the application
 COPY . .
 
-# Build the application (including workspaces)
+# Build the application
 RUN pnpm build
 
 # Stage 2: Serve the built application with a lightweight alpine image
