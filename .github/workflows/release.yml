@@ -16,14 +16,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
-
-      - name: Activate pnpm via Corepack
-        run: corepack enable && corepack prepare pnpm@9.15.4 --activate
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -73,6 +76,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+          run_install: false
 
       - name: Setup Node.js (for cache key determinism)
         uses: actions/setup-node@v4
