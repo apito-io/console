@@ -5,7 +5,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { httpService } from "../../services/httpService";
 import { USER_PROFILE, CHANGE_PASSWORD } from "../../constants/api";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface UserProfile {
   email: string;

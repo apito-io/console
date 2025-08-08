@@ -41,7 +41,7 @@ const ModelRedirect = ({ basePath }: ModelRedirectProps) => {
     return <Navigate to="/console" replace />;
   }
 
-  const modelName = firstModel.name.toLowerCase();
+  const modelName = firstModel.name;
   return <Navigate to={`/console/${basePath}/${modelName}`} replace />;
 };
 

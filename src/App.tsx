@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes } from "react-router-dom";
 import { ApolloProvider } from "@apollo/client";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, message } from "antd";
 import { CookiesProvider } from "react-cookie";
 import { apolloClient } from "./services/apolloClient";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -18,6 +18,14 @@ const openCoreTheme = {
     borderRadius: 2,
   },
 };
+
+// Configure global message settings
+message.config({
+  top: 60,
+  duration: 4,
+  maxCount: 3,
+  rtl: false,
+});
 
 function App() {
   return (

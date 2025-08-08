@@ -220,10 +220,14 @@ export type EnvVariable = {
 };
 
 export enum Field_Operation_Type_Enum {
+  /** Change the Type of a Field */
+  ChangeType = 'change_type',
   /** Delete a Field */
   Delete = 'delete',
   /** Duplicate a Field */
   Duplicate = 'duplicate',
+  /** Move a Field */
+  Move = 'move',
   /** Rename a Field */
   Rename = 'rename'
 }
@@ -534,9 +538,11 @@ export type MutationQueryGenerateTenantTokenArgs = {
 
 
 export type MutationQueryModelFieldOperationArgs = {
+  changed_type?: InputMaybe<Scalars['String']['input']>;
   field_name: Scalars['String']['input'];
   is_relation?: InputMaybe<Scalars['Boolean']['input']>;
   model_name: Scalars['String']['input'];
+  moved_to?: InputMaybe<Scalars['String']['input']>;
   new_name?: InputMaybe<Scalars['String']['input']>;
   parent_field?: InputMaybe<Scalars['String']['input']>;
   single_page_model?: InputMaybe<Scalars['Boolean']['input']>;
@@ -545,8 +551,11 @@ export type MutationQueryModelFieldOperationArgs = {
 
 
 export type MutationQueryRearrangeSerialOfFieldArgs = {
+  field_name: Scalars['String']['input'];
   model_name: Scalars['String']['input'];
-  serial_payload_map: Scalars['JSONArray']['input'];
+  move_type: Scalars['String']['input'];
+  new_position: Scalars['Int']['input'];
+  parent_id?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1349,18 +1358,23 @@ export type ModelFieldOperationMutationVariables = Exact<{
   parent_field?: InputMaybe<Scalars['String']['input']>;
   single_page_model?: InputMaybe<Scalars['Boolean']['input']>;
   is_relation?: InputMaybe<Scalars['Boolean']['input']>;
+  moved_to?: InputMaybe<Scalars['String']['input']>;
+  changed_type?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
 export type ModelFieldOperationMutation = { __typename?: 'MutationQuery', modelFieldOperation?: { __typename?: 'FieldInfo', serial?: number | null, identifier?: string | null, label?: string | null, input_type?: string | null, field_type?: string | null, description?: string | null, parent_field?: string | null, validation?: { __typename?: 'Validation', required?: boolean | null, locals?: Array<string | null> | null, is_multi_choice?: boolean | null, int_range_limit?: Array<number | null> | null, hide?: boolean | null, fixed_list_elements?: any[] | null, fixed_list_element_type?: string | null, double_range_limit?: Array<number | null> | null, char_limit?: Array<number | null> | null, as_title?: boolean | null, is_email?: boolean | null, unique?: boolean | null, placeholder?: string | null, is_gallery?: boolean | null } | null } | null };
 
-export type UpdateFieldSerialMutationVariables = Exact<{
+export type RearrangeFieldSerialMutationVariables = Exact<{
   model_name: Scalars['String']['input'];
-  serial_payload_map: Scalars['JSONArray']['input'];
+  field_name: Scalars['String']['input'];
+  new_position: Scalars['Int']['input'];
+  move_type: Scalars['String']['input'];
+  parent_id?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
-export type UpdateFieldSerialMutation = { __typename?: 'MutationQuery', rearrangeSerialOfField?: { __typename?: 'ModelType', name?: string | null, fields?: Array<{ __typename?: 'FieldInfo', identifier?: string | null, serial?: number | null } | null> | null } | null };
+export type RearrangeFieldSerialMutation = { __typename?: 'MutationQuery', rearrangeSerialOfField?: { __typename?: 'ModelType', name?: string | null, fields?: Array<{ __typename?: 'FieldInfo', identifier?: string | null, serial?: number | null } | null> | null } | null };
 
 export type UpsertPluginDetailsMutationVariables = Exact<{
   id: Scalars['String']['input'];
@@ -2061,7 +2075,7 @@ export type UpdateModelRelationMutationHookResult = ReturnType<typeof useUpdateM
 export type UpdateModelRelationMutationResult = Apollo.MutationResult<UpdateModelRelationMutation>;
 export type UpdateModelRelationMutationOptions = Apollo.BaseMutationOptions<UpdateModelRelationMutation, UpdateModelRelationMutationVariables>;
 export const ModelFieldOperationDocument = gql`
-    mutation modelFieldOperation($type: FIELD_OPERATION_TYPE_ENUM!, $model_name: String!, $field_name: String!, $new_name: String, $parent_field: String, $single_page_model: Boolean, $is_relation: Boolean) {
+    mutation modelFieldOperation($type: FIELD_OPERATION_TYPE_ENUM!, $model_name: String!, $field_name: String!, $new_name: String, $parent_field: String, $single_page_model: Boolean, $is_relation: Boolean, $moved_to: String, $changed_type: String) {
   modelFieldOperation(
     type: $type
     model_name: $model_name
@@ -2070,6 +2084,8 @@ export const ModelFieldOperationDocument = gql`
     parent_field: $parent_field
     single_page_model: $single_page_model
     is_relation: $is_relation
+    moved_to: $moved_to
+    changed_type: $changed_type
   ) {
     serial
     identifier
@@ -2119,6 +2135,8 @@ export type ModelFieldOperationMutationFn = Apollo.MutationFunction<ModelFieldOp
  *      parent_field: // value for 'parent_field'
  *      single_page_model: // value for 'single_page_model'
  *      is_relation: // value for 'is_relation'
+ *      moved_to: // value for 'moved_to'
+ *      changed_type: // value for 'changed_type'
  *   },
  * });
  */
@@ -2129,11 +2147,14 @@ export function useModelFieldOperationMutation(baseOptions?: Apollo.MutationHook
 export type ModelFieldOperationMutationHookResult = ReturnType<typeof useModelFieldOperationMutation>;
 export type ModelFieldOperationMutationResult = Apollo.MutationResult<ModelFieldOperationMutation>;
 export type ModelFieldOperationMutationOptions = Apollo.BaseMutationOptions<ModelFieldOperationMutation, ModelFieldOperationMutationVariables>;
-export const UpdateFieldSerialDocument = gql`
-    mutation updateFieldSerial($model_name: String!, $serial_payload_map: JSONArray!) {
+export const RearrangeFieldSerialDocument = gql`
+    mutation rearrangeFieldSerial($model_name: String!, $field_name: String!, $new_position: Int!, $move_type: String!, $parent_id: String) {
   rearrangeSerialOfField(
     model_name: $model_name
-    serial_payload_map: $serial_payload_map
+    field_name: $field_name
+    new_position: $new_position
+    move_type: $move_type
+    parent_id: $parent_id
   ) {
     name
     fields {
@@ -2143,33 +2164,36 @@ export const UpdateFieldSerialDocument = gql`
   }
 }
     `;
-export type UpdateFieldSerialMutationFn = Apollo.MutationFunction<UpdateFieldSerialMutation, UpdateFieldSerialMutationVariables>;
+export type RearrangeFieldSerialMutationFn = Apollo.MutationFunction<RearrangeFieldSerialMutation, RearrangeFieldSerialMutationVariables>;
 
 /**
- * __useUpdateFieldSerialMutation__
+ * __useRearrangeFieldSerialMutation__
  *
- * To run a mutation, you first call `useUpdateFieldSerialMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useUpdateFieldSerialMutation` returns a tuple that includes:
+ * To run a mutation, you first call `useRearrangeFieldSerialMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useRearrangeFieldSerialMutation` returns a tuple that includes:
  * - A mutate function that you can call at any time to execute the mutation
  * - An object with fields that represent the current status of the mutation's execution
  *
  * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
  *
  * @example
- * const [updateFieldSerialMutation, { data, loading, error }] = useUpdateFieldSerialMutation({
+ * const [rearrangeFieldSerialMutation, { data, loading, error }] = useRearrangeFieldSerialMutation({
  *   variables: {
  *      model_name: // value for 'model_name'
- *      serial_payload_map: // value for 'serial_payload_map'
+ *      field_name: // value for 'field_name'
+ *      new_position: // value for 'new_position'
+ *      move_type: // value for 'move_type'
+ *      parent_id: // value for 'parent_id'
  *   },
  * });
  */
-export function useUpdateFieldSerialMutation(baseOptions?: Apollo.MutationHookOptions<UpdateFieldSerialMutation, UpdateFieldSerialMutationVariables>) {
+export function useRearrangeFieldSerialMutation(baseOptions?: Apollo.MutationHookOptions<RearrangeFieldSerialMutation, RearrangeFieldSerialMutationVariables>) {
         const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useMutation<UpdateFieldSerialMutation, UpdateFieldSerialMutationVariables>(UpdateFieldSerialDocument, options);
+        return Apollo.useMutation<RearrangeFieldSerialMutation, RearrangeFieldSerialMutationVariables>(RearrangeFieldSerialDocument, options);
       }
-export type UpdateFieldSerialMutationHookResult = ReturnType<typeof useUpdateFieldSerialMutation>;
-export type UpdateFieldSerialMutationResult = Apollo.MutationResult<UpdateFieldSerialMutation>;
-export type UpdateFieldSerialMutationOptions = Apollo.BaseMutationOptions<UpdateFieldSerialMutation, UpdateFieldSerialMutationVariables>;
+export type RearrangeFieldSerialMutationHookResult = ReturnType<typeof useRearrangeFieldSerialMutation>;
+export type RearrangeFieldSerialMutationResult = Apollo.MutationResult<RearrangeFieldSerialMutation>;
+export type RearrangeFieldSerialMutationOptions = Apollo.BaseMutationOptions<RearrangeFieldSerialMutation, RearrangeFieldSerialMutationVariables>;
 export const UpsertPluginDetailsDocument = gql`
     mutation upsertPluginDetails($id: String!, $title: String, $icon: String, $version: String, $description: String, $type: PLUGIN_TYPE_ENUM, $role: String, $exported_variable: String, $env_vars: [PluginConfigEnvVarsPayload], $enable: Boolean, $repository_url: String, $branch: String, $author: String, $activate_status: PLUGIN_ACTIVATION_TYPE_ENUM) {
   upsertPlugin(

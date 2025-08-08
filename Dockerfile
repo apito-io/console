@@ -26,6 +26,7 @@ ENV VITE_GRAPH_API=https://api.apito.io/secured/graphql
 ENV VITE_GRAPH_SUBS_API=wss://api.apito.io/secured/graphql
 ENV VITE_AUTH_PROVIDER=apito
 ENV VITE_PUBLIC_GRAPH_API=https://api.apito.io/secured/graphql
+ENV VITE_COOKIE_DOMAIN=.udbhabon.com
 
 # Install nodejs and nginx
 RUN apk add --no-cache nodejs nginx
@@ -45,6 +46,7 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo '  VITE_GRAPH_SUBS_API: '"'"'${VITE_GRAPH_SUBS_API}'"'"',' >> /docker-entrypoint.sh && \
     echo '  VITE_AUTH_PROVIDER: '"'"'${VITE_AUTH_PROVIDER}'"'"',' >> /docker-entrypoint.sh && \
     echo '  VITE_PUBLIC_GRAPH_API: '"'"'${VITE_PUBLIC_GRAPH_API}'"'"',' >> /docker-entrypoint.sh && \
+    echo '  VITE_COOKIE_DOMAIN: '"'"'${VITE_COOKIE_DOMAIN}'"'"',' >> /docker-entrypoint.sh && \
     echo '  // Add any other environment variables you need' >> /docker-entrypoint.sh && \
     echo '};' >> /docker-entrypoint.sh && \
     echo 'ENVEOF' >> /docker-entrypoint.sh && \
@@ -55,6 +57,7 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'echo "  VITE_GRAPH_SUBS_API: ${VITE_GRAPH_SUBS_API}"' >> /docker-entrypoint.sh && \
     echo 'echo "  VITE_AUTH_PROVIDER: ${VITE_AUTH_PROVIDER}"' >> /docker-entrypoint.sh && \
     echo 'echo "  VITE_PUBLIC_GRAPH_API: ${VITE_PUBLIC_GRAPH_API}"' >> /docker-entrypoint.sh && \
+    echo 'echo "  VITE_COOKIE_DOMAIN: ${VITE_COOKIE_DOMAIN}"' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
     echo '# Configure nginx' >> /docker-entrypoint.sh && \
     echo 'echo '"'"'server {' >> /docker-entrypoint.sh && \

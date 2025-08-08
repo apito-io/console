@@ -2,6 +2,7 @@ import { Select, Spin } from "antd";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 import { useGetTenantsQuery } from "../../generated/graphql";
+import { ENV } from "../../utils/env";
 
 // Define the type for tenant options
 interface TenantOption {
@@ -22,7 +23,7 @@ const TenantSelector: React.FC<TenantSelectorProps> = ({ style = {} }) => {
   useEffect(() => {
     if (data && data.getTenants) {
       const tenantOptions = data.getTenants
-        .filter(tenant => tenant !== null)
+        .filter((tenant) => tenant !== null)
         .map((tenant) => ({
           label: tenant?.name || "",
           value: tenant?.id || "",
@@ -33,17 +34,29 @@ const TenantSelector: React.FC<TenantSelectorProps> = ({ style = {} }) => {
   }, [data]);
 
   const handleChange = (value: string) => {
+    // Get cookie domain from environment variable
+    const cookieDomain = ENV.VITE_COOKIE_DOMAIN;
+    const cookieOptions = {
+      path: "/",
+      domain: cookieDomain || undefined,
+    };
+
     if (value === undefined) {
-      removeCookie("temp_tenant_id", { path: "/" });
+      removeCookie("temp_tenant_id", cookieOptions);
     } else {
-      setCookie("temp_tenant_id", value, { path: "/" }); // Save tenant ID in cookie
+      setCookie("temp_tenant_id", value, cookieOptions); // Save tenant ID in cookie
     }
     // Reload the page to apply the tenant change
     window.location.reload();
   };
 
   if (loading) return <Spin size="small" />;
-  if (error) return <div style={{ fontSize: "12px", color: "#ff4d4f" }}>Error loading tenants</div>;
+  if (error)
+    return (
+      <div style={{ fontSize: "12px", color: "#ff4d4f" }}>
+        Error loading tenants
+      </div>
+    );
 
   return (
     <Select
@@ -55,7 +68,11 @@ const TenantSelector: React.FC<TenantSelectorProps> = ({ style = {} }) => {
       allowClear
     >
       {options.map((option) => (
-        <Select.Option key={option.value} value={option.value} label={option.label}>
+        <Select.Option
+          key={option.value}
+          value={option.value}
+          label={option.label}
+        >
           <div style={{ display: "flex", alignItems: "center" }}>
             {option.logo && (
               <img
@@ -72,4 +89,4 @@ const TenantSelector: React.FC<TenantSelectorProps> = ({ style = {} }) => {
   );
 };
 
-export default TenantSelector; 
+export default TenantSelector;

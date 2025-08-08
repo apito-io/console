@@ -15,7 +15,7 @@ const DynamicTextfieldList: React.FC<DynamicTextfieldListProps> = ({
 }) => {
   return (
     <Form.List
-      initialValue={value.length > 0 ? value : [""]}
+      initialValue={value?.length > 0 ? value : [""]}
       name="dynamic_list"
     >
       {(fields, { add, remove }, { errors }) => (

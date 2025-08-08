@@ -24,11 +24,6 @@ import { useAuth } from "../contexts/AuthContext";
 import TenantSelector from "../components/common/TenantSelector";
 import CreateModelModal from "../components/model/CreateModelModal";
 import ModelOperationsDropdown from "../components/model/ModelOperationsDropdown";
-import { getHeaderTitle, getHeaderSubtitle } from "../constants/navigation";
-import {
-  getSettingsHeaderTitle,
-  getSettingsHeaderSubtitle,
-} from "../constants/settingsNavigation";
 import { usePluginManager } from "../plugins/PluginManager";
 
 const { Sider, Content } = Layout;
@@ -123,17 +118,16 @@ const ConsoleLayout: React.FC = () => {
     if (params.model) {
       setSelectedModel(params.model);
     } else if (models.length > 0) {
-      setSelectedModel(models[0].name.toLowerCase());
+      setSelectedModel(models[0].name);
     }
   }, [params.model, models]);
 
   const handleModelClick = (modelName: string) => {
-    const modelLower = modelName.toLowerCase();
-    setSelectedModel(modelLower);
+    setSelectedModel(modelName);
 
     // Find the full model data for context
     const modelData = data?.projectModelsInfo?.find(
-      (model) => model?.name?.toLowerCase() === modelLower
+      (model) => model?.name?.toLowerCase() === modelName.toLowerCase()
     );
 
     // Update ContentContext with full model data
@@ -141,7 +135,7 @@ const ConsoleLayout: React.FC = () => {
       contentDispatch({
         type: "SET_TARGET",
         payload: {
-          target: modelData.name || modelLower,
+          target: modelData.name || modelName,
           single_page: modelData.single_page || false,
           single_page_uuid: modelData.single_page_uuid || "",
           has_connections: modelData.has_connections || false,
@@ -153,9 +147,9 @@ const ConsoleLayout: React.FC = () => {
 
     // Navigate to content with the selected model
     if (currentPath === "content") {
-      navigate(`/console/content/${modelLower}`);
+      navigate(`/console/content/${modelName}`);
     } else {
-      navigate(`/console/${currentPath}/${modelLower}`);
+      navigate(`/console/${currentPath}/${modelName}`);
     }
   };
 
@@ -209,7 +203,7 @@ const ConsoleLayout: React.FC = () => {
           const hasPageUuid = modelData?.single_page_uuid;
 
           return {
-            key: model.name.toLowerCase(),
+            key: model.name,
             icon: hasPageUuid ? <FileTextOutlined /> : <TableOutlined />,
             label: (
               <div

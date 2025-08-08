@@ -1,5 +1,14 @@
 import React, { useState, useContext, useEffect } from "react";
-import { Drawer, Form, Input, Button, Checkbox, Select, message } from "antd";
+import {
+  Drawer,
+  Form,
+  Input,
+  Button,
+  Checkbox,
+  Select,
+  message,
+  InputNumber,
+} from "antd";
 import { capitalize } from "lodash";
 import pluralize from "pluralize";
 import { type FieldTypeOption } from "../../constants/fieldTypes";
@@ -57,6 +66,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
   const [form] = Form.useForm();
   const [isLocal, setIsLocal] = useState(false);
   const [identifier, setIdentifier] = useState("");
+  const [formError, setFormError] = useState<string>("");
   const context = useContext(ContentContext) as ContentContextType | null;
   const state = context?.state || { target: "" };
 
@@ -86,7 +96,13 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
       onFieldCreated();
     },
     onError: (error) => {
-      message.error(`Failed to create relation: ${error.message}`);
+      console.error("Relation creation error:", error);
+      const errorMessage =
+        error.graphQLErrors?.[0]?.message ||
+        error.networkError?.message ||
+        error.message ||
+        "Unknown error occurred";
+      setFormError(errorMessage);
     },
   });
 
@@ -111,7 +127,17 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
       message.success("New Field Created Successfully!");
       form.resetFields();
       setIsLocal(false);
+      setFormError("");
       onFieldCreated();
+    },
+    onError: (error) => {
+      console.error("Field creation error:", error);
+      const errorMessage =
+        error.graphQLErrors?.[0]?.message ||
+        error.networkError?.message ||
+        error.message ||
+        "Unknown error occurred";
+      setFormError(errorMessage);
     },
     refetchQueries: [
       {
@@ -153,6 +179,33 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
       return;
     }
 
+    // Build validation payload safely (remove empty keys and coerce numbers)
+    const rawValidation = (values.validation || {}) as any;
+    const validationPayload: Record<string, unknown> = { ...rawValidation };
+
+    // Handle integer range [min, max] – optional
+    if (rawValidation?.int_range_limit) {
+      const minRaw = rawValidation.int_range_limit?.[0];
+      const maxRaw = rawValidation.int_range_limit?.[1];
+      const minNum =
+        minRaw !== undefined && minRaw !== null && minRaw !== ""
+          ? Number(minRaw)
+          : null;
+      const maxNum =
+        maxRaw !== undefined && maxRaw !== null && maxRaw !== ""
+          ? Number(maxRaw)
+          : null;
+
+      if (minNum === null && maxNum === null) {
+        delete validationPayload.int_range_limit;
+      } else {
+        const range: number[] = [];
+        if (minNum !== null) range.push(minNum);
+        if (maxNum !== null) range.push(maxNum);
+        validationPayload.int_range_limit = range;
+      }
+    }
+
     await upsertFieldToModel({
       variables: {
         model_name: modelName,
@@ -163,7 +216,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
         input_type,
         is_update: isEditing,
         parent_field: repeatedFieldIdentifier || undefined,
-        validation: values.validation as Record<string, unknown>,
+        validation: validationPayload,
       },
     });
   };
@@ -175,6 +228,11 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
     const label = (values?.field_label as string) || "";
     if (label) {
       setIdentifier(buildFieldIdentifier(label));
+    }
+
+    // Clear form error when user starts typing
+    if (formError) {
+      setFormError("");
     }
 
     // Handle relation form value changes
@@ -299,8 +357,8 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
       field_sub_type === Field_Sub_Type_Enum.Dropdown
         ? "Dropdown Option"
         : field_sub_type === Field_Sub_Type_Enum.MultiSelect
-          ? "Select Option"
-          : "";
+        ? "Select Option"
+        : "";
 
     const showLocalization =
       ![
@@ -324,7 +382,14 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
         <Form.Item
           name="field_label"
           label="Field Label"
-          rules={[{ required: true }]}
+          rules={[
+            { required: true },
+            { min: 2, message: "Field label must be at least 2 characters" },
+            { max: 50, message: "Field label must be at most 50 characters" },
+          ]}
+          help={
+            formError && <div style={{ color: "#ff4d4f" }}>{formError}</div>
+          }
         >
           <Input placeholder="Ex: Name, Title, etc" />
         </Form.Item>
@@ -382,16 +447,16 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
               <Form.Item label="Number Range">
                 <Input.Group compact>
                   <Form.Item
-                    name={["validation", "int_range_limit", "min"]}
+                    name={["validation", "int_range_limit", 0]}
                     noStyle
                   >
-                    <Input placeholder="Min" style={{ width: "50%" }} />
+                    <InputNumber placeholder="Min" style={{ width: "50%" }} />
                   </Form.Item>
                   <Form.Item
-                    name={["validation", "int_range_limit", "max"]}
+                    name={["validation", "int_range_limit", 1]}
                     noStyle
                   >
-                    <Input placeholder="Max" style={{ width: "50%" }} />
+                    <InputNumber placeholder="Max" style={{ width: "50%" }} />
                   </Form.Item>
                 </Input.Group>
               </Form.Item>
@@ -480,6 +545,8 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
       setIdentifier("");
       setIsLocal(false);
     }
+    // Clear form error when drawer opens or form resets
+    setFormError("");
   }, [isEditing, selectedField, form]);
 
   return (

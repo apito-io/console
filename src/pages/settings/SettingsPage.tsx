@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Menu, Typography, theme } from "antd";
+import { Typography, theme } from "antd";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import {
   SettingOutlined,
@@ -7,7 +7,6 @@ import {
   KeyOutlined,
   UserSwitchOutlined,
   AppstoreOutlined,
-  DatabaseOutlined,
   ApiOutlined,
 } from "@ant-design/icons";
 import { usePluginManager } from "../../plugins/PluginManager";
@@ -26,44 +25,47 @@ const SettingsPage: React.FC = () => {
     return pluginAPI.getPluginSettingsItems();
   }, [pluginAPI]);
 
-  const coreSettingsMenuItems = [
-    {
-      key: "general",
-      icon: <SettingOutlined />,
-      label: "General",
-      onClick: () => navigate("/console/settings/general"),
-    },
-    {
-      key: "teams",
-      icon: <TeamOutlined />,
-      label: "Teams",
-      onClick: () => navigate("/console/settings/teams"),
-    },
-    {
-      key: "api-secrets",
-      icon: <KeyOutlined />,
-      label: "API Secrets",
-      onClick: () => navigate("/console/settings/api-secrets"),
-    },
-    {
-      key: "webhooks",
-      icon: <ApiOutlined />,
-      label: "Webhooks",
-      onClick: () => navigate("/console/settings/webhooks"),
-    },
-    {
-      key: "roles",
-      icon: <UserSwitchOutlined />,
-      label: "Roles & Permissions",
-      onClick: () => navigate("/console/settings/roles"),
-    },
-    {
-      key: "plugins",
-      icon: <AppstoreOutlined />,
-      label: "Plugins",
-      onClick: () => navigate("/console/settings/plugins"),
-    },
-  ];
+  const coreSettingsMenuItems = useMemo(
+    () => [
+      {
+        key: "general",
+        icon: <SettingOutlined />,
+        label: "General",
+        onClick: () => navigate("/console/settings/general"),
+      },
+      {
+        key: "teams",
+        icon: <TeamOutlined />,
+        label: "Teams",
+        onClick: () => navigate("/console/settings/teams"),
+      },
+      {
+        key: "api-secrets",
+        icon: <KeyOutlined />,
+        label: "API Secrets",
+        onClick: () => navigate("/console/settings/api-secrets"),
+      },
+      {
+        key: "webhooks",
+        icon: <ApiOutlined />,
+        label: "Webhooks",
+        onClick: () => navigate("/console/settings/webhooks"),
+      },
+      {
+        key: "roles",
+        icon: <UserSwitchOutlined />,
+        label: "Roles & Permissions",
+        onClick: () => navigate("/console/settings/roles"),
+      },
+      {
+        key: "plugins",
+        icon: <AppstoreOutlined />,
+        label: "Plugins",
+        onClick: () => navigate("/console/settings/plugins"),
+      },
+    ],
+    [navigate]
+  );
 
   // Combine core and plugin settings menu items
   const settingsMenuItems = useMemo(() => {
@@ -76,28 +78,6 @@ const SettingsPage: React.FC = () => {
 
     return [...coreSettingsMenuItems, ...pluginItems];
   }, [coreSettingsMenuItems, pluginSettingsItems, navigate]);
-
-  // Get the current active menu key based on the current path
-  const getActiveKey = () => {
-    const path = location.pathname;
-    if (path.includes("/console/settings/general")) return "general";
-    if (path.includes("/console/settings/teams")) return "teams";
-    if (path.includes("/console/settings/api-secrets")) return "api-secrets";
-    if (path.includes("/console/settings/webhooks")) return "webhooks";
-    if (path.includes("/console/settings/roles")) return "roles";
-    if (path.includes("/console/settings/plugins")) return "plugins";
-    if (path.includes("/console/settings/database")) return "database";
-    if (path.includes("/console/settings/api-usage")) return "api-usage";
-
-    // Check for plugin settings paths
-    for (const plugin of pluginSettingsItems) {
-      if (path.includes(plugin.path)) {
-        return `plugin-${plugin.pluginName}`;
-      }
-    }
-
-    return "general";
-  };
 
   // Check if we're on the main settings page
   const isMainSettingsPage = location.pathname === "/console/settings";

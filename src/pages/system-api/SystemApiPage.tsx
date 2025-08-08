@@ -21,7 +21,7 @@ const { Title, Text, Paragraph } = Typography;
 
 const SystemApiPage: React.FC = () => {
   const { decodeTokenData } = useAuth();
-  const tokenData = decodeTokenData();
+
   const [activeTab, setActiveTab] = useState("tools");
 
   // GraphiQL fetcher setup

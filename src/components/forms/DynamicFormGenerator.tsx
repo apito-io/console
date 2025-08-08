@@ -35,7 +35,7 @@ interface FieldDefinition {
   validation?: {
     as_title?: boolean;
     char_limit?: number;
-    double_range_limit?: { min?: number; max?: number };
+    double_range_limit?: [number, number];
     fixed_list_elements?: string[];
     fixed_list_element_type?: string;
     hide?: boolean;
@@ -43,7 +43,7 @@ interface FieldDefinition {
     is_gallery?: boolean;
     is_multi_choice?: boolean;
     is_password?: boolean;
-    int_range_limit?: { min?: number; max?: number };
+    int_range_limit?: [number, number];
     locals?: string[];
     placeholder?: string;
     required?: boolean;
@@ -168,7 +168,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
       Array.isArray(field.validation?.int_range_limit) &&
       field.validation.int_range_limit.length > 0
     ) {
-      const { min, max } = field.validation.int_range_limit;
+      const [min, max] = field.validation.int_range_limit;
       if (min !== undefined) {
         rules.push({
           type: "number",
@@ -287,8 +287,16 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
               style={{ width: "100%" }}
               disabled={disabled}
               placeholder={field.validation?.placeholder}
-              min={field.validation?.int_range_limit?.min}
-              max={field.validation?.int_range_limit?.max}
+              min={
+                Array.isArray(field.validation?.int_range_limit) && field.validation?.int_range_limit.length > 0
+                  ? field.validation?.int_range_limit[0]
+                  : undefined
+              }
+              max={
+                Array.isArray(field.validation?.int_range_limit) && field.validation?.int_range_limit.length > 1
+                  ? field.validation?.int_range_limit[1]
+                  : undefined
+              }
             />
           </Form.Item>
         );

@@ -12,7 +12,7 @@ import {
 } from "antd";
 import {
   ProjectOutlined,
-  CloudOutlined,
+
   RocketOutlined,
 } from "@ant-design/icons";
 import { Icon } from "@iconify/react";

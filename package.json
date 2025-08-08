@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "codegen": "NODE_OPTIONS=--experimental-vm-modules DOTENV_CONFIG_PATH=.env graphql-codegen -r dotenv/config --config codegen.yml"

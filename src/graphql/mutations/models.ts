@@ -103,6 +103,8 @@ export const MODEL_FIELD_OPERATION = gql`
     $parent_field: String
     $single_page_model: Boolean
     $is_relation: Boolean
+    $moved_to: String
+    $changed_type: String
   ) {
     modelFieldOperation(
       type: $type
@@ -112,6 +114,8 @@ export const MODEL_FIELD_OPERATION = gql`
       parent_field: $parent_field
       single_page_model: $single_page_model
       is_relation: $is_relation
+      moved_to: $moved_to
+      changed_type: $changed_type
     ) {
       serial
       identifier
@@ -140,14 +144,20 @@ export const MODEL_FIELD_OPERATION = gql`
   }
 `;
 
-export const UPDATE_FIELD_SERIAL = gql`
-  mutation updateFieldSerial(
+export const REARRANGE_FIELD_SERIAL = gql`
+  mutation rearrangeFieldSerial(
     $model_name: String!
-    $serial_payload_map: JSONArray!
+    $field_name: String!
+    $new_position: Int!
+    $move_type: String!
+    $parent_id: String
   ) {
     rearrangeSerialOfField(
       model_name: $model_name
-      serial_payload_map: $serial_payload_map
+      field_name: $field_name
+      new_position: $new_position
+      move_type: $move_type
+      parent_id: $parent_id
     ) {
       name
       fields {

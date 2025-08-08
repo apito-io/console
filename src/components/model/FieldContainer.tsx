@@ -15,6 +15,7 @@ import {
   DeleteOutlined,
   DownOutlined,
   RightOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import type { FieldInfo, DrawerParam } from "../../types/model";
 
@@ -111,6 +112,17 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
         openDrawer({
           field,
           type: "duplicate",
+          objectIdentifier,
+        }),
+    },
+    {
+      key: "changeType",
+      label: "Change Type",
+      icon: <SwapOutlined />,
+      onClick: () =>
+        openDrawer({
+          field,
+          type: "changeType",
           objectIdentifier,
         }),
     },

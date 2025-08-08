@@ -2,7 +2,7 @@
 export interface FieldValidation {
   as_title?: boolean;
   char_limit?: number;
-  double_range_limit?: { min?: number; max?: number };
+  double_range_limit?: [number, number];
   fixed_list_elements?: string[];
   fixed_list_element_type?: string;
   hide?: boolean;
@@ -10,7 +10,7 @@ export interface FieldValidation {
   is_gallery?: boolean;
   is_multi_choice?: boolean;
   is_password?: boolean;
-  int_range_limit?: { min?: number; max?: number };
+  int_range_limit?: [number, number];
   locals?: string[];
   placeholder?: string;
   required?: boolean;
@@ -280,6 +280,6 @@ export interface SortableItemData {
 // Drawer interfaces for model operations
 export interface DrawerParam {
   field: FieldInfo;
-  type: 'duplicate' | 'rename' | 'delete' | 'configure';
+  type: 'duplicate' | 'rename' | 'delete' | 'configure' | 'changeType';
   objectIdentifier: string;
 } 

@@ -16,8 +16,7 @@ import {
 import {
   CREATE_MODEL,
   UPDATE_MODEL,
-  CREATE_FIELD_TO_MODEL,
-  UPDATE_FIELD_TO_MODEL,
+  UPSERT_FIELD_TO_MODEL,
   UPDATE_MODEL_RELATION,
   MODEL_FIELD_OPERATION,
   UPDATE_FIELD_SERIAL,
@@ -68,8 +67,7 @@ export const useModel = (): UseModelReturn => {
   // Mutations
   const [createModelMutation] = useMutation(CREATE_MODEL);
   const [updateModelMutation] = useMutation(UPDATE_MODEL);
-  const [createFieldMutation] = useMutation(CREATE_FIELD_TO_MODEL);
-  const [updateFieldMutation] = useMutation(UPDATE_FIELD_TO_MODEL);
+  const [upsertFieldMutation] = useMutation(UPSERT_FIELD_TO_MODEL);
   const [updateRelationMutation] = useMutation(UPDATE_MODEL_RELATION);
   const [_fieldOperationMutation] = useMutation(MODEL_FIELD_OPERATION);
   const [updateFieldSerialMutation] = useMutation(UPDATE_FIELD_SERIAL);
@@ -176,7 +174,7 @@ export const useModel = (): UseModelReturn => {
   const createField = useCallback(async (modelName: string, data: FieldFormData): Promise<boolean> => {
     try {
       setError(null);
-      const result = await createFieldMutation({
+      const result = await upsertFieldMutation({
         variables: {
           model_name: modelName,
           field_label: data.label,
@@ -201,12 +199,12 @@ export const useModel = (): UseModelReturn => {
       message.error(errorMessage);
       return false;
     }
-  }, [createFieldMutation, refetchModels]);
+  }, [upsertFieldMutation, refetchModels]);
 
   const updateField = useCallback(async (modelName: string, fieldName: string, data: Partial<FieldFormData>): Promise<boolean> => {
     try {
       setError(null);
-      const result = await updateFieldMutation({
+      const result = await upsertFieldMutation({
         variables: {
           model_name: modelName,
           field_label: data.label || fieldName,
@@ -229,7 +227,7 @@ export const useModel = (): UseModelReturn => {
       message.error(errorMessage);
       return false;
     }
-  }, [updateFieldMutation, refetchModels]);
+  }, [upsertFieldMutation, refetchModels]);
 
   const deleteField = useCallback(async (modelName: string, fieldName: string, isRelation = false): Promise<boolean> => {
     try {
