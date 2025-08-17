@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Card,
   Form,
@@ -9,43 +9,98 @@ import {
   Row,
   Col,
   message,
+  Tooltip,
 } from "antd";
-import {
-  ProjectOutlined,
-
-  RocketOutlined,
-} from "@ant-design/icons";
-import { Icon } from "@iconify/react";
+import { ProjectOutlined, RocketOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { httpService } from "../../services/httpService";
-import { PROJECT_CREATE } from "../../constants/api";
+import { PROJECT_CREATE, PROJECT_NAME_CHECK } from "../../constants/api";
+import debounce from "lodash/debounce";
+import DatabaseConfig from "../../components/database/DatabaseConfig";
 
 const { Title, Paragraph } = Typography;
 
+type ProjectType = "general" | "saas";
+
+type DbConfig = Record<string, unknown>;
+
 interface ProjectCreateData {
+  id?: string;
   name: string;
   description?: string;
   database_type: string;
+  project_type?: ProjectType;
+  tenant_model_name?: string;
+  db_config?: DbConfig;
 }
 
-interface DatabaseOption {
-  value: string;
-  label: string;
-  icon: React.ReactNode;
-  specialNote?: string;
-}
+const generateRandomId = (length: number): string => {
+  const characters = "0123456789abcdefghijklmnopqrstuvwxyz";
+  let result = "";
+  for (let i = 0; i < length; i += 1) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+};
+
+const normalizeName = (value: string): string =>
+  value
+    .trim()
+    .replace(/[\s-]+/g, "_")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1_$2")
+    .replace(/[^0-9a-zA-Z_]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+
+const makeProjectIdFromName = (name: string): string =>
+  `${normalizeName(name).toLowerCase()}_${generateRandomId(5)}`;
 
 const StartProjectPage: React.FC = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [selectedDatabase, setSelectedDatabase] =
-    useState<string>("postgresql");
+  const [projectType, setProjectType] = useState<ProjectType>("general");
+  const [isValidId, setIsValidId] = useState<boolean | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+
+  const debouncedCheck = useMemo(
+    () =>
+      debounce(async (id: string) => {
+        try {
+          await httpService.post(PROJECT_NAME_CHECK, { name: id, id });
+          setIsValidId(true);
+        } catch {
+          setIsValidId(false);
+        }
+      }, 1000),
+    []
+  );
+
+  const onNameChange = (value: string) => {
+    if (!value) {
+      form.setFieldsValue({ id: undefined });
+      setIsValidId(null);
+      return;
+    }
+    const newId = makeProjectIdFromName(value);
+    form.setFieldsValue({ id: newId });
+    debouncedCheck(newId);
+  };
 
   const handleCreateProject = async (values: ProjectCreateData) => {
     try {
       setLoading(true);
-      const response = await httpService.post(PROJECT_CREATE, values);
+      const payload = {
+        ...values,
+        project_type: projectType,
+        tenant_model_name:
+          projectType === "saas" ? values.tenant_model_name : undefined,
+      };
+      const response = await httpService.post(PROJECT_CREATE, payload);
 
       if (response.data.code === 200) {
         message.success("Project created successfully!");
@@ -61,43 +116,7 @@ const StartProjectPage: React.FC = () => {
     }
   };
 
-  const databaseOptions: DatabaseOption[] = [
-    {
-      value: "embed",
-      label: "Embed",
-      icon: <Icon icon="mdi:database" style={{ color: "#1890ff" }} />,
-    },
-    {
-      value: "sqlite",
-      label: "SQLite",
-      icon: <Icon icon="simple-icons:sqlite" style={{ color: "#003B57", fontSize: "24px" }} />,
-    },
-    {
-      value: "mysql",
-      label: "MySQL",
-      icon: <Icon icon="logos:mysql" style={{ fontSize: "24px" }} />,
-    },
-    {
-      value: "mariadb",
-      label: "MariaDB",
-      icon: <Icon icon="logos:mariadb" style={{ fontSize: "24px" }} />,
-    },
-    {
-      value: "postgresql",
-      label: "PostgreSQL",
-      icon: <Icon icon="logos:postgresql" style={{ fontSize: "24px" }} />,
-    },
-    {
-      value: "mongo",
-      label: "MongoDB",
-      icon: <Icon icon="logos:mongodb" style={{ fontSize: "24px" }} />,
-    },
-  ];
-
-  const handleDatabaseSelect = (databaseValue: string) => {
-    setSelectedDatabase(databaseValue);
-    form.setFieldsValue({ database_type: databaseValue });
-  };
+  const isFormValid = isValidId === true && connectionStatus === "success";
 
   return (
     <div style={{ padding: "24px", maxWidth: "800px", margin: "0 auto" }}>
@@ -114,7 +133,6 @@ const StartProjectPage: React.FC = () => {
         </Paragraph>
       </div>
 
-      {/* Project Creation Form */}
       <Card
         title={
           <Space>
@@ -127,9 +145,7 @@ const StartProjectPage: React.FC = () => {
           form={form}
           layout="vertical"
           onFinish={handleCreateProject}
-          initialValues={{
-            database_type: "postgresql",
-          }}
+          initialValues={{ database_type: "postgresql" }}
         >
           <Row gutter={[16, 16]}>
             <Col span={24}>
@@ -153,9 +169,73 @@ const StartProjectPage: React.FC = () => {
                   },
                 ]}
               >
-                <Input placeholder="Enter your project name" size="large" />
+                <Input
+                  placeholder="Enter your project name"
+                  size="large"
+                  onChange={(e) => onNameChange(e.target.value)}
+                />
               </Form.Item>
             </Col>
+
+            <Col span={24}>
+              <Form.Item
+                name="id"
+                label="Project ID (Auto-generated)"
+                rules={[{ required: true, message: "Project ID is required" }]}
+                hasFeedback
+                validateStatus={
+                  isValidId === null ? "" : isValidId ? "success" : "error"
+                }
+                help={
+                  isValidId === false
+                    ? "This project ID is already taken. Please adjust the name."
+                    : undefined
+                }
+              >
+                <Input
+                  readOnly
+                  disabled
+                  placeholder="Generated from project name"
+                />
+              </Form.Item>
+            </Col>
+
+            {/* Project Type */}
+            <Col span={24}>
+              <Form.Item label="Project Type" name="project_type">
+                <Space>
+                  <Button
+                    type={projectType === "general" ? "primary" : "default"}
+                    onClick={() => setProjectType("general")}
+                  >
+                    General
+                  </Button>
+                  <Button
+                    type={projectType === "saas" ? "primary" : "default"}
+                    onClick={() => setProjectType("saas")}
+                  >
+                    SaaS
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Col>
+
+            {projectType === "saas" && (
+              <Col span={24}>
+                <Form.Item
+                  name="tenant_model_name"
+                  label="Tenant Model Name"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Tenant model name is required",
+                    },
+                  ]}
+                >
+                  <Input placeholder="Ex. Shop, Institution, Vendor etc." />
+                </Form.Item>
+              </Col>
+            )}
 
             <Col span={24}>
               <Form.Item name="description" label="Description (Optional)">
@@ -168,81 +248,43 @@ const StartProjectPage: React.FC = () => {
               </Form.Item>
             </Col>
 
+            {/* Reusable DatabaseConfig */}
             <Col span={24}>
-              <Form.Item
-                name="database_type"
-                label="Database Type"
-                rules={[
-                  { required: true, message: "Please select a database type" },
-                ]}
-              >
-                <div>
-                  <Row gutter={[16, 16]}>
-                    {databaseOptions.map((db) => (
-                      <Col xs={24} sm={12} md={8} lg={6} key={db.value}>
-                        <Card
-                          hoverable
-                          size="small"
-                          style={{
-                            cursor: "pointer",
-                            border:
-                              selectedDatabase === db.value
-                                ? "2px solid #1890ff"
-                                : "1px solid #d9d9d9",
-                            backgroundColor:
-                              selectedDatabase === db.value
-                                ? "#f0f8ff"
-                                : "#fff",
-                          }}
-                          onClick={() => handleDatabaseSelect(db.value)}
-                        >
-                          <div style={{ textAlign: "center" }}>
-                            <div
-                              style={{ fontSize: "24px", marginBottom: "8px" }}
-                            >
-                              {db.icon}
-                            </div>
-                            <div
-                              style={{ fontWeight: 500, marginBottom: "4px" }}
-                            >
-                              {db.label}
-                            </div>
-                            {db.specialNote && (
-                              <div
-                                style={{
-                                  fontSize: "11px",
-                                  color: "#ff4d4f",
-                                  marginTop: "4px",
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                {db.specialNote}
-                              </div>
-                            )}
-                          </div>
-                        </Card>
-                      </Col>
-                    ))}
-                  </Row>
-                </div>
-              </Form.Item>
+              <DatabaseConfig
+                stage="project"
+                form={form}
+                databaseTypeField="database_type"
+                configField="db_config"
+                enableTest={true}
+                onConnectionStatusChange={(status, _errorMessage) => {
+                  setConnectionStatus(status);
+                }}
+              />
             </Col>
           </Row>
 
-          <Form.Item style={{ marginTop: "32px", textAlign: "center" }}>
+          <Form.Item style={{ marginTop: 16, textAlign: "center" }}>
             <Space size="middle">
               <Button size="large" onClick={() => navigate("/projects")}>
                 Cancel
               </Button>
-              <Button
-                type="primary"
-                size="large"
-                htmlType="submit"
-                loading={loading}
-                icon={<RocketOutlined />}
+              <Tooltip
+                title={
+                  connectionStatus !== "success"
+                    ? "Please test database connection first"
+                    : undefined
+                }
               >
-                Create Project
-              </Button>
+                <Button
+                  type="primary"
+                  size="large"
+                  htmlType="submit"
+                  loading={loading}
+                  disabled={!isFormValid}
+                >
+                  Create Project
+                </Button>
+              </Tooltip>
             </Space>
           </Form.Item>
         </Form>

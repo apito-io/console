@@ -103,6 +103,7 @@ export const MODEL_FIELD_OPERATION = gql`
     $parent_field: String
     $single_page_model: Boolean
     $is_relation: Boolean
+    $known_as: String
     $moved_to: String
     $changed_type: String
   ) {
@@ -114,6 +115,7 @@ export const MODEL_FIELD_OPERATION = gql`
       parent_field: $parent_field
       single_page_model: $single_page_model
       is_relation: $is_relation
+      known_as: $known_as
       moved_to: $moved_to
       changed_type: $changed_type
     ) {

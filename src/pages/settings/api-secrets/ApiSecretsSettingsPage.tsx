@@ -202,25 +202,7 @@ const ApiSecretsSettingsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: "24px" }}>
-      <div style={{ marginBottom: "24px" }}>
-        <Title
-          level={3}
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <KeyOutlined />
-          API Secrets
-        </Title>
-        <Paragraph type="secondary">
-          Generate API tokens to authenticate requests to your project's GraphQL
-          and REST APIs
-        </Paragraph>
-      </div>
+    <div>
 
       {/* Generate New Token */}
       <Card

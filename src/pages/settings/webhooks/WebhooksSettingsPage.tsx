@@ -116,26 +116,7 @@ const WebhooksSettingsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: "24px" }}>
-      <div style={{ marginBottom: "24px" }}>
-        <Title
-          level={3}
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <ApiOutlined />
-          Webhooks
-        </Title>
-        <Paragraph type="secondary">
-          Configure webhooks to receive real-time notifications when data
-          changes in your project
-        </Paragraph>
-      </div>
-
+    <div>
       {/* Webhooks Table */}
       <Card
         title={

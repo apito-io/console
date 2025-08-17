@@ -1,25 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Form, Input, Typography, Card, message, Skeleton, Select, Switch, Row, Col } from 'antd';
-import { SettingOutlined } from '@ant-design/icons';
-import { useGetSettingsQuery, useUpdateSettingsMutation, useGetOnlyModelsInfoQuery } from '../../../generated/graphql';
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Button,
+  Form,
+  Input,
+  Card,
+  message,
+  Skeleton,
+  Select,
+  Switch,
+  Row,
+  Col,
+} from "antd";
+import { SettingOutlined } from "@ant-design/icons";
+import {
+  useGetSettingsQuery,
+  useUpdateSettingsMutation,
+  useGetOnlyModelsInfoQuery,
+} from "../../../generated/graphql";
 
-const { Title, Text } = Typography;
 const { Option } = Select;
 
 // Sample locale data - you might want to move this to a constants file
 const localsData = {
-  'en': 'English',
-  'es': 'Spanish',
-  'fr': 'French',
-  'de': 'German',
-  'it': 'Italian',
-  'pt': 'Portuguese',
-  'ru': 'Russian',
-  'ja': 'Japanese',
-  'ko': 'Korean',
-  'zh': 'Chinese',
-  'ar': 'Arabic',
-  'hi': 'Hindi',
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  ru: "Russian",
+  ja: "Japanese",
+  ko: "Korean",
+  zh: "Chinese",
+  ar: "Arabic",
+  hi: "Hindi",
 };
 
 const GeneralSettingsPage: React.FC = () => {
@@ -27,19 +41,24 @@ const GeneralSettingsPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch current project settings
-  const { data: settingsData, loading: settingsLoading, refetch } = useGetSettingsQuery({
+  const {
+    data: settingsData,
+    loading: settingsLoading,
+    refetch,
+  } = useGetSettingsQuery({
     errorPolicy: "all",
   });
 
   // Fetch models for tenant model selection
-  const { data: modelsData, loading: modelsLoading } = useGetOnlyModelsInfoQuery({
-    errorPolicy: "all",
-  });
+  const { data: modelsData, loading: modelsLoading } =
+    useGetOnlyModelsInfoQuery({
+      errorPolicy: "all",
+    });
 
   // Update settings mutation
   const [updateSettings] = useUpdateSettingsMutation({
     onCompleted: () => {
-      message.success('Project settings updated successfully');
+      message.success("Project settings updated successfully");
       setIsSubmitting(false);
       refetch();
     },
@@ -50,27 +69,38 @@ const GeneralSettingsPage: React.FC = () => {
   });
 
   const project = settingsData?.currentProject;
-  const models = modelsData?.projectModelsInfo?.filter(model => model && !model.system_generated) || [];
+  const models =
+    modelsData?.projectModelsInfo?.filter(
+      (model) => model && !model.system_generated
+    ) || [];
 
-  // Set initial form values when data loads
+  // Derive initial form values from project
+  const initialValues = useMemo(() => {
+    if (!project) return undefined;
+    return {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      tenant_model_name: project.tenant_model_name,
+      settings: {
+        locals: project.settings?.locals || [],
+        default_locale: project.settings?.default_locale,
+        enable_revision_history:
+          project.settings?.enable_revision_history || false,
+        system_graphql_hooks: project.settings?.system_graphql_hooks || false,
+        default_storage_plugin: project.settings?.default_storage_plugin,
+        default_function_plugin: project.settings?.default_function_plugin,
+      },
+    };
+  }, [project]);
+
+  // Whenever project changes, reset and populate the form
   useEffect(() => {
-    if (project) {
-      form.setFieldsValue({
-        id: project.id,
-        name: project.name,
-        description: project.description,
-        tenant_model_name: project.tenant_model_name,
-        settings: {
-          locals: project.settings?.locals || [],
-          default_locale: project.settings?.default_locale,
-          enable_revision_history: project.settings?.enable_revision_history || false,
-          system_graphql_hooks: project.settings?.system_graphql_hooks || false,
-          default_storage_plugin: project.settings?.default_storage_plugin,
-          default_function_plugin: project.settings?.default_function_plugin,
-        },
-      });
+    if (initialValues) {
+      form.resetFields();
+      form.setFieldsValue(initialValues);
     }
-  }, [project, form]);
+  }, [initialValues, form]);
 
   const onFinish = async (values: any) => {
     setIsSubmitting(true);
@@ -84,7 +114,7 @@ const GeneralSettingsPage: React.FC = () => {
         },
       });
     } catch (error) {
-      console.error('Update error:', error);
+      console.error("Update error:", error);
       setIsSubmitting(false);
     }
   };
@@ -93,25 +123,21 @@ const GeneralSettingsPage: React.FC = () => {
 
   if (settingsLoading) {
     return (
-      <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
+      <div style={{ padding: "24px", maxWidth: "1000px", margin: "0 auto" }}>
         <Skeleton active paragraph={{ rows: 8 }} />
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
-      <Title level={2}>General Settings</Title>
-      <Text type="secondary">Configure basic project settings and preferences</Text>
-
+    <div>
       <Card
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <SettingOutlined />
             Project Information
           </div>
         }
-        style={{ marginTop: '24px' }}
         extra={
           <Button
             type="primary"
@@ -127,20 +153,20 @@ const GeneralSettingsPage: React.FC = () => {
           layout="vertical"
           onFinish={onFinish}
           preserve={false}
+          initialValues={initialValues}
         >
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item
-                name="id"
-                label="Project ID"
-              >
+              <Form.Item name="id" label="Project ID">
                 <Input disabled placeholder="Project ID" />
               </Form.Item>
 
               <Form.Item
                 name="name"
                 label="Project Name"
-                rules={[{ required: true, message: 'Project name is required' }]}
+                rules={[
+                  { required: true, message: "Project name is required" },
+                ]}
               >
                 <Input placeholder="Enter project name" />
               </Form.Item>
@@ -148,16 +174,21 @@ const GeneralSettingsPage: React.FC = () => {
               <Form.Item
                 name="description"
                 label="Project Description"
-                rules={[{ required: true, message: 'Project description is required' }]}
+                rules={[
+                  {
+                    required: true,
+                    message: "Project description is required",
+                  },
+                ]}
               >
-                <Input.TextArea 
+                <Input.TextArea
                   rows={3}
-                  placeholder="Enter project description" 
+                  placeholder="Enter project description"
                 />
               </Form.Item>
 
               <Form.Item
-                name={['settings', 'locals']}
+                name={["settings", "locals"]}
                 label="Content Languages"
                 tooltip="Select the languages your content will support"
               >
@@ -177,7 +208,7 @@ const GeneralSettingsPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name={['settings', 'default_locale']}
+                name={["settings", "default_locale"]}
                 label="Default Content Language"
                 tooltip="The default language for content creation"
               >
@@ -187,11 +218,13 @@ const GeneralSettingsPage: React.FC = () => {
                   showSearch
                   optionFilterProp="children"
                 >
-                  {(form.getFieldValue(['settings', 'locals']) || []).map((locale: string) => (
-                    <Option key={locale} value={locale}>
-                      {localsData[locale as keyof typeof localsData]}
-                    </Option>
-                  ))}
+                  {(form.getFieldValue(["settings", "locals"]) || []).map(
+                    (locale: string) => (
+                      <Option key={locale} value={locale}>
+                        {localsData[locale as keyof typeof localsData]}
+                      </Option>
+                    )
+                  )}
                 </Select>
               </Form.Item>
             </Col>
@@ -218,7 +251,7 @@ const GeneralSettingsPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name={['settings', 'default_storage_plugin']}
+                name={["settings", "default_storage_plugin"]}
                 label="Default Storage Plugin"
                 tooltip="Default plugin for file storage"
               >
@@ -226,7 +259,7 @@ const GeneralSettingsPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name={['settings', 'default_function_plugin']}
+                name={["settings", "default_function_plugin"]}
                 label="Default Function Plugin"
                 tooltip="Default plugin for serverless functions"
               >
@@ -234,7 +267,7 @@ const GeneralSettingsPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name={['settings', 'enable_revision_history']}
+                name={["settings", "enable_revision_history"]}
                 label="Enable Document History"
                 tooltip="Track changes to documents over time"
                 valuePropName="checked"
@@ -243,7 +276,7 @@ const GeneralSettingsPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name={['settings', 'system_graphql_hooks']}
+                name={["settings", "system_graphql_hooks"]}
                 label="Enable System GraphQL Hooks"
                 tooltip="Allow system-level GraphQL hook execution"
                 valuePropName="checked"
@@ -258,4 +291,4 @@ const GeneralSettingsPage: React.FC = () => {
   );
 };
 
-export default GeneralSettingsPage; 
+export default GeneralSettingsPage;

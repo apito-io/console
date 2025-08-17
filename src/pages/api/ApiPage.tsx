@@ -21,7 +21,9 @@ const ApiPage: React.FC = () => {
   const [explorerIsOpen] = useState(true);
 
   // GraphQL configuration
-  const graphqlEndpoint = `${ENV.VITE_PUBLIC_GRAPH_API || "https://api.apito.io/secured/graphql"}`;
+  const graphqlEndpoint = `${
+    ENV.VITE_PUBLIC_GRAPH_API || "https://api.apito.io/secured/graphql"
+  }`;
 
   const fetcher = createGraphiQLFetcher({
     url: graphqlEndpoint,
@@ -180,11 +182,25 @@ const ApiPage: React.FC = () => {
   */
 
   const renderGraphQLContent = () => (
-    <div style={{ height: "100%", minHeight: "calc(100vh - 200px)" }}>
+    <div
+      style={{
+        height: "calc(100vh - 120px)",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+        margin: 0,
+        padding: 0,
+      }}
+    >
       <GraphiQL
         key="graphiql-instance"
         fetcher={fetcher}
         plugins={plugins}
+        style={{
+          height: "100%",
+          position: "absolute",
+        }}
         defaultQuery={`# Welcome to Apito GraphQL API
 # 
 # Use this playground to explore your API
@@ -205,9 +221,9 @@ const ApiPage: React.FC = () => {
   const renderRESTContent = () => (
     <div
       style={{
-        height: "100%",
-        minHeight: "calc(100vh - 200px)",
+        height: "calc(100vh - 180px)",
         width: "100%",
+        overflow: "auto",
       }}
     >
       {/* TODO: Fix ApiReference component type issues */}
@@ -252,9 +268,12 @@ const ApiPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Header Section */}
-      {/*       <div
+    <>
+      <div
+        style={{ height: "100vh", display: "flex", flexDirection: "column" }}
+      >
+        {/* Header Section */}
+        {/*       <div
         style={{
           padding: "24px",
           borderBottom: "1px solid #f0f0f0",
@@ -304,32 +323,35 @@ const ApiPage: React.FC = () => {
         </Space>
       </div>
  */}
-      {/* Tabs Content */}
-      <div
-        style={{
-          flex: 1,
-          padding: "0",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={tabItems}
-          style={{ height: "100%", display: "flex", flexDirection: "column" }}
-          tabBarStyle={{
-            paddingLeft: "24px",
-            paddingRight: "24px",
-            marginBottom: 0,
-            background: "#fff",
-            borderBottom: "1px solid #f0f0f0",
+        {/* Tabs Content */}
+        <div
+          style={{
+            flex: 1,
+            padding: "0",
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
           }}
-          tabBarGutter={0}
-          destroyInactiveTabPane={false}
-        />
+        >
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            items={tabItems}
+            style={{ height: "100%", display: "flex", flexDirection: "column" }}
+            tabBarStyle={{
+              paddingLeft: "24px",
+              paddingRight: "24px",
+              marginBottom: 0,
+              background: "#fff",
+              borderBottom: "1px solid #f0f0f0",
+            }}
+            tabBarGutter={0}
+            destroyInactiveTabPane={false}
+            tabPosition="top"
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

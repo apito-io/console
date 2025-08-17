@@ -90,25 +90,7 @@ const RolesSettingsPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: "24px" }}>
-      <div style={{ marginBottom: "24px" }}>
-        <Title
-          level={3}
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <UserSwitchOutlined />
-          Roles & Permissions
-        </Title>
-        <Paragraph type="secondary">
-          Manage user roles and permissions for your project
-        </Paragraph>
-      </div>
-
+    <div >
       <Card>
         <Space
           style={{

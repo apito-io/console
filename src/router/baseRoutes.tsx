@@ -14,8 +14,7 @@ import RolesSettingsPage from "../pages/settings/roles/RolesSettingsPage";
 import PluginsSettingsPage from "../pages/settings/plugins/PluginsSettingsPage";
 import PluginSettingsRenderer from "../components/plugins/PluginSettingsRenderer";
 import { LoginPage } from "../pages/auth";
-import WelcomePage from "../pages/auth/WelcomePage";
-import JourneyGuard from "../components/common/JourneyGuard";
+
 import { ProjectsPage, StartProjectPage } from "../pages/projects";
 import AccountsPage from "../pages/accounts";
 import SupportPage from "../pages/support";
@@ -31,27 +30,12 @@ import { PluginRouter } from "../plugins/PluginRouter";
 export const authRoutes: RouteObject[] = [
   {
     path: "/auth/login",
-    element: (
-      <JourneyGuard>
-        <LoginPage />
-      </JourneyGuard>
-    ),
+    element: <LoginPage />,
   },
-  {
-    path: "/auth/welcome",
-    element: (
-      <JourneyGuard>
-        <WelcomePage />
-      </JourneyGuard>
-    ),
-  },
+
   {
     path: "/login",
     element: <Navigate to="/auth/login" replace />,
-  },
-  {
-    path: "/welcome",
-    element: <Navigate to="/auth/welcome" replace />,
   },
 ];
 
@@ -62,11 +46,7 @@ export const getMainRoutes = (
 ): RouteObject[] => [
   {
     path: "/",
-    element: (
-      <JourneyGuard>
-        <LayoutComponent />
-      </JourneyGuard>
-    ),
+    element: <LayoutComponent />,
     children: [
       {
         index: true,
@@ -194,24 +174,9 @@ export const getMainRoutes = (
 // JSX Route elements for use with Routes/Route components
 export const renderAuthRoutes = () => (
   <>
-    <Route
-      path="/auth/login"
-      element={
-        <JourneyGuard>
-          <LoginPage />
-        </JourneyGuard>
-      }
-    />
-    <Route
-      path="/auth/welcome"
-      element={
-        <JourneyGuard>
-          <WelcomePage />
-        </JourneyGuard>
-      }
-    />
+    <Route path="/auth/login" element={<LoginPage />} />
+
     <Route path="/login" element={<Navigate to="/auth/login" replace />} />
-    <Route path="/welcome" element={<Navigate to="/auth/welcome" replace />} />
   </>
 );
 
@@ -219,14 +184,7 @@ export const renderMainRoutes = (
   LayoutComponent: React.ComponentType = CommonLayout,
   additionalRoutes: React.ReactNode = null
 ) => (
-  <Route
-    path="/*"
-    element={
-      <JourneyGuard>
-        <LayoutComponent />
-      </JourneyGuard>
-    }
-  >
+  <Route path="/*" element={<LayoutComponent />}>
     <Route index element={<Navigate to="/projects" replace />} />
     <Route path="projects" element={<ProjectsPage />} />
     <Route path="projects/new" element={<StartProjectPage />} />
@@ -256,7 +214,10 @@ export const renderMainRoutes = (
         <Route path="webhooks" element={<WebhooksSettingsPage />} />
         <Route path="roles" element={<RolesSettingsPage />} />
         <Route path="plugins" element={<PluginsSettingsPage />} />
-        <Route path="plugins/:pluginName" element={<PluginSettingsRenderer />} />
+        <Route
+          path="plugins/:pluginName"
+          element={<PluginSettingsRenderer />}
+        />
       </Route>
     </Route>
 

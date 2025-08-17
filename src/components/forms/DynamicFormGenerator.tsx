@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Form,
   Input,
@@ -11,16 +11,26 @@ import {
   Button,
   Tag,
   Space,
+  Tooltip,
+  Typography,
 } from "antd";
-import { PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  MinusCircleOutlined,
+  LockOutlined,
+  UnlockOutlined,
+} from "@ant-design/icons";
 import type { FormInstance } from "antd/es/form";
 import dayjs from "dayjs";
-import { getFieldTypeColor } from "../../utils/generateLabelAndIcon";
+import {
+  getFieldTypeColor,
+  generateIcon,
+} from "../../utils/generateLabelAndIcon";
 import ReactDraft from "./ReactDraft";
 import { usePluginManager } from "../../plugins/PluginManager";
 import type { LoadedPlugin } from "../../plugins/types";
 
-// Removed unused destructuring
+const { Text } = Typography;
 
 interface FieldDefinition {
   serial: number;
@@ -67,6 +77,9 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
   parentPath = [],
 }) => {
   const [pluginState, pluginAPI] = usePluginManager();
+  const [editableHiddenFields, setEditableHiddenFields] = useState<Set<string>>(
+    new Set()
+  );
 
   // Helper function to normalize date values for DatePicker
   const normalizeDateValue = (value: any) => {
@@ -205,27 +218,135 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
     return [...parentPath, identifier];
   };
 
-  const renderField = (field: FieldDefinition): React.ReactNode => {
-    if (field.validation?.hide || field.system_generated) {
-      return null;
-    }
+  const toggleHiddenFieldEdit = (fieldId: string) => {
+    setEditableHiddenFields((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(fieldId)) {
+        newSet.delete(fieldId);
+      } else {
+        newSet.add(fieldId);
+      }
+      return newSet;
+    });
+  };
 
+  const renderField = (field: FieldDefinition): React.ReactNode => {
     const fieldPath = getFieldPath(field.identifier);
     const fieldType = field.field_type;
+    const isHidden = field.validation?.hide;
+    const isSystemGenerated = field.system_generated;
+    const isHiddenEditable = editableHiddenFields.has(field.identifier);
+
+    // Determine if field should be disabled
+    const isFieldDisabled =
+      disabled || (isHidden && !isHiddenEditable) || isSystemGenerated;
+
+    // For hidden fields, wrap in a card with edit toggle
+    if (isHidden) {
+      return (
+        <Card
+          key={field.identifier}
+          size="small"
+          style={{
+            marginBottom: 16,
+            borderLeft: `4px solid #faad14`,
+            backgroundColor: "#fffbe6",
+          }}
+          title={
+            <Space>
+              {renderFieldLabel(field)}
+              <Tag color="orange">Hidden Field</Tag>
+              <Tooltip
+                title={
+                  isHiddenEditable ? "Lock field" : "Unlock field for editing"
+                }
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  icon={
+                    isHiddenEditable ? <LockOutlined /> : <UnlockOutlined />
+                  }
+                  onClick={() => toggleHiddenFieldEdit(field.identifier)}
+                  disabled={disabled}
+                />
+              </Tooltip>
+            </Space>
+          }
+        >
+          {renderFieldContent(field, fieldPath, fieldType, isFieldDisabled)}
+        </Card>
+      );
+    }
+
+    // For system-generated fields, wrap in a card with disabled indicator
+    if (isSystemGenerated) {
+      return (
+        <Card
+          key={field.identifier}
+          size="small"
+          style={{
+            marginBottom: 16,
+            borderLeft: `4px solid #52c41a`,
+            backgroundColor: "#f6ffed",
+          }}
+          title={
+            <Space>
+              {renderFieldLabel(field)}
+              <Tag color="green">System Generated</Tag>
+            </Space>
+          }
+        >
+          {renderFieldContent(field, fieldPath, fieldType, true)}
+        </Card>
+      );
+    }
+
+    // Regular field rendering
+    return renderFieldContent(field, fieldPath, fieldType, isFieldDisabled);
+  };
+
+  const renderFieldContent = (
+    field: FieldDefinition,
+    fieldPath: (string | number)[],
+    fieldType: string,
+    isFieldDisabled: boolean
+  ): React.ReactNode => {
+    // Create a field info object for generateIcon
+    const fieldInfo = {
+      serial: field.serial,
+      identifier: field.identifier,
+      label: field.label,
+      input_type: field.input_type,
+      field_type: field.field_type,
+      field_sub_type: field.field_sub_type,
+      description: field.description,
+      system_generated: field.system_generated,
+      validation: field.validation,
+    };
+
+    // Helper function to render field label with icon
+    const renderFieldLabelWithIcon = () => (
+      <Space size={8}>
+        {generateIcon(fieldInfo)}
+        <Text strong>{field.label || field.identifier}</Text>
+        <Text type="secondary">({field.identifier})</Text>
+        {field.validation?.required && <Text type="danger">*</Text>}
+      </Space>
+    );
 
     switch (fieldType) {
       case "text":
         if (field.validation?.is_password) {
           return (
             <Form.Item
-              key={field.identifier}
               name={fieldPath}
-              label={renderFieldLabel(field)}
+              label={renderFieldLabelWithIcon()}
               tooltip={field.description}
               rules={getValidationRules(field)}
             >
               <Input.Password
-                disabled={disabled}
+                disabled={isFieldDisabled}
                 placeholder={field.validation?.placeholder}
               />
             </Form.Item>
@@ -233,14 +354,13 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
         }
         return (
           <Form.Item
-            key={field.identifier}
             name={fieldPath}
-            label={renderFieldLabel(field)}
+            label={renderFieldLabelWithIcon()}
             tooltip={field.description}
             rules={getValidationRules(field)}
           >
             <Input
-              disabled={disabled}
+              disabled={isFieldDisabled}
               placeholder={field.validation?.placeholder}
             />
           </Form.Item>
@@ -249,9 +369,8 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
       case "multiline":
         return (
           <Form.Item
-            key={field.identifier}
             name={fieldPath}
-            label={renderFieldLabel(field)}
+            label={renderFieldLabelWithIcon()}
             tooltip={field.description}
             rules={getValidationRules(field)}
             style={{
@@ -268,7 +387,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
             })}
           >
             <ReactDraft
-              disabled={disabled}
+              disabled={isFieldDisabled}
               placeholder={field.validation?.placeholder}
             />
           </Form.Item>
@@ -277,23 +396,24 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
       case "number":
         return (
           <Form.Item
-            key={field.identifier}
             name={fieldPath}
-            label={renderFieldLabel(field)}
+            label={renderFieldLabelWithIcon()}
             tooltip={field.description}
             rules={getValidationRules(field)}
           >
             <InputNumber
               style={{ width: "100%" }}
-              disabled={disabled}
+              disabled={isFieldDisabled}
               placeholder={field.validation?.placeholder}
               min={
-                Array.isArray(field.validation?.int_range_limit) && field.validation?.int_range_limit.length > 0
+                Array.isArray(field.validation?.int_range_limit) &&
+                field.validation?.int_range_limit.length > 0
                   ? field.validation?.int_range_limit[0]
                   : undefined
               }
               max={
-                Array.isArray(field.validation?.int_range_limit) && field.validation?.int_range_limit.length > 1
+                Array.isArray(field.validation?.int_range_limit) &&
+                field.validation?.int_range_limit.length > 1
                   ? field.validation?.int_range_limit[1]
                   : undefined
               }
@@ -304,22 +424,20 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
       case "boolean":
         return (
           <Form.Item
-            key={field.identifier}
             name={fieldPath}
-            label={renderFieldLabel(field)}
+            label={renderFieldLabelWithIcon()}
             tooltip={field.description}
             valuePropName="checked"
           >
-            <Switch disabled={disabled} />
+            <Switch disabled={isFieldDisabled} />
           </Form.Item>
         );
 
       case "date":
         return (
           <Form.Item
-            key={field.identifier}
             name={fieldPath}
-            label={renderFieldLabel(field)}
+            label={renderFieldLabelWithIcon()}
             tooltip={field.description}
             rules={getValidationRules(field)}
             getValueFromEvent={(date) => date}
@@ -329,7 +447,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
           >
             <DatePicker
               style={{ width: "100%" }}
-              disabled={disabled}
+              disabled={isFieldDisabled}
               placeholder={field.validation?.placeholder}
             />
           </Form.Item>
@@ -343,13 +461,12 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
           if (isMultiChoice) {
             return (
               <Form.Item
-                key={field.identifier}
                 name={fieldPath}
-                label={renderFieldLabel(field)}
+                label={renderFieldLabelWithIcon()}
                 tooltip={field.description}
                 rules={getValidationRules(field)}
               >
-                <Checkbox.Group disabled={disabled}>
+                <Checkbox.Group disabled={isFieldDisabled}>
                   {listElements.map((option) => (
                     <Checkbox key={option} value={option}>
                       {option}
@@ -361,14 +478,13 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
           } else {
             return (
               <Form.Item
-                key={field.identifier}
                 name={fieldPath}
-                label={renderFieldLabel(field)}
+                label={renderFieldLabelWithIcon()}
                 tooltip={field.description}
                 rules={getValidationRules(field)}
               >
                 <Select
-                  disabled={disabled}
+                  disabled={isFieldDisabled}
                   placeholder={
                     field.validation?.placeholder || "Select an option"
                   }
@@ -387,8 +503,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
         // Dynamic list (no fixed elements)
         return (
           <Form.Item
-            key={field.identifier}
-            label={renderFieldLabel(field)}
+            label={renderFieldLabelWithIcon()}
             tooltip={field.description}
           >
             <Form.List name={fieldPath}>
@@ -409,14 +524,17 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
                         style={{ flex: 1, marginBottom: 0, marginRight: 8 }}
                         rules={getValidationRules(field)}
                       >
-                        <Input placeholder="Enter value" disabled={disabled} />
+                        <Input
+                          placeholder="Enter value"
+                          disabled={isFieldDisabled}
+                        />
                       </Form.Item>
-                      {!disabled && (
+                      {!isFieldDisabled && (
                         <MinusCircleOutlined onClick={() => remove(name)} />
                       )}
                     </div>
                   ))}
-                  {!disabled && (
+                  {!isFieldDisabled && (
                     <Form.Item>
                       <div
                         onClick={() => add()}
@@ -453,8 +571,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
 
         return (
           <Card
-            key={field.identifier}
-            title={renderFieldLabel(field)}
+            title={renderFieldLabelWithIcon()}
             size="small"
             style={{
               marginBottom: 16,
@@ -464,7 +581,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
             <DynamicFormGenerator
               fields={field.sub_field_info}
               form={form}
-              disabled={disabled}
+              disabled={isFieldDisabled}
               parentPath={objectPath}
             />
           </Card>
@@ -489,9 +606,16 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
                 {fields.map((fieldItem, index) => (
                   <Card
                     key={fieldItem.key}
-                    title={`${field.label || field.identifier} Section #${index + 1}`}
+                    title={
+                      <Space>
+                        {generateIcon(fieldInfo)}
+                        <Text strong>
+                          {field.label || field.identifier} Section #{index + 1}
+                        </Text>
+                      </Space>
+                    }
                     extra={
-                      !disabled &&
+                      !isFieldDisabled &&
                       fields.length >= 1 && (
                         <MinusCircleOutlined
                           onClick={() => remove(fieldItem.name)}
@@ -508,7 +632,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
                       <DynamicFormGenerator
                         fields={field.sub_field_info!}
                         form={form}
-                        disabled={disabled}
+                        disabled={isFieldDisabled}
                         parentPath={[fieldItem.name]}
                       />
                     </div>
@@ -518,6 +642,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
                   <Button
                     type="dashed"
                     onClick={() => add()}
+                    disabled={isFieldDisabled}
                     style={{ width: "100%" }}
                   >
                     <PlusOutlined /> Add {field.label || field.identifier}
@@ -533,14 +658,13 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
         // TODO: Implement media uploader component
         return (
           <Form.Item
-            key={field.identifier}
             name={fieldPath}
-            label={renderFieldLabel(field)}
+            label={renderFieldLabelWithIcon()}
             tooltip={field.description}
             rules={getValidationRules(field)}
           >
             <Input
-              disabled={disabled}
+              disabled={isFieldDisabled}
               placeholder="Media upload will be implemented"
               addonBefore="📁"
             />
@@ -551,14 +675,13 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
         // TODO: Implement geo field component
         return (
           <Form.Item
-            key={field.identifier}
             name={fieldPath}
-            label={renderFieldLabel(field)}
+            label={renderFieldLabelWithIcon()}
             tooltip={field.description}
             rules={getValidationRules(field)}
           >
             <Input
-              disabled={disabled}
+              disabled={isFieldDisabled}
               placeholder="Geo field will be implemented"
               addonBefore="🌍"
             />
@@ -588,14 +711,13 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
             if (FormComponent) {
               return (
                 <Form.Item
-                  key={field.identifier}
                   name={fieldPath}
-                  label={renderFieldLabel(field)}
+                  label={renderFieldLabelWithIcon()}
                   tooltip={field.description}
                   rules={getValidationRules(field)}
                 >
                   <FormComponent
-                    disabled={disabled}
+                    disabled={isFieldDisabled}
                     field={field}
                     pluginField={pluginField}
                     placeholder={field.validation?.placeholder}
@@ -609,14 +731,13 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
         // Fallback to default input for unknown field types
         return (
           <Form.Item
-            key={field.identifier}
             name={fieldPath}
-            label={renderFieldLabel(field)}
+            label={renderFieldLabelWithIcon()}
             tooltip={field.description}
             rules={getValidationRules(field)}
           >
             <Input
-              disabled={disabled}
+              disabled={isFieldDisabled}
               placeholder={`Field type: ${fieldType}`}
             />
           </Form.Item>
@@ -627,8 +748,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
 
   return (
     <>
-      {fields
-        .filter((field) => !field.validation?.hide && !field.system_generated)
+      {[...fields]
         .sort((a, b) => a.serial - b.serial)
         .map((field) => renderField(field))}
     </>

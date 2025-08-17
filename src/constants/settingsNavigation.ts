@@ -34,7 +34,7 @@ export const SETTINGS_NAVIGATION: Record<string, SettingsNavigationConfig> = {
     },
     "plugins": {
         title: "Plugins",
-        subtitle: "Configure and manage project plugins"
+        subtitle: "Manage and configure plugins for your project"
     },
     "media": {
         title: "Media Configuration",

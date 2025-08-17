@@ -66,11 +66,10 @@ const ConsoleLayout: React.FC = () => {
 
   // Special handling for settings pages - use the settings navigation
   if (headerPath.startsWith("settings/")) {
+    // For settings sub-pages (e.g. settings/plugins), pass only the sub key (plugins)
     headerPath = headerPath.replace("settings/", "");
-  }
-
-  // For settings pages, use "settings" as the header path
-  if (isSettingsPage) {
+  } else if (isSettingsPage) {
+    // For the main settings page (/console/settings), keep it as 'settings'
     headerPath = "settings";
   }
 
@@ -230,6 +229,8 @@ const ConsoleLayout: React.FC = () => {
     );
   };
 
+  console.log("tokenData", tokenData)
+
   // Get username from email
   const username = tokenData?.email ? tokenData.email.split("@")[0] : "user";
 
@@ -296,7 +297,9 @@ const ConsoleLayout: React.FC = () => {
                     marginTop: "2px",
                   }}
                 >
-                  {tokenData?.project_name
+                  {tokenData?.project_id
+                    ? `${tokenData.project_id}`
+                    : tokenData?.project_name
                     ? `Console - ${tokenData.project_name}`
                     : `Hi, ${username}..`}
                 </div>
@@ -315,7 +318,7 @@ const ConsoleLayout: React.FC = () => {
           <div style={{ flex: 1, overflowY: "auto" }}>
             {/* Show settings navigation when on settings page */}
             {isSettingsPage ? (
-              <div style={{ padding: "16px 0" }}>
+              <div>
                 {(() => {
                   // Get plugin settings items
                   const pluginSettingsItems =

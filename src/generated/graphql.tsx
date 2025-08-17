@@ -541,6 +541,7 @@ export type MutationQueryModelFieldOperationArgs = {
   changed_type?: InputMaybe<Scalars['String']['input']>;
   field_name: Scalars['String']['input'];
   is_relation?: InputMaybe<Scalars['Boolean']['input']>;
+  known_as?: InputMaybe<Scalars['String']['input']>;
   model_name: Scalars['String']['input'];
   moved_to?: InputMaybe<Scalars['String']['input']>;
   new_name?: InputMaybe<Scalars['String']['input']>;
@@ -1358,6 +1359,7 @@ export type ModelFieldOperationMutationVariables = Exact<{
   parent_field?: InputMaybe<Scalars['String']['input']>;
   single_page_model?: InputMaybe<Scalars['Boolean']['input']>;
   is_relation?: InputMaybe<Scalars['Boolean']['input']>;
+  known_as?: InputMaybe<Scalars['String']['input']>;
   moved_to?: InputMaybe<Scalars['String']['input']>;
   changed_type?: InputMaybe<Scalars['String']['input']>;
 }>;
@@ -2075,7 +2077,7 @@ export type UpdateModelRelationMutationHookResult = ReturnType<typeof useUpdateM
 export type UpdateModelRelationMutationResult = Apollo.MutationResult<UpdateModelRelationMutation>;
 export type UpdateModelRelationMutationOptions = Apollo.BaseMutationOptions<UpdateModelRelationMutation, UpdateModelRelationMutationVariables>;
 export const ModelFieldOperationDocument = gql`
-    mutation modelFieldOperation($type: FIELD_OPERATION_TYPE_ENUM!, $model_name: String!, $field_name: String!, $new_name: String, $parent_field: String, $single_page_model: Boolean, $is_relation: Boolean, $moved_to: String, $changed_type: String) {
+    mutation modelFieldOperation($type: FIELD_OPERATION_TYPE_ENUM!, $model_name: String!, $field_name: String!, $new_name: String, $parent_field: String, $single_page_model: Boolean, $is_relation: Boolean, $known_as: String, $moved_to: String, $changed_type: String) {
   modelFieldOperation(
     type: $type
     model_name: $model_name
@@ -2084,6 +2086,7 @@ export const ModelFieldOperationDocument = gql`
     parent_field: $parent_field
     single_page_model: $single_page_model
     is_relation: $is_relation
+    known_as: $known_as
     moved_to: $moved_to
     changed_type: $changed_type
   ) {
@@ -2135,6 +2138,7 @@ export type ModelFieldOperationMutationFn = Apollo.MutationFunction<ModelFieldOp
  *      parent_field: // value for 'parent_field'
  *      single_page_model: // value for 'single_page_model'
  *      is_relation: // value for 'is_relation'
+ *      known_as: // value for 'known_as'
  *      moved_to: // value for 'moved_to'
  *      changed_type: // value for 'changed_type'
  *   },

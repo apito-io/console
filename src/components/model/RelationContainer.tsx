@@ -61,6 +61,7 @@ const RelationContainer: React.FC<RelationContainerProps> = ({
         model_name: modelName, // Use the prop instead of state.target
         field_name: model || "",
         is_relation: true,
+        known_as: known_as || "",
       },
     });
   };

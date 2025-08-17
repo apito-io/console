@@ -175,25 +175,7 @@ const TeamsSettingsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: "24px" }}>
-      <div style={{ marginBottom: "24px" }}>
-        <Title
-          level={3}
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <TeamOutlined />
-          Teams
-        </Title>
-        <Paragraph type="secondary">
-          Invite team members to collaborate on your project and manage their
-          roles and permissions
-        </Paragraph>
-      </div>
+    <div>
 
       {/* Add Team Member Form */}
       <Card

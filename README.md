@@ -1,4 +1,4 @@
-# Apito Engine
+# Apito Console
 
 Open-source, API-first infrastructure to model data, manage content, enforce access rules, and run at scale. This repository contains the Apito Console (Open Core) — a modern, web-based admin UI for managing your Apito projects.
 
@@ -28,7 +28,7 @@ Reference: the overall project vision and tone follow the Apito Engine README. S
 
 ## Getting Started
 
-1) Install dependencies
+1. Install dependencies
 
 ```bash
 corepack enable
@@ -36,20 +36,20 @@ corepack prepare pnpm@9.15.4 --activate
 pnpm install
 ```
 
-2) Run the development server
+2. Run the development server
 
 ```bash
 pnpm dev
 ```
 
-3) Build and preview
+3. Build and preview
 
 ```bash
 pnpm build
 pnpm preview
 ```
 
-4) (Optional) Generate GraphQL types/hooks
+4. (Optional) Generate GraphQL types/hooks
 
 ```bash
 pnpm codegen
