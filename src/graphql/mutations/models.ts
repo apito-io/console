@@ -64,8 +64,8 @@ export const CREATE_MODEL = gql`
 `;
 
 export const UPDATE_MODEL = gql`
-  mutation updateModel($type: UpdateModelTypeEnum!, $new_name: String, $model_name: String!) {
-    updateModel(type: $type, new_name: $new_name, model_name: $model_name) {
+  mutation updateModel($type: UpdateModelTypeEnum!, $new_name: String, $model_name: String!, $is_common_model: Boolean) {
+    updateModel(type: $type, new_name: $new_name, model_name: $model_name, is_common_model: $is_common_model) {
       name
     }
   }

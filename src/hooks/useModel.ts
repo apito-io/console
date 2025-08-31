@@ -82,6 +82,7 @@ export const useModel = (): UseModelReturn => {
       systemGenerated: model.system_generated,
       hasConnections: model.has_connections,
       isTenantModel: model.is_tenant_model,
+      isCommonModel: model.is_common_model,
       enableRevision: model.enable_revision,
       revisionFilter: model.revision_filter,
       fields: [],

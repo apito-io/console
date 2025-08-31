@@ -96,7 +96,7 @@ const Header = ({ currentPath }: HeaderProps) => {
         boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
         position: "fixed",
         top: 0,
-        left: 240,
+        left: 280,
         right: 0,
         zIndex: 99,
       }}
@@ -143,21 +143,67 @@ const Header = ({ currentPath }: HeaderProps) => {
       >
         {isConsolePage && !location.pathname.includes("/console/settings") && (
           <>
-            <Segmented
-              value={getCurrentValue()}
-              onChange={handleSegmentChange}
-              options={getNavigationOptions()}
+            {/* Custom Navigation Tabs */}
+            <div
               style={{
-                background: token.colorFill,
-                borderRadius: token.borderRadius,
-                border: "none",
-                padding: "2px",
-                boxShadow: "inset 0 1px 2px rgba(0, 0, 0, 0.04)",
-                minWidth: "300px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "4px",
+                background: token.colorBgElevated,
+                borderRadius: "8px",
+                border: `1px solid ${token.colorBorderSecondary}`,
+                boxShadow: token.boxShadow,
               }}
-            />
+            >
+              {getNavigationOptions().map((option) => {
+                const isActive = getCurrentValue() === option.value;
+                return (
+                  <Button
+                    key={option.value}
+                    type={isActive ? "primary" : "text"}
+                    size="small"
+                    onClick={() => handleSegmentChange(option.value)}
+                    style={{
+                      height: "32px",
+                      padding: "0 16px",
+                      fontSize: "14px",
+                      fontWeight: isActive ? 500 : 400,
+                      border: "none",
+                      borderRadius: "6px",
+                      background: isActive ? token.colorPrimary : "transparent",
+                      color: isActive ? "#ffffff" : token.colorText,
+                      transition: "all 0.2s ease",
+                      ...(isActive
+                        ? {}
+                        : {
+                            ":hover": {
+                              background: token.colorFillQuaternary,
+                              color: token.colorPrimary,
+                            },
+                          }),
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.background =
+                          token.colorFillQuaternary;
+                        e.currentTarget.style.color = token.colorPrimary;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = token.colorText;
+                      }
+                    }}
+                  >
+                    {option.label}
+                  </Button>
+                );
+              })}
+            </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <Button
                 type="text"
                 icon={<AppstoreOutlined />}
@@ -165,8 +211,19 @@ const Header = ({ currentPath }: HeaderProps) => {
                 style={{
                   color: token.colorTextSecondary,
                   border: "none",
-                  padding: "4px 8px",
+                  padding: "4px 12px",
                   height: "32px",
+                  fontSize: "14px",
+                  borderRadius: "6px",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = token.colorPrimary;
+                  e.currentTarget.style.background = token.colorFillQuaternary;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = token.colorTextSecondary;
+                  e.currentTarget.style.background = "transparent";
                 }}
               >
                 Plugins
@@ -175,11 +232,25 @@ const Header = ({ currentPath }: HeaderProps) => {
               <Button
                 type="text"
                 icon={<GithubOutlined />}
+                onClick={() =>
+                  window.open("https://github.com/apito-io/apito", "_blank")
+                }
                 style={{
                   color: token.colorTextSecondary,
                   border: "none",
-                  padding: "4px 8px",
+                  padding: "4px 12px",
                   height: "32px",
+                  fontSize: "14px",
+                  borderRadius: "6px",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = token.colorPrimary;
+                  e.currentTarget.style.background = token.colorFillQuaternary;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = token.colorTextSecondary;
+                  e.currentTarget.style.background = "transparent";
                 }}
               >
                 Source Code

@@ -46,7 +46,7 @@ export const NAVIGATION_HEADERS: Record<string, NavigationConfig> = {
     },
     "model": {
         title: "Model",
-        subtitle: "Design and configure your data models"
+        subtitle: "Design and configure your project schema"
     },
     "api": {
         title: "API",

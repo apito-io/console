@@ -15,10 +15,10 @@ const CommonLayout = () => {
     <Layout style={{ minHeight: "100vh", background: token.colorBgLayout }}>
       {/* Left Sidebar Column - Fixed */}
       <Sider
-        width={240}
+        width={280}
         style={{
           background: token.colorBgContainer,
-          borderRight: `1px solid ${token.colorBorder}`,
+          borderRight: `1px solid ${token.colorBorderSecondary}`,
           position: "fixed",
           left: 0,
           top: 0,
@@ -31,7 +31,7 @@ const CommonLayout = () => {
       </Sider>
 
       {/* Right Content Column */}
-      <Layout style={{ marginLeft: 240 }}>
+      <Layout style={{ marginLeft: 280 }}>
         {/* Header Component */}
         <Header currentPath={currentPath} />
 

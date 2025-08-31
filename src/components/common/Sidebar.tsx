@@ -1,5 +1,6 @@
-import { Menu, theme, Button } from "antd";
+import { Menu, theme, Button, Typography } from "antd";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import {
   ProjectOutlined,
   UserOutlined,
@@ -8,9 +9,12 @@ import {
   ApiOutlined,
   PlusOutlined,
   AppstoreOutlined,
+  ArrowRightOutlined,
 } from "@ant-design/icons";
+import "./Sidebar.css";
+
+const { Text } = Typography;
 import { useAuth } from "../../contexts/AuthContext";
-import TenantSelector from "./TenantSelector";
 
 const Sidebar = () => {
   const { token } = theme.useToken();
@@ -19,7 +23,41 @@ const Sidebar = () => {
   const { decodeTokenData } = useAuth();
   const tokenData = decodeTokenData();
 
-  // Base menu items for open-core (no pro features)
+  // Check if we have a recent project in cookies
+  const getRecentProjectId = () => {
+    try {
+      return document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("project_id="))
+        ?.split("=")[1];
+    } catch {
+      return null;
+    }
+  };
+
+  const recentProjectId = getRecentProjectId();
+
+  // State for additional menu items (for Pro version)
+  const [additionalMenuItems, setAdditionalMenuItems] = useState<any[]>([]);
+
+  // Listen for changes to additional menu items
+  useEffect(() => {
+    const checkForAdditionalItems = () => {
+      const items = (window as any).__APITO_ADDITIONAL_MENU_ITEMS__ || [];
+      setAdditionalMenuItems(items);
+    };
+
+    // Initial check
+    checkForAdditionalItems();
+
+    // Set up an interval to check for updates (for when ProSidebar registers items)
+    const interval = setInterval(checkForAdditionalItems, 100);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, []);
+
+  // Base menu items for open-core (no pro features) - keeping original structure with new styling
   const getBaseMenuItems = () => [
     {
       key: "projects",
@@ -72,9 +110,7 @@ const Sidebar = () => {
     },
   ];
 
-  // Allow extending menu items (for Pro version)
-  const additionalMenuItems =
-    (window as any).__APITO_ADDITIONAL_MENU_ITEMS__ || [];
+  // Combine base menu items with additional ones
   const menuItems = [...getBaseMenuItems(), ...additionalMenuItems];
 
   // Get the current active menu key based on the current path
@@ -88,11 +124,16 @@ const Sidebar = () => {
     if (path.includes("/sync")) return "sync";
     if (path.includes("/system-api")) return "system-api";
     if (path.includes("/plugins")) return "plugins";
+    if (path.includes("/subscriptions")) return "subscriptions";
+    if (path.includes("/admin")) return "admin";
+    if (path.includes("/audit-log")) return "audit-log";
     return "active-projects";
   };
 
-  // Get username from email
-  const username = tokenData?.email ? tokenData.email.split("@")[0] : "user";
+  // Get default open keys based on current path
+  const getDefaultOpenKeys = () => {
+    return ["projects"]; // Always open projects by default
+  };
 
   return (
     <div
@@ -106,53 +147,56 @@ const Sidebar = () => {
       {/* Header Section */}
       <div
         style={{
-          padding: "20px 16px",
+          padding: "16px 20px 12px 20px",
           background: token.colorBgContainer,
+          borderBottom: `1px solid ${token.colorBorderSecondary}`,
         }}
       >
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px",
+            gap: "8px",
             cursor: "pointer",
+            marginBottom: "4px",
           }}
           onClick={() => navigate("/")}
         >
           <img
             src="/logo.svg"
             alt="Apito"
-            style={{ width: "32px", height: "32px" }}
+            style={{ width: "20px", height: "20px" }}
           />
-          <div>
-            <div
-              style={{
-                fontSize: "14px",
-                fontWeight: 700,
-                color: token.colorText,
-                lineHeight: "1.2",
-              }}
-            >
-              {tokenData?.project_name || "Apito"}
-            </div>
-            <div
-              style={{
-                fontSize: "12px",
-                fontWeight: 400,
-                color: token.colorTextSecondary,
-                lineHeight: "1.2",
-                marginTop: "2px",
-              }}
-            >
-              Hi, {username}..
-            </div>
-          </div>
+          <Text
+            style={{
+              fontSize: "14px",
+              fontWeight: 600,
+              color: token.colorText,
+              lineHeight: 1.4,
+            }}
+          >
+            {tokenData?.project_name || "Apito"}
+          </Text>
         </div>
 
-        {/* Tenant Selector - Only show for SaaS projects (project_type === 1) */}
-        {tokenData?.project_type === 1 && (
-          <div style={{ marginTop: "25px" }}>
-            <TenantSelector />
+        {/* Go to Project Button - Show if we have a recent project */}
+        {recentProjectId && (
+          <div style={{ marginTop: "16px" }}>
+            <Button
+              type="primary"
+              size="small"
+              icon={<ArrowRightOutlined />}
+              onClick={() => navigate("/console/content")}
+              style={{
+                width: "100%",
+                borderRadius: "6px",
+                height: "32px",
+                fontSize: "12px",
+                fontWeight: 500,
+              }}
+            >
+              Go to Project
+            </Button>
           </div>
         )}
       </div>
@@ -163,16 +207,23 @@ const Sidebar = () => {
           background: token.colorBgContainer,
           flex: 1,
           overflowY: "auto",
+          overflowX: "hidden",
         }}
       >
         {/* Navigation Menu */}
-        <div>
+        <div style={{ padding: "8px 0" }}>
           <Menu
             mode="inline"
             selectedKeys={[getActiveKey()]}
-            defaultOpenKeys={["projects"]}
+            defaultOpenKeys={getDefaultOpenKeys()}
             items={menuItems}
             theme="light"
+            style={{
+              background: token.colorBgContainer,
+              border: "none",
+              fontSize: "14px",
+            }}
+            className="apito-sidebar-menu"
           />
         </div>
       </div>

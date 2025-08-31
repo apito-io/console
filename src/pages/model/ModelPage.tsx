@@ -14,8 +14,14 @@ import {
   message,
   Alert,
   Select,
+  Switch,
+  Card,
 } from "antd";
-import { PlusCircleOutlined } from "@ant-design/icons";
+import {
+  PlusCircleOutlined,
+  SettingOutlined,
+  GlobalOutlined,
+} from "@ant-design/icons";
 import {
   DndContext,
   KeyboardSensor,
@@ -40,7 +46,9 @@ import {
   useGetOnlyModelsInfoQuery,
   useModelFieldOperationMutation,
   useRearrangeFieldSerialMutation,
+  useUpdateModelMutation,
   Field_Operation_Type_Enum,
+  UpdateModelTypeEnum,
 } from "../../generated/graphql";
 import {
   ContentContext,
@@ -106,6 +114,12 @@ const ModelPage: React.FC = () => {
     useState<FieldInfo | null>(null);
   const [isEditingField, setIsEditingField] = useState(false);
 
+  // Model settings drawer
+  const [isModelSettingsDrawerVisible, setIsModelSettingsDrawerVisible] =
+    useState(false);
+  const [modelSettingsForm] = Form.useForm();
+  const [modelUpdateLoading, setModelUpdateLoading] = useState(false);
+
   // Field operation modals
   const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
   const [isDuplicateModalVisible, setIsDuplicateModalVisible] = useState(false);
@@ -126,6 +140,7 @@ const ModelPage: React.FC = () => {
   // Field operation mutations
   const [modelFieldOperation] = useModelFieldOperationMutation();
   const [rearrangeFieldSerial] = useRearrangeFieldSerialMutation();
+  const [updateModelMutation] = useUpdateModelMutation();
 
   // Local fields state for DnD operations
   const [localFields, setLocalFields] = useState<FieldInfo[]>([]);
@@ -997,6 +1012,67 @@ const ModelPage: React.FC = () => {
     }
   };
 
+  // Check if there are no models at all
+  if (
+    allModelsData?.projectModelsInfo &&
+    allModelsData.projectModelsInfo.length === 0
+  ) {
+    return (
+      <div style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
+        <div style={{ marginBottom: "32px" }}>
+          <Title level={2} style={{ margin: 0, marginBottom: "8px" }}>
+            Model
+          </Title>
+          <Text type="secondary">Design and configure your project schema</Text>
+        </div>
+
+        <Card
+          style={{
+            background: token.colorBgContainer,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: "8px",
+            textAlign: "center",
+            padding: "48px 24px",
+          }}
+        >
+          <Empty
+            description={
+              <div>
+                <div
+                  style={{
+                    marginBottom: "8px",
+                    fontSize: "16px",
+                    fontWeight: 500,
+                  }}
+                >
+                  No models found
+                </div>
+                <div
+                  style={{ color: token.colorTextSecondary, fontSize: "14px" }}
+                >
+                  Create your first model by clicking "+ Add Model" button on the left sidebar
+                </div>
+              </div>
+            }
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          >
+           {/*  <Button
+              type="primary"
+              icon={<PlusCircleOutlined />}
+              size="large"
+              onClick={() => {
+                // Navigate to project creation or model creation
+                window.location.href = "/projects/new";
+              }}
+            >
+              Create Your First Model
+            </Button> */}
+          </Empty>
+        </Card>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div style={{ padding: "40px", textAlign: "center" }}>
@@ -1031,9 +1107,41 @@ const ModelPage: React.FC = () => {
           }}
         >
           <div>
-            <Title level={4} style={{ margin: 0 }}>
-              {resolvedModelName}
-            </Title>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <Title
+                level={4}
+                style={{
+                  margin: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                {modelInfo?.is_common_model && (
+                  <GlobalOutlined
+                    style={{ color: token.colorPrimary, fontSize: "18px" }}
+                    title="Common Model - Shared across all tenants"
+                  />
+                )}
+                {resolvedModelName
+                  ? resolvedModelName.charAt(0).toUpperCase() +
+                    resolvedModelName.slice(1)
+                  : ""}
+              </Title>
+              <Button
+                type="text"
+                icon={<SettingOutlined />}
+                size="small"
+                onClick={() => {
+                  setIsModelSettingsDrawerVisible(true);
+                  // Initialize form with current model data
+                  modelSettingsForm.setFieldsValue({
+                    is_common_model: modelInfo?.is_common_model || false,
+                  });
+                }}
+                title="Model Settings"
+              />
+            </div>
             <Text type="secondary">
               {isSinglePage ? "Single Record Model" : "Multi Record Model"}
             </Text>
@@ -1492,6 +1600,127 @@ const ModelPage: React.FC = () => {
         <div>
           <Text>Relationship configuration drawer content will go here</Text>
         </div>
+      </Drawer>
+
+      {/* Model Settings Drawer */}
+      <Drawer
+        title="Model Settings"
+        width={400}
+        placement="right"
+        open={isModelSettingsDrawerVisible}
+        onClose={() => {
+          setIsModelSettingsDrawerVisible(false);
+          modelSettingsForm.resetFields();
+        }}
+        destroyOnClose
+      >
+        <Form
+          form={modelSettingsForm}
+          layout="vertical"
+          onFinish={async (values) => {
+            setModelUpdateLoading(true);
+            try {
+              await updateModelMutation({
+                variables: {
+                  type: UpdateModelTypeEnum.Update,
+                  model_name: resolvedModelName,
+                  is_common_model: values.is_common_model,
+                },
+                onCompleted: () => {
+                  message.success("Model settings updated successfully");
+                  setIsModelSettingsDrawerVisible(false);
+                  modelSettingsForm.resetFields();
+                  // Refresh the page to update the model data
+                  window.location.reload();
+                },
+                onError: (error) => {
+                  message.error(`Failed to update model: ${error.message}`);
+                },
+              });
+            } catch (error: unknown) {
+              const errorMessage =
+                error instanceof Error
+                  ? error.message
+                  : "Failed to update model";
+              message.error(errorMessage);
+            } finally {
+              setModelUpdateLoading(false);
+            }
+          }}
+        >
+          <Form.Item label="Model Name">
+            <Input
+              value={modelInfo?.name || ""}
+              disabled
+              placeholder="Model name"
+              style={{ color: "rgba(0, 0, 0, 0.85)" }}
+            />
+            <div
+              style={{
+                fontSize: "12px",
+                color: "rgba(0, 0, 0, 0.45)",
+                marginTop: "4px",
+              }}
+            >
+              Use the rename model option to change the model name
+            </div>
+          </Form.Item>
+
+          <Form.Item label="Single Page">
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Text>{modelInfo?.single_page ? "Yes" : "No"}</Text>
+              <Text type="secondary" style={{ fontSize: "12px" }}>
+                (Fixed, non-toggleable)
+              </Text>
+            </div>
+          </Form.Item>
+
+          <Form.Item label="Single Page UUID">
+            <Input
+              value={modelInfo?.single_page_uuid || "N/A"}
+              disabled
+              placeholder="Auto-generated UUID"
+              style={{ color: "rgba(0, 0, 0, 0.45)" }}
+            />
+          </Form.Item>
+
+          <Form.Item label="System Generated">
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Text>{modelInfo?.system_generated ? "Yes" : "No"}</Text>
+              <Text type="secondary" style={{ fontSize: "12px" }}>
+                (Non-editable)
+              </Text>
+            </div>
+          </Form.Item>
+
+          <Form.Item
+            name="is_common_model"
+            label="Common Model"
+            valuePropName="checked"
+          >
+            <Switch />
+          </Form.Item>
+
+          <div style={{ marginTop: "24px", textAlign: "right" }}>
+            <Space>
+              <Button
+                onClick={() => {
+                  setIsModelSettingsDrawerVisible(false);
+                  modelSettingsForm.resetFields();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={modelUpdateLoading}
+              >
+                Update Model
+              </Button>
+            </Space>
+          </div>
+        </Form>
       </Drawer>
     </div>
   );

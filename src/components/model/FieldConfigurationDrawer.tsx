@@ -6,8 +6,8 @@ import {
   Button,
   Checkbox,
   Select,
-  message,
   InputNumber,
+  App,
 } from "antd";
 import { capitalize } from "lodash";
 import pluralize from "pluralize";
@@ -26,7 +26,6 @@ import {
 import DynamicTextfieldList from "../forms/DynamicTextfieldList";
 import "./FieldConfigurationDrawer.css";
 import { GET_MODEL_DETAILS } from "../../graphql/queries/models";
-
 const { Option } = Select;
 
 interface FieldConfigurationDrawerProps {
@@ -69,6 +68,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
   const [formError, setFormError] = useState<string>("");
   const context = useContext(ContentContext) as ContentContextType | null;
   const state = context?.state || { target: "" };
+  const { message: messageApi } = App.useApp();
 
   // Fetch available models for relation configuration
   const { data: modelsData } = useGetOnlyModelsInfoQuery({
@@ -92,8 +92,9 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
 
   const [createModelRelation] = useUpdateModelRelationMutation({
     onCompleted: () => {
-      message.success("New Relation Created Successfully!");
+      messageApi.success("New Relation Created Successfully!");
       onFieldCreated();
+      window.location.reload();
     },
     onError: (error) => {
       console.error("Relation creation error:", error);
@@ -103,6 +104,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
         error.message ||
         "Unknown error occurred";
       setFormError(errorMessage);
+      messageApi.error(errorMessage);
     },
   });
 
@@ -124,7 +126,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
 
   const [upsertFieldToModel, { loading }] = useUpsertFieldToModelMutation({
     onCompleted: () => {
-      message.success("New Field Created Successfully!");
+      messageApi.success("New Field Created Successfully!");
       form.resetFields();
       setIsLocal(false);
       setFormError("");
@@ -161,7 +163,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
       const backwardRelation = (values?.backward as any)?.relation;
 
       if (!forwardModel || !forwardRelation || !backwardRelation) {
-        message.error("Please fill in all required relation fields");
+        messageApi.error("Please fill in all required relation fields");
         return;
       }
 
@@ -172,8 +174,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
         to: forwardModel as string,
         known_as: values?.known_as as string | undefined,
       };
-
-      createModelRelation({
+      await createModelRelation({
         variables: payload,
       });
       return;

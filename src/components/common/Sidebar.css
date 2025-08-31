@@ -1,0 +1,100 @@
+/* Apito Sidebar Menu Styling - matches clean design */
+.apito-sidebar-menu {
+  border: none !important;
+  background: transparent !important;
+}
+
+.apito-sidebar-menu .ant-menu-item,
+.apito-sidebar-menu .ant-menu-submenu-title {
+  height: 36px !important;
+  line-height: 36px !important;
+  margin: 2px 12px !important;
+  padding: 0 12px !important;
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  width: calc(100% - 34px) !important;
+  box-sizing: border-box !important;
+}
+
+.apito-sidebar-menu .ant-menu-submenu-title {
+  font-weight: 500 !important;
+}
+
+.apito-sidebar-menu .ant-menu-item-selected {
+  background-color: #1c1e20 !important;
+  color: #fefefe !important;
+  font-weight: 500 !important;
+}
+
+.apito-sidebar-menu .ant-menu-item:hover,
+.apito-sidebar-menu .ant-menu-submenu-title:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  color: #262626 !important;
+}
+
+.apito-sidebar-menu .ant-menu-submenu-arrow {
+  font-size: 10px !important;
+  color: #8c8c8c !important;
+}
+
+.apito-sidebar-menu .ant-menu-sub.ant-menu-inline {
+  background: transparent !important;
+}
+
+.apito-sidebar-menu .ant-menu-sub .ant-menu-item {
+  height: 32px !important;
+  line-height: 32px !important;
+  padding-left: 36px !important;
+  padding-right: 12px !important;
+  margin: 1px 12px !important;
+  font-size: 13px !important;
+  color: #595959 !important;
+  width: calc(100% - 34px) !important;
+  box-sizing: border-box !important;
+}
+
+.apito-sidebar-menu .ant-menu-sub .ant-menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  color: #262626 !important;
+}
+
+.apito-sidebar-menu .ant-menu-sub .ant-menu-item-selected {
+  background-color: #1c1e20 !important;
+  color: #fefefe !important;
+  font-weight: 500 !important;
+}
+
+.apito-sidebar-menu .ant-menu-item-icon,
+.apito-sidebar-menu .ant-menu-submenu-title .ant-menu-item-icon {
+  font-size: 16px !important;
+  margin-right: 8px !important;
+  color: inherit !important;
+}
+
+.apito-sidebar-menu .ant-menu-sub .ant-menu-item-icon {
+  display: none !important;
+}
+
+/* Remove default menu borders and backgrounds */
+.apito-sidebar-menu .ant-menu-item::after {
+  display: none !important;
+}
+
+/* Scrollbar styling */
+.apito-sidebar-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.apito-sidebar-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.apito-sidebar-menu::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.apito-sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}

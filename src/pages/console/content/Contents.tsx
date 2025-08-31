@@ -22,8 +22,8 @@ import { useContentContext } from "../../../contexts/ContentContext";
 import type { MenuProps } from "antd";
 import EditAndCreateContentForm from "./EditAndCreateContentForm";
 import FakeContentForm from "./FakeContentForm";
-import EditRelationForm from "./EditRelationForm";
 import TableGenerator from "../../../components/common/TableGenerator";
+import TagRelationForm from "./TagRelationForm";
 
 const { Title, Text } = Typography;
 
@@ -278,27 +278,32 @@ const Contents: React.FC<ContentsProps> = ({
   // Render single page model form directly
   if (isSinglePageModel) {
     return (
-      <div>
-        <Card>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "16px",
-            }}
-          >
-            <div>
-              <Title
-                level={4}
-                style={{ margin: 0, textTransform: "capitalize" }}
-              >
-                {currentModel}
-              </Title>
-              <Text type="secondary">Single Page Document</Text>
-            </div>
+      <div style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
+        {/* Header Section */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "24px",
+          }}
+        >
+          <div>
+            <Title level={4} style={{ margin: 0, textTransform: "capitalize" }}>
+              {currentModel}
+            </Title>
+            <Text type="secondary">Single Page Document</Text>
           </div>
+        </div>
 
+        {/* Form Card */}
+        <Card
+          style={{
+            background: "#ffffff",
+            border: "1px solid #f0f0f0",
+            borderRadius: "8px",
+          }}
+        >
           <EditAndCreateContentForm
             contentData={{
               model: currentModel,
@@ -321,58 +326,67 @@ const Contents: React.FC<ContentsProps> = ({
   }
 
   return (
-    <div>
-      <Card>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "16px",
-          }}
-        >
-          <div>
-            <Title level={4} style={{ margin: 0, textTransform: "capitalize" }}>
-              {currentModel}
-            </Title>
-            <Text type="secondary">Manage your {currentModel} content</Text>
-          </div>
-
-          <Space>
-            {selectedRowKeys.length > 0 && (
-              <Button
-                icon={<TagsOutlined />}
-                loading={loadingTag}
-                onClick={() => {
-                  message.info(
-                    "Tag selected items functionality will be implemented"
-                  );
-                }}
-              >
-                TAG SELECTED ({selectedRowKeys.length})
-              </Button>
-            )}
-
-            <Dropdown
-              menu={{
-                items: bulkMenuItems,
-                onClick: handleBulkMenuClick,
-              }}
-              trigger={["click"]}
-            >
-              <Button>BULK DATA UPLOAD</Button>
-            </Dropdown>
-
-            <Button
-              type="primary"
-              icon={<PlusCircleOutlined />}
-              onClick={handleCreate}
-            >
-              CREATE NEW {modelName.toUpperCase()}
-            </Button>
-          </Space>
+    <div style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
+      {/* Header Section */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "24px",
+        }}
+      >
+        <div>
+          <Title level={4} style={{ margin: 0, textTransform: "capitalize" }}>
+            {currentModel}
+          </Title>
+          <Text type="secondary">Manage your {currentModel} content</Text>
         </div>
 
+        <Space>
+          {selectedRowKeys.length > 0 && (
+            <Button
+              icon={<TagsOutlined />}
+              loading={loadingTag}
+              onClick={() => {
+                message.info(
+                  "Tag selected items functionality will be implemented"
+                );
+              }}
+            >
+              TAG SELECTED ({selectedRowKeys.length})
+            </Button>
+          )}
+
+          <Dropdown
+            menu={{
+              items: bulkMenuItems,
+              onClick: handleBulkMenuClick,
+            }}
+            trigger={["click"]}
+          >
+            <Button>BULK DATA UPLOAD</Button>
+          </Dropdown>
+
+          <Button
+            type="primary"
+            icon={<PlusCircleOutlined />}
+            onClick={handleCreate}
+          >
+            CREATE NEW {modelName.toUpperCase()}
+          </Button>
+        </Space>
+      </div>
+
+      {/* Table Card */}
+      <Card
+        style={{
+          background: "#ffffff",
+          border: "1px solid #f0f0f0",
+          borderRadius: "8px",
+        }}
+        bodyStyle={{ padding: 0 }}
+      >
         <TableGenerator
           data={tableData}
           loading={loading}
@@ -424,7 +438,7 @@ const Contents: React.FC<ContentsProps> = ({
         }
       >
         {relationRecord && (
-          <EditRelationForm
+          <TagRelationForm
             recordId={relationRecord.id}
             modelName={currentModel}
           />

@@ -401,6 +401,7 @@ export type ModelType = {
   fields?: Maybe<Array<Maybe<FieldInfo>>>;
   has_connections?: Maybe<Scalars['Boolean']['output']>;
   hook_ids?: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  is_common_model?: Maybe<Scalars['Boolean']['output']>;
   is_tenant_model?: Maybe<Scalars['Boolean']['output']>;
   locals?: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   name?: Maybe<Scalars['String']['output']>;
@@ -571,6 +572,7 @@ export type MutationQuerySendArgs = {
 
 
 export type MutationQueryUpdateModelArgs = {
+  is_common_model?: InputMaybe<Scalars['Boolean']['input']>;
   model_name: Scalars['String']['input'];
   new_name?: InputMaybe<Scalars['String']['input']>;
   single_page_model?: InputMaybe<Scalars['Boolean']['input']>;
@@ -1171,7 +1173,8 @@ export enum UpdateModelTypeEnum {
   Convert = 'convert',
   Delete = 'delete',
   Duplicate = 'duplicate',
-  Rename = 'rename'
+  Rename = 'rename',
+  Update = 'update'
 }
 
 export type UpdateProjectDriverDetails = {
@@ -1335,6 +1338,7 @@ export type UpdateModelMutationVariables = Exact<{
   type: UpdateModelTypeEnum;
   new_name?: InputMaybe<Scalars['String']['input']>;
   model_name: Scalars['String']['input'];
+  is_common_model?: InputMaybe<Scalars['Boolean']['input']>;
 }>;
 
 
@@ -1595,14 +1599,14 @@ export type GetAllFunctionInfoQuery = { __typename?: 'QueryType', projectFunctio
 export type GetOnlyModelsInfoQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetOnlyModelsInfoQuery = { __typename?: 'QueryType', projectModelsInfo?: Array<{ __typename?: 'ModelType', name?: string | null, single_page?: boolean | null, single_page_uuid?: string | null, system_generated?: boolean | null, has_connections?: boolean | null, is_tenant_model?: boolean | null, enable_revision?: boolean | null, revision_filter?: Array<{ __typename?: 'RevisionFilter', key?: string | null, value?: string | null } | null> | null } | null> | null };
+export type GetOnlyModelsInfoQuery = { __typename?: 'QueryType', projectModelsInfo?: Array<{ __typename?: 'ModelType', name?: string | null, single_page?: boolean | null, single_page_uuid?: string | null, system_generated?: boolean | null, has_connections?: boolean | null, is_tenant_model?: boolean | null, is_common_model?: boolean | null, enable_revision?: boolean | null, revision_filter?: Array<{ __typename?: 'RevisionFilter', key?: string | null, value?: string | null } | null> | null } | null> | null };
 
 export type GetModelDetailsQueryVariables = Exact<{
   model_name?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
-export type GetModelDetailsQuery = { __typename?: 'QueryType', projectModelsInfo?: Array<{ __typename?: 'ModelType', name?: string | null, locals?: Array<string | null> | null, single_page?: boolean | null, single_page_uuid?: string | null, system_generated?: boolean | null, fields?: Array<{ __typename?: 'FieldInfo', serial?: number | null, identifier?: string | null, label?: string | null, input_type?: string | null, field_type?: string | null, field_sub_type?: string | null, description?: string | null, system_generated?: boolean | null, sub_field_info?: Array<{ __typename?: 'SubFieldInfo', description?: string | null, field_type?: string | null, field_sub_type?: string | null, identifier?: string | null, input_type?: string | null, label?: string | null, serial?: number | null, system_generated?: boolean | null, parent_field?: string | null, validation?: { __typename?: 'Validation', as_title?: boolean | null, char_limit?: Array<number | null> | null, double_range_limit?: Array<number | null> | null, fixed_list_elements?: any[] | null, fixed_list_element_type?: string | null, hide?: boolean | null, is_email?: boolean | null, is_gallery?: boolean | null, is_multi_choice?: boolean | null, int_range_limit?: Array<number | null> | null, locals?: Array<string | null> | null, placeholder?: string | null, required?: boolean | null, unique?: boolean | null } | null, sub_field_info?: Array<{ __typename?: 'NestedSubFieldInfo', description?: string | null, field_type?: string | null, field_sub_type?: string | null, identifier?: string | null, input_type?: string | null, label?: string | null, serial?: number | null, system_generated?: boolean | null, parent_field?: string | null, validation?: { __typename?: 'Validation', as_title?: boolean | null, char_limit?: Array<number | null> | null, double_range_limit?: Array<number | null> | null, fixed_list_elements?: any[] | null, fixed_list_element_type?: string | null, hide?: boolean | null, is_email?: boolean | null, is_gallery?: boolean | null, is_multi_choice?: boolean | null, int_range_limit?: Array<number | null> | null, locals?: Array<string | null> | null, placeholder?: string | null, required?: boolean | null, unique?: boolean | null } | null } | null> | null } | null> | null, validation?: { __typename?: 'Validation', required?: boolean | null, locals?: Array<string | null> | null, is_multi_choice?: boolean | null, int_range_limit?: Array<number | null> | null, hide?: boolean | null, fixed_list_elements?: any[] | null, fixed_list_element_type?: string | null, double_range_limit?: Array<number | null> | null, char_limit?: Array<number | null> | null, as_title?: boolean | null, is_email?: boolean | null, unique?: boolean | null, placeholder?: string | null, is_gallery?: boolean | null, is_password?: boolean | null } | null } | null> | null, connections?: Array<{ __typename?: 'ConnectionType', model?: string | null, relation?: string | null, type?: string | null, known_as?: string | null } | null> | null } | null> | null };
+export type GetModelDetailsQuery = { __typename?: 'QueryType', projectModelsInfo?: Array<{ __typename?: 'ModelType', name?: string | null, locals?: Array<string | null> | null, single_page?: boolean | null, single_page_uuid?: string | null, system_generated?: boolean | null, has_connections?: boolean | null, is_tenant_model?: boolean | null, is_common_model?: boolean | null, enable_revision?: boolean | null, revision_filter?: Array<{ __typename?: 'RevisionFilter', key?: string | null, value?: string | null } | null> | null, fields?: Array<{ __typename?: 'FieldInfo', serial?: number | null, identifier?: string | null, label?: string | null, input_type?: string | null, field_type?: string | null, field_sub_type?: string | null, description?: string | null, system_generated?: boolean | null, sub_field_info?: Array<{ __typename?: 'SubFieldInfo', description?: string | null, field_type?: string | null, field_sub_type?: string | null, identifier?: string | null, input_type?: string | null, label?: string | null, serial?: number | null, system_generated?: boolean | null, parent_field?: string | null, validation?: { __typename?: 'Validation', as_title?: boolean | null, char_limit?: Array<number | null> | null, double_range_limit?: Array<number | null> | null, fixed_list_elements?: any[] | null, fixed_list_element_type?: string | null, hide?: boolean | null, is_email?: boolean | null, is_gallery?: boolean | null, is_multi_choice?: boolean | null, int_range_limit?: Array<number | null> | null, locals?: Array<string | null> | null, placeholder?: string | null, required?: boolean | null, unique?: boolean | null } | null, sub_field_info?: Array<{ __typename?: 'NestedSubFieldInfo', description?: string | null, field_type?: string | null, field_sub_type?: string | null, identifier?: string | null, input_type?: string | null, label?: string | null, serial?: number | null, system_generated?: boolean | null, parent_field?: string | null, validation?: { __typename?: 'Validation', as_title?: boolean | null, char_limit?: Array<number | null> | null, double_range_limit?: Array<number | null> | null, fixed_list_elements?: any[] | null, fixed_list_element_type?: string | null, hide?: boolean | null, is_email?: boolean | null, is_gallery?: boolean | null, is_multi_choice?: boolean | null, int_range_limit?: Array<number | null> | null, locals?: Array<string | null> | null, placeholder?: string | null, required?: boolean | null, unique?: boolean | null } | null } | null> | null } | null> | null, validation?: { __typename?: 'Validation', required?: boolean | null, locals?: Array<string | null> | null, is_multi_choice?: boolean | null, int_range_limit?: Array<number | null> | null, hide?: boolean | null, fixed_list_elements?: any[] | null, fixed_list_element_type?: string | null, double_range_limit?: Array<number | null> | null, char_limit?: Array<number | null> | null, as_title?: boolean | null, is_email?: boolean | null, unique?: boolean | null, placeholder?: string | null, is_gallery?: boolean | null, is_password?: boolean | null } | null } | null> | null, connections?: Array<{ __typename?: 'ConnectionType', model?: string | null, relation?: string | null, type?: string | null, known_as?: string | null } | null> | null } | null> | null };
 
 export type GetPluginsQueryVariables = Exact<{
   name?: InputMaybe<Scalars['String']['input']>;
@@ -1996,8 +2000,13 @@ export type CreateModelMutationHookResult = ReturnType<typeof useCreateModelMuta
 export type CreateModelMutationResult = Apollo.MutationResult<CreateModelMutation>;
 export type CreateModelMutationOptions = Apollo.BaseMutationOptions<CreateModelMutation, CreateModelMutationVariables>;
 export const UpdateModelDocument = gql`
-    mutation updateModel($type: UpdateModelTypeEnum!, $new_name: String, $model_name: String!) {
-  updateModel(type: $type, new_name: $new_name, model_name: $model_name) {
+    mutation updateModel($type: UpdateModelTypeEnum!, $new_name: String, $model_name: String!, $is_common_model: Boolean) {
+  updateModel(
+    type: $type
+    new_name: $new_name
+    model_name: $model_name
+    is_common_model: $is_common_model
+  ) {
     name
   }
 }
@@ -2020,6 +2029,7 @@ export type UpdateModelMutationFn = Apollo.MutationFunction<UpdateModelMutation,
  *      type: // value for 'type'
  *      new_name: // value for 'new_name'
  *      model_name: // value for 'model_name'
+ *      is_common_model: // value for 'is_common_model'
  *   },
  * });
  */
@@ -3273,6 +3283,7 @@ export const GetOnlyModelsInfoDocument = gql`
     system_generated
     has_connections
     is_tenant_model
+    is_common_model
     enable_revision
     revision_filter {
       key
@@ -3321,6 +3332,14 @@ export const GetModelDetailsDocument = gql`
     single_page
     single_page_uuid
     system_generated
+    has_connections
+    is_tenant_model
+    is_common_model
+    enable_revision
+    revision_filter {
+      key
+      value
+    }
     fields {
       serial
       identifier

@@ -10,6 +10,7 @@ export const GET_ONLY_MODELS_INFO = gql`
       system_generated
       has_connections
       is_tenant_model
+      is_common_model
       enable_revision
       revision_filter {
         key
@@ -27,6 +28,14 @@ export const GET_MODEL_DETAILS = gql`
       single_page
       single_page_uuid
       system_generated
+      has_connections
+      is_tenant_model
+      is_common_model
+      enable_revision
+      revision_filter {
+        key
+        value
+      }
       fields {
         serial
         identifier

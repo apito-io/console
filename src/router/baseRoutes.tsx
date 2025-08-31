@@ -32,7 +32,6 @@ export const authRoutes: RouteObject[] = [
     path: "/auth/login",
     element: <LoginPage />,
   },
-
   {
     path: "/login",
     element: <Navigate to="/auth/login" replace />,
@@ -175,7 +174,6 @@ export const getMainRoutes = (
 export const renderAuthRoutes = () => (
   <>
     <Route path="/auth/login" element={<LoginPage />} />
-
     <Route path="/login" element={<Navigate to="/auth/login" replace />} />
   </>
 );

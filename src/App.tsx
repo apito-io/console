@@ -9,15 +9,8 @@ import { ModelDndProvider } from "./contexts/ModelDndContext";
 import { PluginManagerProvider } from "./plugins/PluginManager";
 import { renderAuthRoutes, renderMainRoutes } from "./router/baseRoutes";
 import CommonLayout from "./layouts/CommonLayout";
+import { apitoTheme } from "./theme";
 import "./App.css";
-
-// Open-core theme configuration
-const openCoreTheme = {
-  token: {
-    colorPrimary: "#1890ff",
-    borderRadius: 2,
-  },
-};
 
 // Configure global message settings
 message.config({
@@ -30,7 +23,7 @@ message.config({
 function App() {
   return (
     <CookiesProvider>
-      <ConfigProvider theme={openCoreTheme}>
+      <ConfigProvider theme={apitoTheme}>
         <ApolloProvider client={apolloClient}>
           <BrowserRouter>
             <AuthProvider>

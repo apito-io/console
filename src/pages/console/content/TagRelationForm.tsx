@@ -21,6 +21,7 @@ import {
   MinusOutlined,
 } from "@ant-design/icons";
 import {
+  Relation_Type_Enum,
   useGetModelDetailsQuery,
   useGetMultipleDataQuery,
   useUpdateSingleDataMutation,
@@ -33,7 +34,7 @@ import TableGenerator from "../../../components/common/TableGenerator";
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
-interface EditRelationFormProps {
+interface TagRelationFormProps {
   recordId: string;
   modelName: string;
 }
@@ -79,6 +80,10 @@ const RelationSelectionDrawer: React.FC<RelationSelectionDrawerProps> = ({
     },
   });
 
+  console.log("connectionData", connectionData);
+  console.log("modelName", modelName);
+  console.log("recordId", recordId);
+
   // Fetch available records for selection (intersect=true to exclude already connected ones)
   const {
     data: availableData,
@@ -95,22 +100,15 @@ const RelationSelectionDrawer: React.FC<RelationSelectionDrawerProps> = ({
             _id: recordId,
             model: connectionData.model,
             to_model: modelName,
-            relation_type:
-              connectionData.type === "one_to_many"
-                ? "has_many"
-                : connectionData.type === "one_to_one"
-                  ? "has_one"
-                  : "has_many",
+            relation_type: connectionData.relation,
             known_as: connectionData.known_as || "",
-            connection_type:
-              connectionData.relation === "backward" ? "backward" : "forward",
+            connection_type: connectionData.type,
           }
         : undefined,
       intersect: true, // This will return items that are NOT connected
     },
     skip: !connectionData || !visible,
     errorPolicy: "all",
-    fetchPolicy: "cache-and-network",
   });
 
   const availableRecords = useMemo(() => {
@@ -235,7 +233,7 @@ const RelationSelectionDrawer: React.FC<RelationSelectionDrawerProps> = ({
   );
 };
 
-const EditRelationForm: React.FC<EditRelationFormProps> = ({
+const TagRelationForm: React.FC<TagRelationFormProps> = ({
   recordId,
   modelName,
 }) => {
@@ -243,8 +241,6 @@ const EditRelationForm: React.FC<EditRelationFormProps> = ({
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [drawerTitle, setDrawerTitle] = useState("");
-  const [activeConnectionForDrawer, setActiveConnectionForDrawer] =
-    useState<ConnectionData | null>(null);
 
   const [updateSingleData] = useUpdateSingleDataMutation({
     onCompleted: () => {
@@ -307,21 +303,14 @@ const EditRelationForm: React.FC<EditRelationFormProps> = ({
             _id: recordId,
             model: activeConnection.model,
             to_model: modelName,
-            relation_type:
-              activeConnection.type === "one_to_many"
-                ? "has_many"
-                : activeConnection.type === "one_to_one"
-                  ? "has_one"
-                  : "has_many",
+            relation_type: activeConnection.relation,
             known_as: activeConnection.known_as || "",
-            connection_type:
-              activeConnection.relation === "backward" ? "backward" : "forward",
+            connection_type: activeConnection.type,
           }
         : undefined,
     },
     skip: !activeTab || !recordId || !activeConnection,
     errorPolicy: "all",
-    fetchPolicy: "cache-and-network",
   });
 
   // Transform relation data to table format
@@ -344,7 +333,6 @@ const EditRelationForm: React.FC<EditRelationFormProps> = ({
         : connection.model
     );
     setDrawerTitle(`Add ${actualRelationName} to ${capitalize(modelName)}`);
-    setActiveConnectionForDrawer(connection);
     setDrawerVisible(true);
   };
 
@@ -542,7 +530,7 @@ const EditRelationForm: React.FC<EditRelationFormProps> = ({
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         title={drawerTitle}
-        connectionData={activeConnectionForDrawer}
+        connectionData={activeConnection || null}
         recordId={recordId}
         modelName={modelName}
         onSuccess={handleDrawerSuccess}
@@ -551,4 +539,4 @@ const EditRelationForm: React.FC<EditRelationFormProps> = ({
   );
 };
 
-export default EditRelationForm;
+export default TagRelationForm;

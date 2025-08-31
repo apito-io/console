@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useReducer } from "react";
-import { Layout, Menu, theme, Spin, Empty, Button } from "antd";
+import { Layout, Menu, theme, Spin, Empty, Button, Tag } from "antd";
 import { useLocation, Outlet, useNavigate, useParams } from "react-router-dom";
 import {
   TableOutlined,
@@ -13,6 +13,7 @@ import {
   UserSwitchOutlined,
   AppstoreOutlined,
   PictureOutlined,
+  ProjectOutlined,
 } from "@ant-design/icons";
 import {
   useGetOnlyModelsInfoQuery,
@@ -25,6 +26,7 @@ import TenantSelector from "../components/common/TenantSelector";
 import CreateModelModal from "../components/model/CreateModelModal";
 import ModelOperationsDropdown from "../components/model/ModelOperationsDropdown";
 import { usePluginManager } from "../plugins/PluginManager";
+import "../components/common/Sidebar.css";
 
 const { Sider, Content } = Layout;
 
@@ -59,18 +61,21 @@ const ConsoleLayout: React.FC = () => {
   const currentPath =
     location.pathname.replace("/console/", "").split("/")[0] || "content";
 
-  // Get the full path for header (including console prefix)
-  let headerPath = location.pathname.startsWith("/console/")
-    ? location.pathname.replace("/console/", "")
-    : location.pathname.replace("/", "");
+  // Get the correct path for header navigation
+  let headerPath: string;
 
-  // Special handling for settings pages - use the settings navigation
-  if (headerPath.startsWith("settings/")) {
-    // For settings sub-pages (e.g. settings/plugins), pass only the sub key (plugins)
-    headerPath = headerPath.replace("settings/", "");
-  } else if (isSettingsPage) {
-    // For the main settings page (/console/settings), keep it as 'settings'
-    headerPath = "settings";
+  if (isSettingsPage) {
+    // For settings pages, use the settings sub-path
+    if (location.pathname.startsWith("/console/settings/")) {
+      // For settings sub-pages (e.g. settings/plugins), pass only the sub key (plugins)
+      headerPath = location.pathname.replace("/console/settings/", "");
+    } else {
+      // For the main settings page (/console/settings), use 'general' as default
+      headerPath = "general";
+    }
+  } else {
+    // For console pages, use just the section name (content, model, api, etc.)
+    headerPath = currentPath;
   }
 
   // Fetch models using GraphQL query
@@ -112,14 +117,49 @@ const ConsoleLayout: React.FC = () => {
     return transformed;
   }, [data]);
 
-  // Set selected model based on URL params
+  // Set selected model based on URL params and auto-navigate to first model
   useEffect(() => {
     if (params.model) {
       setSelectedModel(params.model);
-    } else if (models.length > 0) {
-      setSelectedModel(models[0].name);
+    } else if (models.length > 0 && !params.model) {
+      // Auto-select first model and navigate to it
+      const firstModel = models[0].name;
+      setSelectedModel(firstModel);
+
+      // Find the model data and update context
+      const modelData = data?.projectModelsInfo?.find(
+        (model) => model?.name?.toLowerCase() === firstModel.toLowerCase()
+      );
+
+      if (modelData) {
+        contentDispatch({
+          type: "SET_TARGET",
+          payload: {
+            target: modelData.name || firstModel,
+            single_page: modelData.single_page || false,
+            single_page_uuid: modelData.single_page_uuid || "",
+            has_connections: modelData.has_connections || false,
+            is_tenant_model: modelData.is_tenant_model || false,
+            is_common_model: modelData.is_common_model || false,
+            enable_revision: modelData.enable_revision || false,
+          },
+        });
+      }
+
+      // Auto-navigate to the first model if we're on the base model route
+      if (currentPath === "model" && location.pathname === "/console/model") {
+        navigate(`/console/model/${firstModel}`, { replace: true });
+      }
     }
-  }, [params.model, models]);
+  }, [
+    params.model,
+    models,
+    currentPath,
+    location.pathname,
+    navigate,
+    data,
+    contentDispatch,
+  ]);
 
   const handleModelClick = (modelName: string) => {
     setSelectedModel(modelName);
@@ -139,6 +179,7 @@ const ConsoleLayout: React.FC = () => {
           single_page_uuid: modelData.single_page_uuid || "",
           has_connections: modelData.has_connections || false,
           is_tenant_model: modelData.is_tenant_model || false,
+          is_common_model: modelData.is_common_model || false,
           enable_revision: modelData.enable_revision || false,
         },
       });
@@ -193,7 +234,9 @@ const ConsoleLayout: React.FC = () => {
         style={{
           border: "none",
           background: "transparent",
+          fontSize: "14px",
         }}
+        className="apito-sidebar-menu"
         items={models.map((model) => {
           // Find the corresponding model data to check for single_page_uuid
           const modelData = data?.projectModelsInfo?.find(
@@ -213,7 +256,23 @@ const ConsoleLayout: React.FC = () => {
                   width: "100%",
                 }}
               >
-                <span>{model.name}</span>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  {modelData?.is_common_model && (
+                    <span
+                      style={{
+                        color: token.colorPrimary,
+                        fontSize: "12px",
+                        fontWeight: 500,
+                      }}
+                      title="Common Model - Shared across all tenants"
+                    >
+                      🌐
+                    </span>
+                  )}
+                  <span>{model.name}</span>
+                </div>
                 {currentPath === "model" && (
                   <ModelOperationsDropdown
                     modelName={model.name}
@@ -229,10 +288,7 @@ const ConsoleLayout: React.FC = () => {
     );
   };
 
-  console.log("tokenData", tokenData)
-
-  // Get username from email
-  const username = tokenData?.email ? tokenData.email.split("@")[0] : "user";
+  console.log("tokenData", tokenData);
 
   return (
     <ContentContext.Provider
@@ -244,78 +300,142 @@ const ConsoleLayout: React.FC = () => {
       <Layout style={{ minHeight: "100vh", background: token.colorBgLayout }}>
         {/* Left Sidebar Column - Fixed */}
         <Sider
-          width={240}
+          width={280}
           style={{
-            background: token.colorBgContainer,
-            borderRight: `1px solid ${token.colorBorder}`,
+            background: token.colorBgSpotlight, // Using #FAFAFA from theme
+            borderRight: `1px solid ${token.colorBorderSecondary}`,
             position: "fixed",
             left: 0,
             top: 0,
             bottom: 0,
             zIndex: 100,
-            overflow: "auto",
+            display: "flex",
+            flexDirection: "column",
+            height: "100vh",
+            overflow: "hidden", // Prevent scrollbars on the sidebar itself
           }}
         >
-          {/* Header Section with Logo, Project Name and Tenant Selector */}
+          {/* Header Section with Logo, Project Name and Tenant Selector - Fixed */}
           <div
             style={{
-              padding: "20px 16px",
-              background: token.colorBgContainer,
+              padding: "16px 20px 12px 20px",
+              background: token.colorBgSpotlight,
+              borderBottom: `1px solid ${token.colorBorderSecondary}`,
+              flexShrink: 0,
             }}
           >
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "12px",
-                marginBottom: "12px",
+                justifyContent: "space-between",
+                width: "100%",
+                marginBottom: "4px",
               }}
             >
-              <img
-                src="/logo.svg"
-                alt="Apito"
-                style={{ width: "32px", height: "32px", cursor: "pointer" }}
+              {/* Left side - Logo and User */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                }}
                 onClick={() => navigate("/")}
-              />
-              <div>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    color: token.colorText,
-                    lineHeight: "1.2",
-                  }}
-                >
-                  {tokenData?.project_name || "Apito"}
-                </div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 400,
-                    color: token.colorTextSecondary,
-                    lineHeight: "1.2",
-                    marginTop: "2px",
-                  }}
-                >
-                  {tokenData?.project_id
-                    ? `${tokenData.project_id}`
-                    : tokenData?.project_name
-                    ? `Console - ${tokenData.project_name}`
-                    : `Hi, ${username}..`}
+              >
+                <img
+                  src="/logo.svg"
+                  alt="Apito"
+                  style={{ width: "20px", height: "20px" }}
+                />
+                <div>
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      color: token.colorText,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {tokenData?.project_name || "Apito"}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      //color: token.colorTextTertiary,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      lineHeight: 1.2,
+                      marginTop: "2px",
+                    }}
+                  >
+                    {/* Right side - Project ID Tag (center aligned) */}
+                    {tokenData?.project_id && (
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: 400,
+                            fontSize: "10px",
+                            margin: 0,
+                            //borderBottom: `1px solid black`,
+                          }}
+                        >
+                          
+                          {tokenData.project_id}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Tenant Selector - Only show for SaaS projects (project_type === 1) */}
             {tokenData?.project_type === 1 && (
-              <div style={{ marginTop: "25px" }}>
+              <div style={{ marginTop: "16px" }}>
                 <TenantSelector />
               </div>
             )}
           </div>
 
-          {/* Console Models Section */}
-          <div style={{ flex: 1, overflowY: "auto" }}>
+          {/* Add Model Button - Only show on model page - Fixed */}
+          {!isSettingsPage && currentPath === "model" && (
+            <div
+              style={{
+                padding: "8px 20px 16px 20px",
+                flexShrink: 0,
+              }}
+            >
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setIsCreateModelModalVisible(true)}
+                style={{
+                  width: "100%",
+                }}
+              >
+                Add Model
+              </Button>
+            </div>
+          )}
+
+          {/* Console Models Section - Scrollable with constrained height */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              overflowX: "hidden", // Prevent horizontal scrollbar
+              minHeight: 0,
+              padding: "8px 0",
+              maxHeight: "calc(100vh - 280px)", // Adjusted to reduce footer space
+            }}
+          >
             {/* Show settings navigation when on settings page */}
             {isSettingsPage ? (
               <div>
@@ -402,46 +522,30 @@ const ConsoleLayout: React.FC = () => {
                       style={{
                         border: "none",
                         background: "transparent",
+                        fontSize: "14px",
                       }}
+                      className="apito-sidebar-menu"
                     />
                   );
                 })()}
               </div>
             ) : (
-              <>
-                {/* Add Model Button - Only show on model page */}
-                {currentPath === "model" && (
-                  <div style={{ padding: "0 16px", marginBottom: "12px" }}>
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      onClick={() => setIsCreateModelModalVisible(true)}
-                      style={{
-                        width: "100%",
-                        borderRadius: token.borderRadius,
-                      }}
-                    >
-                      Add Model
-                    </Button>
-                  </div>
-                )}
-
-                {renderModelMenu()}
-              </>
+              renderModelMenu()
             )}
           </div>
 
-          {/* Footer Section with Settings and Help Center */}
+          {/* Footer Section with Settings and Help Center - Fixed */}
           <div
             style={{
-              padding: "16px",
-              borderTop: `1px solid ${token.colorBorder}`,
-              background: token.colorBgContainer,
+              padding: "12px 20px",
+              borderTop: `1px solid ${token.colorBorderSecondary}`,
+              background: token.colorBgSpotlight,
+              flexShrink: 0,
             }}
           >
             {/* Footer Items */}
             <div
-              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              style={{ display: "flex", flexDirection: "column", gap: "2px" }}
             >
               <div
                 style={{
@@ -449,23 +553,24 @@ const ConsoleLayout: React.FC = () => {
                   alignItems: "center",
                   gap: "8px",
                   padding: "8px 12px",
-                  borderRadius: token.borderRadius,
+                  borderRadius: "6px",
                   cursor: "pointer",
                   fontSize: "14px",
                   color: token.colorTextSecondary,
                   transition: "all 0.2s ease",
+                  height: "36px",
                 }}
                 onClick={() => navigate("/console/settings")}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = token.colorFillQuaternary;
-                  e.currentTarget.style.color = token.colorPrimary;
+                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.04)";
+                  e.currentTarget.style.color = token.colorText;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "transparent";
                   e.currentTarget.style.color = token.colorTextSecondary;
                 }}
               >
-                <SettingOutlined />
+                <SettingOutlined style={{ fontSize: "16px" }} />
                 <span>Project Settings</span>
               </div>
               <div
@@ -474,23 +579,24 @@ const ConsoleLayout: React.FC = () => {
                   alignItems: "center",
                   gap: "8px",
                   padding: "8px 12px",
-                  borderRadius: token.borderRadius,
+                  borderRadius: "6px",
                   cursor: "pointer",
                   fontSize: "14px",
                   color: token.colorTextSecondary,
                   transition: "all 0.2s ease",
+                  height: "36px",
                 }}
                 onClick={() => navigate("/support")}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = token.colorFillQuaternary;
-                  e.currentTarget.style.color = token.colorPrimary;
+                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.04)";
+                  e.currentTarget.style.color = token.colorText;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "transparent";
                   e.currentTarget.style.color = token.colorTextSecondary;
                 }}
               >
-                <QuestionCircleOutlined />
+                <QuestionCircleOutlined style={{ fontSize: "16px" }} />
                 <span>Help & Support</span>
               </div>
             </div>
@@ -509,7 +615,7 @@ const ConsoleLayout: React.FC = () => {
               padding: 0,
               overflowX: "hidden",
               overflowY: "auto",
-              height: "calc(100vh - 100px)",
+              height: "calc(100vh - 72px)",
             }}
           >
             <Outlet context={{ selectedModel, models, contentState }} />

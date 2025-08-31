@@ -63,6 +63,71 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+/* Custom Sidebar Menu Styling */
+.custom-sidebar-menu .ant-menu-item-selected {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.custom-sidebar-menu .ant-menu-item-selected:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.custom-sidebar-menu .ant-menu-item-selected:focus {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.custom-sidebar-menu .ant-menu-item-selected:active {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.custom-sidebar-menu .ant-menu-item:hover:not(.ant-menu-item-selected) {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+}
+
+.custom-sidebar-menu .ant-menu-submenu-title:hover {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+}
+
+.custom-sidebar-menu .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  color: #000000 !important;
+}
+
+.custom-sidebar-menu .ant-menu-submenu-open > .ant-menu-submenu-title {
+  color: #000000 !important;
+}
+
+/* Custom Console Menu Styling */
+.custom-console-menu .ant-menu-item-selected {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.custom-console-menu .ant-menu-item-selected:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.custom-console-menu .ant-menu-item-selected:focus {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.custom-console-menu .ant-menu-item-selected:active {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.custom-console-menu .ant-menu-item:hover:not(.ant-menu-item-selected) {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

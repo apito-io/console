@@ -1,38 +1,36 @@
-import React, { useState } from "react";
 import {
-  Button,
-  Col,
-  Divider,
-  Drawer,
-  Empty,
-  Row,
-  Typography,
-  Card,
-  Tag,
-  Avatar,
-  message,
-  Dropdown,
-  Modal,
-  Input,
-  Space,
-  Tooltip,
-  theme,
-  Badge,
-} from "antd";
-import {
-  PlusCircleOutlined,
-  SettingOutlined,
-  DeleteOutlined,
-  EyeOutlined,
-  MoreOutlined,
-  DatabaseOutlined,
-  CalendarOutlined,
   CloudServerOutlined,
-  HddOutlined,
+  DatabaseOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  EyeOutlined,
   GoldOutlined,
+  HddOutlined,
+  MoreOutlined,
+  RocketOutlined,
+  SettingOutlined,
+  CopyOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import {
+  Avatar,
+  Breadcrumb,
+  Button,
+  Drawer,
+  Dropdown,
+  Empty,
+  Input,
+  Modal,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+  message,
+  theme,
+} from "antd";
+import type { ColumnsType } from "antd/es/table";
+import React, { useState } from "react";
 import { useCookies } from "react-cookie";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useProjectList } from "../../hooks/useProjectList";
 import type { Project } from "../../types/project";
@@ -40,50 +38,58 @@ import type { Project } from "../../types/project";
 const { Title, Text } = Typography;
 
 // Demo project data for now - will be replaced with real data
-const DEMO_PROJECT_DATA = [
+const PROJECT_TEMPLATES = [
   {
-    id: "demo-1",
-    name: "Prosno Bank",
-    description: "Banking Application",
-    created_at: "2024-01-01",
-    plan: "free" as const,
+    id: "template-1",
+    name: "E-commerce Platform",
+    description:
+      "Complete online store with product catalog, cart, and payment processing",
+    project_type: "saas" as const,
     db: "postgresql",
-    status: "LIVE" as const,
-    avatar: "PK",
-    color: "#f56a00",
+    status: "TEMPLATE" as const,
+    avatar: "EC",
+    color: "#1890ff",
   },
   {
-    id: "demo-2",
-    name: "Restaurant Management",
-    description: "Food Service Platform",
-    created_at: "2023-08-01",
-    plan: "free" as const,
+    id: "template-2",
+    name: "SaaS Dashboard",
+    description:
+      "Multi-tenant SaaS application with user management and analytics",
+    project_type: "saas" as const,
     db: "postgresql",
-    status: "LIVE" as const,
-    avatar: "RO",
-    color: "#87d068",
+    status: "TEMPLATE" as const,
+    avatar: "SD",
+    color: "#52c41a",
   },
   {
-    id: "demo-3",
-    name: "Vendor Inventory Management",
-    description: "Supply Chain System",
-    created_at: "2023-07-01",
-    plan: "free" as const,
+    id: "template-3",
+    name: "Content Management",
+    description: "Blog and content management system with rich text editor",
+    project_type: "general" as const,
     db: "postgresql",
-    status: "LIVE" as const,
-    avatar: "MS",
-    color: "#108ee9",
+    status: "TEMPLATE" as const,
+    avatar: "CM",
+    color: "#722ed1",
   },
   {
-    id: "demo-4",
-    name: "Cloth Shop Management",
-    description: "Retail Management System",
-    created_at: "2023-08-01",
-    plan: "free" as const,
+    id: "template-4",
+    name: "Task Management",
+    description: "Project and task tracking with team collaboration features",
+    project_type: "general" as const,
     db: "postgresql",
-    status: "LIVE" as const,
-    avatar: "BU",
-    color: "#f50",
+    status: "TEMPLATE" as const,
+    avatar: "TM",
+    color: "#fa8c16",
+  },
+  {
+    id: "template-5",
+    name: "Inventory System",
+    description: "Warehouse and inventory management with barcode scanning",
+    project_type: "general" as const,
+    db: "postgresql",
+    status: "TEMPLATE" as const,
+    avatar: "IS",
+    color: "#eb2f96",
   },
 ];
 
@@ -129,7 +135,7 @@ const ProjectsPage: React.FC = () => {
     if (dbLower.includes("mysql")) {
       return <DatabaseOutlined style={{ color: "#00618A" }} />;
     }
-    // Default Apito Cloud DB icon
+    // Default Apito Managed DB icon
     return (
       <img
         src="/logo.svg"
@@ -142,7 +148,7 @@ const ProjectsPage: React.FC = () => {
   // Function to get database display name
   const getDatabaseName = (db: string | undefined) => {
     if (!db || db.toLowerCase().includes("embed")) {
-      return "Apito Cloud DB";
+      return "Apito Managed DB";
     }
     return db;
   };
@@ -189,6 +195,17 @@ const ProjectsPage: React.FC = () => {
 
   const handleStartNewProject = () => {
     navigate("/projects/new");
+  };
+
+  const handleCopyTemplate = (template: any) => {
+    message.info(`Starting new project from ${template.name} template...`);
+    // Navigate to new project page with template pre-selected
+    navigate("/projects/new", {
+      state: {
+        template: template.name,
+        project_type: template.project_type,
+      },
+    });
   };
 
   const showDeleteConfirmation = (project: Project) => {
@@ -264,47 +281,18 @@ const ProjectsPage: React.FC = () => {
     },
   ];
 
-  const renderProjectCard = (project: Project, isDemoProject = false) => {
-    const cardContent = (
-      <Card
-        key={project.id}
-        hoverable
-        style={{
-          marginBottom: "16px",
-          borderRadius: "12px",
-          border: `1px solid ${token.colorBorder}`,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-          transition: "all 0.2s ease",
-          cursor: "pointer",
-        }}
-        bodyStyle={{ padding: "20px" }}
-        onClick={() => !isDemoProject && handleCardClick(project)}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.12)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "12px",
-              flex: 1,
-            }}
-          >
+  // Define table columns matching the database view design
+  const getProjectColumns = (isDemoSection = false): ColumnsType<Project> => [
+    {
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
+      width: "30%",
+      render: (name: string, project: Project) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ position: "relative" }}>
             <Avatar
-              size={48}
+              size={40}
               style={{
                 backgroundColor:
                   project.color || generateAvatarColor(project.name),
@@ -312,147 +300,294 @@ const ProjectsPage: React.FC = () => {
                 fontSize: "16px",
               }}
             >
-              {project.avatar || project.name.substring(0, 2).toUpperCase()}
+              {project.avatar || name.substring(0, 2).toUpperCase()}
             </Avatar>
-
-            <div style={{ flex: 1, minWidth: 0 }}>
+            {project.status === "LIVE" && (
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginBottom: "4px",
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  backgroundColor: token.colorSuccess,
+                  border: `2px solid ${token.colorBgContainer}`,
                 }}
-              >
-                <Typography.Title
-                  level={5}
-                  style={{
-                    margin: 0,
-                    fontSize: "16px",
-                    fontWeight: 600,
-                    color: token.colorTextHeading,
-                  }}
-                  ellipsis={{ tooltip: project.name }}
-                >
-                  {project.name}
-                </Typography.Title>
-                {/* <Tag
-                  color={project.status === "LIVE" ? "success" : "processing"}
-                  style={{
-                    fontSize: "10px",
-                    fontWeight: 500,
-                    border: "none",
-                    borderRadius: "6px",
-                  }}
-                >
-                  {project.status || "LIVE"}
-                </Tag> */}
-              </div>
-
-              <Text
-                type="secondary"
+              />
+            )}
+          </div>
+          <div>
+            <div
+              style={{
+                fontWeight: 500,
+                color: token.colorText,
+                fontSize: 14,
+                lineHeight: 1.4,
+              }}
+            >
+              {name}
+            </div>
+            {project.description && (
+              <div
                 style={{
-                  fontSize: "13px",
-                  lineHeight: "18px",
-                  display: "block",
-                  marginBottom: "12px",
+                  color: token.colorTextSecondary,
+                  fontSize: 12,
+                  lineHeight: 1.4,
+                  marginTop: 2,
                 }}
-                ellipsis={{ tooltip: project.description }}
               >
                 {project.description}
-              </Text>
-
-              <Space size="middle" style={{ fontSize: "12px" }}>
-                <Tooltip title="Database">
-                  <Space size={4}>
-                    {getDatabaseIcon(project.db)}
-                    <Text type="secondary" style={{ fontSize: "12px" }}>
-                      {getDatabaseName(project.db)}
-                    </Text>
-                  </Space>
-                </Tooltip>
-
-                <Tooltip title="Created">
-                  <Space size={4}>
-                    <CalendarOutlined
-                      style={{ color: token.colorTextTertiary }}
-                    />
-                    <Text type="secondary" style={{ fontSize: "12px" }}>
-                      {getRelativeTime(project.created_at)}
-                    </Text>
-                  </Space>
-                </Tooltip>
-
-                <Tooltip title="Plan">
-                  <Tag
-                    color={
-                      project.plan === "enterprise"
-                        ? "purple"
-                        : project.plan === "pro"
-                          ? "gold"
-                          : "blue"
-                    }
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: 500,
-                      border: "none",
-                      borderRadius: "4px",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {project.plan}
-                  </Tag>
-                </Tooltip>
-              </Space>
-            </div>
+              </div>
+            )}
           </div>
-
-          {!isDemoProject && (
-            <div onClick={(e) => e.stopPropagation()}>
-              <Dropdown
-                menu={{ items: getMenuItems(project, isDemoProject) }}
-                placement="bottomRight"
-                trigger={["click"]}
-              >
-                <Button
-                  type="text"
-                  icon={<MoreOutlined />}
-                  size="small"
-                  style={{
-                    color: token.colorTextTertiary,
-                    border: "none",
-                    boxShadow: "none",
-                  }}
-                />
-              </Dropdown>
-            </div>
-          )}
-
-          {isDemoProject && (
-            <Tooltip title="Demo project - view only">
-              <EyeOutlined
+        </div>
+      ),
+    },
+    {
+      title: "Database",
+      dataIndex: "db",
+      key: "database",
+      width: "20%",
+      render: (db: string) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div
+            style={{
+              width: 24,
+              height: 24,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 4,
+              backgroundColor: token.colorBgTextHover,
+            }}
+          >
+            {getDatabaseIcon(db)}
+          </div>
+          <span style={{ fontSize: 14, color: token.colorText }}>
+            {getDatabaseName(db)}
+          </span>
+        </div>
+      ),
+    },
+    {
+      title: "Plan",
+      dataIndex: "plan",
+      key: "plan",
+      width: "15%",
+      render: (plan: string) => (
+        <Tag
+          color={
+            plan === "enterprise" ? "purple" : plan === "pro" ? "gold" : "blue"
+          }
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            borderRadius: 4,
+            textTransform: "capitalize",
+          }}
+        >
+          {plan}
+        </Tag>
+      ),
+    },
+    {
+      title: "Created",
+      dataIndex: "created_at",
+      key: "created",
+      width: "15%",
+      render: (date: string) => (
+        <div style={{ fontSize: 14, color: token.colorText }}>
+          {getRelativeTime(date)}
+        </div>
+      ),
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      width: "10%",
+      render: (status: string) => (
+        <Tag
+          color={status === "LIVE" ? "green" : "orange"}
+          style={{ fontSize: 12, fontWeight: 500, borderRadius: 4 }}
+        >
+          {status || "Active"}
+        </Tag>
+      ),
+    },
+    {
+      title: "",
+      key: "actions",
+      width: "10%",
+      render: (_, project) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          {!isDemoSection ? (
+            <Dropdown
+              menu={{ items: getMenuItems(project, isDemoSection) }}
+              placement="bottomRight"
+              trigger={["click"]}
+            >
+              <Button
+                type="text"
+                icon={<MoreOutlined />}
+                size="small"
                 style={{
                   color: token.colorTextTertiary,
-                  fontSize: "16px",
+                  width: 32,
+                  height: 32,
+                }}
+              />
+            </Dropdown>
+          ) : (
+            <Tooltip title="Demo project - view only">
+              <Button
+                type="text"
+                icon={<EyeOutlined />}
+                size="small"
+                style={{
+                  color: token.colorTextTertiary,
+                  width: 32,
+                  height: 32,
                 }}
               />
             </Tooltip>
           )}
         </div>
-      </Card>
-    );
+      ),
+    },
+  ];
 
-    // Check if project is SaaS (project_type === 1)
-    const isSaaSProject = project.project_type === 1;
-
-    return isSaaSProject ? (
-      <Badge.Ribbon text="SaaS" color="purple">
-        {cardContent}
-      </Badge.Ribbon>
-    ) : (
-      cardContent
-    );
-  };
+  // Define template columns for project templates
+  const getTemplateColumns = (): ColumnsType<any> => [
+    {
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
+      width: "35%",
+      render: (name: string, template: any) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ position: "relative" }}>
+            <Avatar
+              size={40}
+              style={{
+                backgroundColor: template.color,
+                fontWeight: 600,
+                fontSize: "16px",
+              }}
+            >
+              {template.avatar}
+            </Avatar>
+          </div>
+          <div>
+            <div
+              style={{
+                fontWeight: 500,
+                color: token.colorText,
+                fontSize: 14,
+                lineHeight: 1.4,
+              }}
+            >
+              {name}
+            </div>
+            {template.description && (
+              <div
+                style={{
+                  color: token.colorTextSecondary,
+                  fontSize: 12,
+                  lineHeight: 1.4,
+                  marginTop: 2,
+                }}
+              >
+                {template.description}
+              </div>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Database",
+      dataIndex: "db",
+      key: "database",
+      width: "20%",
+      render: (db: string) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div
+            style={{
+              width: 24,
+              height: 24,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 4,
+              backgroundColor: token.colorBgTextHover,
+            }}
+          >
+            {getDatabaseIcon(db)}
+          </div>
+          <span style={{ fontSize: 14, color: token.colorText }}>
+            {getDatabaseName(db)}
+          </span>
+        </div>
+      ),
+    },
+    {
+      title: "Project Type",
+      dataIndex: "project_type",
+      key: "project_type",
+      width: "20%",
+      render: (type: string) => (
+        <Tag
+          color={type === "saas" ? "blue" : "green"}
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            borderRadius: 4,
+            textTransform: "capitalize",
+          }}
+        >
+          {type === "saas" ? "SaaS" : "General"}
+        </Tag>
+      ),
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      width: "15%",
+      render: (status: string) => (
+        <Tag
+          color="purple"
+          style={{ fontSize: 12, fontWeight: 500, borderRadius: 4 }}
+        >
+          {status}
+        </Tag>
+      ),
+    },
+    {
+      title: "",
+      key: "actions",
+      width: "10%",
+      render: (_, template) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Button
+            type="primary"
+            size="small"
+            icon={<CopyOutlined />}
+            onClick={() => handleCopyTemplate(template)}
+            style={{
+              padding: "4px 12px",
+              fontSize: 12,
+              height: 28,
+            }}
+          >
+            Copy This
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   if (error) {
     return (
@@ -469,65 +604,66 @@ const ProjectsPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: "24px" }}>
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "24px",
-        }}
-      >
-        <div>
-          <Title level={2} style={{ margin: 0 }}>
-            Projects
-          </Title>
-          <Text type="secondary">carpe diem!</Text>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <a
-            href="https://docs.apito.io"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "#1890ff" }}
-          >
-            Apito Documentation
-          </a>
-          {projects.length > 0 && (
-            <>
-              <Divider type="vertical" />
-              <Button
-                type="primary"
-                icon={<PlusCircleOutlined />}
-                onClick={handleStartNewProject}
-              >
-                START ANOTHER PROJECT
-              </Button>
-            </>
-          )}
-        </div>
+    <div style={{ padding: "32px", maxWidth: "1400px", margin: "0 auto" }}>
+      {/* Breadcrumb Navigation - like Turso */}
+      <div style={{ marginBottom: "24px" }}>
+        <Breadcrumb
+          style={{ fontSize: "14px" }}
+          items={[
+            {
+              title: (
+                <span style={{ color: token.colorTextSecondary }}>
+                  Projects
+                </span>
+              ),
+            },
+          ]}
+        />
       </div>
 
-      {/* Projects Grid */}
-      {isLoading ? (
-        <div style={{ textAlign: "center", padding: "64px" }}>
-          <Text>Loading projects...</Text>
-        </div>
-      ) : (
-        <Row gutter={[24, 24]} style={{ marginBottom: "48px" }}>
-          {projects.length > 0 ? (
-            projects.map((project) => (
-              <Col xs={24} sm={12} md={8} lg={6} xl={6} key={project.id}>
-                {renderProjectCard(project)}
-              </Col>
-            ))
-          ) : (
-            <Col span={24}>
+      {/* Action Buttons Row - like Turso's Create Database/Create Group */}
+      <div style={{ display: "flex", gap: "12px", marginBottom: "32px" }}>
+        <Button
+          type="primary"
+          icon={<RocketOutlined />}
+          onClick={handleStartNewProject}
+        >
+          Create Project
+        </Button>
+        <Button
+          icon={<DownloadOutlined />}
+          href="https://apito.io/docs/cli"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Install Apito CLI
+        </Button>
+      </div>
+
+      {/* Projects Table - No card wrapper to match Turso design */}
+      <div style={{ marginBottom: 48 }}>
+        <Table
+          columns={getProjectColumns()}
+          dataSource={projects.length > 0 ? projects : []}
+          loading={isLoading}
+          rowKey="id"
+          scroll={{ x: 800 }}
+          size="middle"
+          pagination={{
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} of ${total} projects`,
+            pageSizeOptions: ["10", "20", "50", "100"],
+            defaultPageSize: 20,
+            style: { padding: "16px 24px" },
+            responsive: true,
+            size: "default",
+          }}
+          locale={{
+            emptyText: (
               <Empty
-                imageStyle={{
-                  height: 80,
-                }}
+                imageStyle={{ height: 80 }}
                 description={
                   <span>
                     You haven't started any projects yet. Click{" "}
@@ -546,24 +682,38 @@ const ProjectsPage: React.FC = () => {
                   Start Your First Project
                 </Button>
               </Empty>
-            </Col>
-          )}
-        </Row>
-      )}
+            ),
+          }}
+          onRow={(record) => ({
+            style: { cursor: "pointer" },
+            onClick: () => handleCardClick(record),
+          })}
+        />
+      </div>
 
-      {/* Demo Projects Section */}
-      <div style={{ marginTop: "48px" }}>
-        <div style={{ marginBottom: "24px" }}>
-          <Title level={3}>Demo Projects</Title>
-          <Text type="secondary">Explore Sample Projects Instantly</Text>
+      {/* Project Templates Section */}
+      <div style={{ marginTop: 48 }}>
+        <div style={{ marginBottom: 24 }}>
+          <Title level={4} style={{ margin: 0, marginBottom: "8px" }}>
+            Project Templates
+          </Title>
+          <Text type="secondary">Start with proven project structures</Text>
         </div>
-        <Row gutter={[24, 24]}>
-          {DEMO_PROJECT_DATA.map((project) => (
-            <Col xs={24} sm={12} md={8} lg={6} xl={6} key={project.id}>
-              {renderProjectCard(project, true)}
-            </Col>
-          ))}
-        </Row>
+        <div>
+          <Table
+            columns={getTemplateColumns()}
+            dataSource={PROJECT_TEMPLATES}
+            rowKey="id"
+            pagination={false}
+            size="middle"
+            scroll={{ x: 800 }}
+            style={{
+              background: token.colorBgContainer,
+              border: `1px solid ${token.colorBorderSecondary}`,
+              borderRadius: "8px",
+            }}
+          />
+        </div>
       </div>
 
       {/* Settings Drawer */}
@@ -636,9 +786,8 @@ const ProjectsPage: React.FC = () => {
       >
         <div style={{ marginBottom: "16px" }}>
           <Text type="secondary">
-            This action cannot be undone. This will permanently delete the
-            project <Text strong>{projectToDelete?.name}</Text> and all of its
-            data.
+            This action cannot be undone. This will permanently delete project{" "}
+            <Tag color="red">{projectToDelete?.name}</Tag>and all of its data.
           </Text>
         </div>
 

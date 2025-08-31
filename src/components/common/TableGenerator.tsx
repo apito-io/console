@@ -78,6 +78,7 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
           key: key,
           ellipsis: true,
           render: (value: unknown) => {
+
             const displayValue = getSimpleDisplayValue(value);
 
             // Add visual indicators for boolean values
