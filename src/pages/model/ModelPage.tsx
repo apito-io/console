@@ -40,7 +40,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   useGetModelDetailsQuery,
   useGetOnlyModelsInfoQuery,
@@ -97,6 +97,8 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, value }) => {
 const ModelPage: React.FC = () => {
   const { token } = theme.useToken();
   const params = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const context = useContext(ContentContext) as ContentContextType | null;
 
   // Get model name from ContentContext (set by left sidebar selection)
@@ -191,6 +193,32 @@ const ModelPage: React.FC = () => {
     allModelsData?.projectModelsInfo,
     initialModelName,
   ]);
+
+  // Check for type=new query parameter and open create modal
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const typeParam = searchParams.get("type");
+
+    if (typeParam === "new") {
+      // Programmatically trigger the "Add Model" button in the sidebar
+      // This uses the existing modal in ConsoleLayout to avoid conflicts
+      const addModelButton = document.querySelector(
+        "button:has(.anticon-plus)"
+      );
+
+      if (addModelButton) {
+        (addModelButton as HTMLButtonElement).click();
+
+        // Clean up the URL parameter after triggering the modal
+        searchParams.delete("type");
+        const newSearch = searchParams.toString();
+        const newPath = newSearch
+          ? `${location.pathname}?${newSearch}`
+          : location.pathname;
+        navigate(newPath, { replace: true });
+      }
+    }
+  }, [location.search, location.pathname, navigate]);
 
   // Fetch model generation data using the GraphQL query
   console.log("resolve model name", resolvedModelName);
@@ -1050,13 +1078,14 @@ const ModelPage: React.FC = () => {
                 <div
                   style={{ color: token.colorTextSecondary, fontSize: "14px" }}
                 >
-                  Create your first model by clicking "+ Add Model" button on the left sidebar
+                  Create your first model by clicking "+ Add Model" button on
+                  the left sidebar
                 </div>
               </div>
             }
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           >
-           {/*  <Button
+            {/*  <Button
               type="primary"
               icon={<PlusCircleOutlined />}
               size="large"
@@ -1345,6 +1374,7 @@ const ModelPage: React.FC = () => {
               type="primary"
               icon={<PlusCircleOutlined />}
               style={{ marginTop: 24 }}
+              data-tour="add-fields-button"
               onClick={() => {
                 setRepeatedFieldIdentifier("");
                 setIsEditingField(false);

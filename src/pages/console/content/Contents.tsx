@@ -372,6 +372,7 @@ const Contents: React.FC<ContentsProps> = ({
             type="primary"
             icon={<PlusCircleOutlined />}
             onClick={handleCreate}
+            data-tour="create-content-button"
           >
             CREATE NEW {modelName.toUpperCase()}
           </Button>

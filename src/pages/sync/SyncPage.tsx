@@ -1,289 +1,403 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
+  Button,
+  Form,
+  Input,
+  DatePicker,
+  Select,
+  Table,
   Typography,
   Card,
-  Tag,
-  Button,
   message,
+  Skeleton,
+  Tag,
   Space,
+  Row,
+  Col,
+  Tooltip,
+  Popconfirm,
   Alert,
-  Divider,
 } from "antd";
 import {
   CloudSyncOutlined,
   CopyOutlined,
-  ReloadOutlined,
-  InfoCircleOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
-import { useAuth } from "../../contexts/AuthContext";
-import { httpService } from "../../services/httpService";
-import { USER_SYNC_TOKEN } from "../../constants/api";
+import { CopyToClipboard } from "react-copy-to-clipboard";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import duration from "dayjs/plugin/duration";
+import { useProjectList } from "../../hooks/useProjectList";
+import { useSyncToken } from "../../hooks/useSyncToken";
 
-const { Title, Text, Paragraph } = Typography;
+dayjs.extend(relativeTime);
+dayjs.extend(duration);
+
+const { Text, Paragraph } = Typography;
+const { Option } = Select;
 
 const SyncPage: React.FC = () => {
-  const { decodeTokenData } = useAuth();
-  const [syncToken, setSyncToken] = useState<string>("");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [form] = Form.useForm();
 
-  const tokenData = decodeTokenData();
+  // Use custom hooks for state management
+  const { data: projectData, isLoading: projectLoading } = useProjectList();
+  const {
+    syncTokens,
+    projectSecretKey,
+    isLoading: tokenDataLoading,
+    isCreating: generateLoading,
+    isDeleting: deleteLoading,
+    createSyncToken,
+    deleteSyncToken,
+  } = useSyncToken();
 
-  // Fetch sync token
-  const fetchSyncToken = async () => {
-    try {
-      setLoading(true);
-      const response = await httpService.post(USER_SYNC_TOKEN, {});
-      const token = response.data?.token || "";
-      setSyncToken(token);
-    } catch (error) {
-      message.error("Failed to fetch sync token");
-    } finally {
-      setLoading(false);
+  const onFinish = async (values: any) => {
+    const payload = {
+      name: values.name,
+      duration: values.duration ? values.duration.format("YYYY-MM-DD") : null,
+      project_ids: values.projectIds,
+      scopes: values.scopes,
+    };
+
+    const success = await createSyncToken(payload);
+    if (success) {
+      form.resetFields();
     }
   };
 
-  // Refresh sync token
-  const refreshSyncToken = async () => {
-    try {
-      setRefreshing(true);
-      const response = await httpService.post(USER_SYNC_TOKEN, {});
-      const token = response.data?.token || "";
-      setSyncToken(token);
-      message.success("Sync token refreshed successfully");
-    } catch (error) {
-      message.error("Failed to refresh sync token");
-    } finally {
-      setRefreshing(false);
-    }
+  const handleDeleteToken = async (token: string, expire: string) => {
+    const payload = {
+      token,
+      duration: expire,
+    };
+
+    await deleteSyncToken(payload);
   };
 
-  // Copy token to clipboard
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(syncToken);
-      message.success("Token copied to clipboard");
-    } catch (error) {
-      message.error("Failed to copy token");
-    }
-  };
+  // Prepare data - ensure unique projects to prevent duplicates
+  const projectsListData = projectData?.body
+    ? projectData.body.filter(
+        (project, index, self) =>
+          index === self.findIndex((p) => p.id === project.id)
+      )
+    : [];
 
-  useEffect(() => {
-    fetchSyncToken();
-  }, []);
+  // Available scopes for sync tokens
+  const availableScopes = [
+    { value: "system_api_read", label: "System API Read" },
+    { value: "system_api_write", label: "System API Write" },
+    { value: "plugin_read", label: "Plugin Read" },
+    { value: "plugin_write", label: "Plugin Write" },
+    { value: "sync_read", label: "Sync Read" },
+    { value: "sync_write", label: "Sync Write" },
+  ];
 
-  const setupInstructions = [
+  // Table columns for sync tokens
+  const columns = [
     {
-      step: 1,
-      title: "Install Apito CLI",
-      description: "Install the Apito CLI tool on your local machine",
-      command: "npm install -g @apito/cli",
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
+      width: 200,
     },
     {
-      step: 2,
-      title: "Configure Token",
-      description: "Set up your sync token in the CLI configuration",
-      command: "apito config set token <your-sync-token>",
+      title: "Projects",
+      dataIndex: "project_ids",
+      key: "project_ids",
+      width: 200,
+      render: (project_ids: string[]) => (
+        <div>
+          {project_ids?.map((id, index) => (
+            <Tag key={index} color="blue" style={{ marginBottom: "4px" }}>
+              {id}
+            </Tag>
+          ))}
+        </div>
+      ),
     },
     {
-      step: 3,
-      title: "Initialize Project",
-      description: "Initialize your local project for cloud sync",
-      command: "apito init",
+      title: "Scopes",
+      dataIndex: "scopes",
+      key: "scopes",
+      width: 200,
+      render: (scopes: string[]) => (
+        <div>
+          {scopes?.map((scope, index) => (
+            <Tag key={index} color="green" style={{ marginBottom: "4px" }}>
+              {scope}
+            </Tag>
+          ))}
+        </div>
+      ),
     },
     {
-      step: 4,
-      title: "Push to Cloud",
-      description: "Push your local project to the cloud",
-      command: "apito push",
+      title: "Sync Token",
+      dataIndex: "token",
+      key: "token",
+      ellipsis: true,
+      render: (token: string) => (
+        <Text code style={{ fontSize: "12px" }}>
+          {token ? `${token.substring(0, 50)}...` : ""}
+        </Text>
+      ),
+    },
+    {
+      title: "Expires",
+      dataIndex: "expire",
+      key: "expire",
+      width: 150,
+      render: (expire: string) => {
+        if (!expire) return <Text type="secondary">Never</Text>;
+        const isExpired = dayjs(expire).isBefore(new Date());
+        const timeRemaining = dayjs
+          .duration(dayjs(expire).diff(new Date()))
+          .humanize(true);
+
+        return (
+          <Tag color={isExpired ? "red" : "green"}>
+            {isExpired ? "Expired" : timeRemaining}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      width: 120,
+      render: (_: any, record: any) => (
+        <Space>
+          <CopyToClipboard
+            text={record.token}
+            onCopy={() => message.success("Token copied to clipboard!")}
+          >
+            <Tooltip title="Copy Token">
+              <Button type="text" icon={<CopyOutlined />} size="small" />
+            </Tooltip>
+          </CopyToClipboard>
+          <Popconfirm
+            title="Delete Token"
+            description="Are you sure you want to delete this sync token?"
+            onConfirm={() => handleDeleteToken(record.token, record.expire)}
+            okText="Yes"
+            cancelText="No"
+            icon={<ExclamationCircleOutlined style={{ color: "red" }} />}
+          >
+            <Tooltip title="Delete Token">
+              <Button
+                type="text"
+                icon={<DeleteOutlined />}
+                size="small"
+                danger
+                loading={deleteLoading}
+              />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ];
 
   return (
     <div style={{ padding: "24px", margin: "0 auto" }}>
-      {/* Sync Token Card */}
+      {/* Generate New Sync Token */}
       <Card
         title={
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <CloudSyncOutlined />
-            Sync Token
-          </div>
-        }
-        extra={
           <Space>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={refreshSyncToken}
-              loading={refreshing}
-              size="small"
-            >
-              Refresh
-            </Button>
-            <Button
-              type="primary"
-              icon={<CopyOutlined />}
-              onClick={copyToClipboard}
-              disabled={!syncToken}
-              size="small"
-            >
-              Copy
-            </Button>
+            <PlusOutlined />
+            Generate New Sync Token
           </Space>
         }
         style={{ marginBottom: "24px" }}
       >
-        <div style={{ textAlign: "center", padding: "20px" }}>
-          <Paragraph>
-            Use this token to authenticate your local CLI with the cloud
-            service.
-          </Paragraph>
-          {loading ? (
-            <div>Loading token...</div>
-          ) : (
-            <div style={{ margin: "16px 0" }}>
-              <Tag
-                style={{
-                  fontSize: "14px",
-                  padding: "8px 16px",
-                  fontFamily: "monospace",
-                  wordBreak: "break-all",
-                }}
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={onFinish}
+          autoComplete="off"
+        >
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={8}>
+              <Form.Item
+                name="name"
+                label="Token Name"
+                rules={[
+                  { required: true, message: "Please enter a token name!" },
+                ]}
+                extra="Give your cli token a descriptive name"
               >
-                {syncToken || "No token available"}
-              </Tag>
-            </div>
-          )}
-          <Text type="secondary" style={{ fontSize: "12px" }}>
-            Keep this token secure and don't share it publicly
-          </Text>
-        </div>
+                <Input placeholder="e.g. CLI Development Token" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} lg={8}>
+              <Form.Item
+                name="projectIds"
+                label="Projects"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please select at least one project!",
+                  },
+                ]}
+                extra="Select the projects this token can access"
+              >
+                {projectLoading ? (
+                  <Skeleton.Input active style={{ width: "100%" }} />
+                ) : (
+                  <Select
+                    mode="multiple"
+                    placeholder="Select projects"
+                    style={{ width: "100%" }}
+                  >
+                    {projectsListData.map((project: any) => (
+                      <Option key={project.id} value={project.id}>
+                        {project.name} ({project.id})
+                      </Option>
+                    ))}
+                  </Select>
+                )}
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} lg={8}>
+              <Form.Item
+                name="scopes"
+                label="Scopes"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please select at least one scope!",
+                  },
+                ]}
+                extra="Select the permissions for this token"
+              >
+                <Select
+                  mode="multiple"
+                  placeholder="Select scopes"
+                  style={{ width: "100%" }}
+                >
+                  {availableScopes.map((scope) => (
+                    <Option key={scope.value} value={scope.value}>
+                      {scope.label}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={8}>
+              <Form.Item
+                name="duration"
+                label="Token Duration"
+                extra="Leave empty for never-expiring token"
+              >
+                <DatePicker
+                  style={{ width: "100%" }}
+                  format="YYYY-MM-DD"
+                  placeholder="Select expiration date"
+                  disabledDate={(current) =>
+                    current && current < dayjs().endOf("day")
+                  }
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={generateLoading}
+              icon={<PlusOutlined />}
+            >
+              Generate CLI Token
+            </Button>
+          </Form.Item>
+        </Form>
       </Card>
 
-      {/* User Information */}
-      {tokenData && (
-        <Card title="Current User Information" style={{ marginBottom: "24px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <Text>
-              <strong>Email:</strong> {tokenData.email}
-            </Text>
-            <Text>
-              <strong>Project:</strong> {tokenData.project_id}
-            </Text>
-            <Text>
-              <strong>Role:</strong> {tokenData.project_role}
-            </Text>
-            <Text>
-              <strong>Plan:</strong> {tokenData.project_plan}
-            </Text>
-          </div>
+      {/* Project Secret Key */}
+      {!tokenDataLoading && projectSecretKey && (
+        <Card
+          title={
+            <Space>
+              <CloudSyncOutlined />
+              Project Secret Key
+            </Space>
+          }
+          style={{ marginBottom: "24px" }}
+        >
+          <Alert
+            message="Project Secret Key"
+            description={
+              <div>
+                <Paragraph>
+                  This is your project's unique secret key. Keep it secure and
+                  never expose it in client-side code.
+                </Paragraph>
+                <CopyToClipboard
+                  text={projectSecretKey}
+                  onCopy={() =>
+                    message.success("Secret key copied to clipboard!")
+                  }
+                >
+                  <Button icon={<CopyOutlined />} type="primary" ghost>
+                    Copy Secret Key
+                  </Button>
+                </CopyToClipboard>
+              </div>
+            }
+            type="info"
+            style={{ marginBottom: "16px" }}
+          />
+          <Text
+            code
+            style={{
+              backgroundColor: "#f5f5f5",
+              padding: "8px 12px",
+              borderRadius: "4px",
+              display: "block",
+              fontSize: "12px",
+            }}
+          >
+            {projectSecretKey}
+          </Text>
         </Card>
       )}
 
-      {/* Setup Instructions */}
+      {/* Available CLI Tokens */}
       <Card
         title={
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <InfoCircleOutlined />
-            Setup Instructions
-          </div>
+          <Space>
+            <CloudSyncOutlined />
+            Available CLI Tokens ({syncTokens.length})
+          </Space>
         }
-        style={{ marginBottom: "24px" }}
       >
-        <Alert
-          message="Prerequisites"
-          description="Make sure you have Node.js installed on your system before proceeding."
-          type="info"
-          style={{ marginBottom: "24px" }}
-        />
-
-        {setupInstructions.map((instruction, index) => (
-          <div key={index} style={{ marginBottom: "24px" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                marginBottom: "8px",
-              }}
-            >
-              <div
-                style={{
-                  width: "24px",
-                  height: "24px",
-                  borderRadius: "50%",
-                  backgroundColor: "#1890ff",
-                  color: "white",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                }}
-              >
-                {instruction.step}
-              </div>
-              <Title level={5} style={{ margin: 0 }}>
-                {instruction.title}
-              </Title>
-            </div>
-            <Paragraph style={{ marginLeft: "36px", marginBottom: "8px" }}>
-              {instruction.description}
-            </Paragraph>
-            <div
-              style={{
-                marginLeft: "36px",
-                backgroundColor: "#f6f8fa",
-                padding: "12px",
-                borderRadius: "4px",
-                fontFamily: "monospace",
-                fontSize: "14px",
-                border: "1px solid #e1e4e8",
-              }}
-            >
-              {instruction.command}
-            </div>
-            {index < setupInstructions.length - 1 && <Divider />}
-          </div>
-        ))}
-      </Card>
-
-      {/* Additional Resources */}
-      <Card title="Additional Resources">
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <div>
-            <Text strong>Documentation:</Text>
-            <br />
-            <a
-              href="https://docs.apito.io/cli"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Apito CLI Documentation
-            </a>
-          </div>
-          <div>
-            <Text strong>Support:</Text>
-            <br />
-            <Text>
-              If you encounter any issues, please contact support at{" "}
-              <a href="mailto:support@apito.io">support@apito.io</a>
-            </Text>
-          </div>
-          <div>
-            <Text strong>Community:</Text>
-            <br />
-            <Text>
-              Join our Discord community for help and discussions:{" "}
-              <a
-                href="https://discord.gg/4ehRp3nk"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Discord
-              </a>
-            </Text>
-          </div>
-        </div>
+        {tokenDataLoading ? (
+          <Skeleton active />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={syncTokens}
+            rowKey="token"
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} of ${total} tokens`,
+            }}
+            locale={{
+              emptyText:
+                "No CLI tokens found. Generate your first token above.",
+            }}
+          />
+        )}
       </Card>
     </div>
   );

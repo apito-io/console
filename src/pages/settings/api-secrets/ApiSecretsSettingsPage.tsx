@@ -28,9 +28,9 @@ import {
 } from "@ant-design/icons";
 import {
   useGetProjectRolesQuery,
-  useGenerateApiKeyMutation,
+  useGenerateProjectTokenMutation,
   useGetCurrentProjectTokensLazyQuery,
-  useDeleteApiCredentialMutation,
+  useDeleteProjectTokenMutation,
 } from "../../../generated/graphql";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import dayjs from "dayjs";
@@ -40,7 +40,7 @@ import duration from "dayjs/plugin/duration";
 dayjs.extend(relativeTime);
 dayjs.extend(duration);
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 const { Option } = Select;
 
 const ApiSecretsSettingsPage: React.FC = () => {
@@ -57,7 +57,7 @@ const ApiSecretsSettingsPage: React.FC = () => {
   });
 
   const [generateAPIKey, { loading: generateLoading }] =
-    useGenerateApiKeyMutation({
+    useGenerateProjectTokenMutation({
       onCompleted: () => {
         message.success("API Token generated successfully!");
         form.resetFields();
@@ -69,7 +69,7 @@ const ApiSecretsSettingsPage: React.FC = () => {
     });
 
   const [deleteToken, { loading: deleteLoading }] =
-    useDeleteApiCredentialMutation({
+    useDeleteProjectTokenMutation({
       onCompleted: () => {
         message.success("Token deleted successfully!");
         getProjectTokens();

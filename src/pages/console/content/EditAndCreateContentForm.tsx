@@ -20,6 +20,7 @@ import {
   useUpdateSingleDataMutation,
 } from "../../../generated/graphql";
 import DynamicFormGenerator from "../../../components/forms/DynamicFormGenerator";
+import { useTourTracking } from "../../../hooks/useTourTracking";
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -47,6 +48,7 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
   const [activeLocale, setActiveLocale] = useState<string>("en");
   const [submitType, setSubmitType] = useState<"publish" | "draft">("publish");
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const { trackContentAdded } = useTourTracking();
 
   const modelName = contentData?.model || "";
   const contentId = contentData?.id;
@@ -77,6 +79,8 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
   const [createData, { loading: createLoading }] = useCreateModelDataMutation({
     onCompleted: (_data) => {
       message.success(`New ${modelName} created successfully!`);
+      // Track content creation for tour progress
+      trackContentAdded();
       if (onContentCreated) {
         onContentCreated();
       }
@@ -90,7 +94,9 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
   const [updateData, { loading: updateLoading }] = useUpdateSingleDataMutation({
     onCompleted: (_data) => {
       message.success(
-        `${modelName} ${submitType === "draft" ? "saved as draft" : "published"} successfully!`
+        `${modelName} ${
+          submitType === "draft" ? "saved as draft" : "published"
+        } successfully!`
       );
       if (onContentEdited) {
         onContentEdited();
@@ -147,7 +153,7 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
             local: activeLocale,
             payload: newFormData,
             status,
-                         single_page_data: Boolean(contentData?.single_page_data),
+            single_page_data: Boolean(contentData?.single_page_data),
           },
         });
       } else {
@@ -181,8 +187,6 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
   const handleSaveDraft = async () => {
     await onUpdate({ status: "draft" });
   };
-
-
 
   // Loading state
   if (formGenerationLoading || (isEdit && formDataLoading)) {
@@ -258,7 +262,11 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
     } else {
       // Single locale form
       return (
-        <DynamicFormGenerator fields={fields} form={form} disabled={createLoading || updateLoading} />
+        <DynamicFormGenerator
+          fields={fields}
+          form={form}
+          disabled={createLoading || updateLoading}
+        />
       );
     }
   };
@@ -390,7 +398,7 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
               ))}
             </div>
           )}
-          
+
           <div
             style={{
               display: "flex",
@@ -403,24 +411,32 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
             <Space>
               <Button
                 onClick={() => {
-                  setSubmitType('draft');
+                  setSubmitType("draft");
                   handleSaveDraft();
                 }}
                 icon={<EditOutlined />}
-                loading={submitType === 'draft' && (createLoading || updateLoading)}
-                disabled={submitType === 'publish' && (createLoading || updateLoading)}
+                loading={
+                  submitType === "draft" && (createLoading || updateLoading)
+                }
+                disabled={
+                  submitType === "publish" && (createLoading || updateLoading)
+                }
               >
                 {isEdit ? "UPDATE DRAFT" : "SAVE AS DRAFT"}
               </Button>
               <Button
                 type="primary"
                 onClick={() => {
-                  setSubmitType('publish');
+                  setSubmitType("publish");
                   handleSubmit();
                 }}
                 icon={<CloudUploadOutlined />}
-                loading={submitType === 'publish' && (createLoading || updateLoading)}
-                disabled={submitType === 'draft' && (createLoading || updateLoading)}
+                loading={
+                  submitType === "publish" && (createLoading || updateLoading)
+                }
+                disabled={
+                  submitType === "draft" && (createLoading || updateLoading)
+                }
               >
                 {isEdit ? "PUBLISH" : "PUBLISH"}
               </Button>

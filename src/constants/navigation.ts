@@ -27,8 +27,8 @@ export const NAVIGATION_HEADERS: Record<string, NavigationConfig> = {
         subtitle: "Get help and support from the Apito team"
     },
     "sync": {
-        title: "Cloud Sync",
-        subtitle: "Publish your local projects to the cloud using the Apito CLI"
+        title: "CLI Tokens",
+        subtitle: "Publish your local projects to the cloud using CLI tokens"
     },
     "system-api": {
         title: "System API",

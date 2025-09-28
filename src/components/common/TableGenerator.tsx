@@ -78,7 +78,6 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
           key: key,
           ellipsis: true,
           render: (value: unknown) => {
-
             const displayValue = getSimpleDisplayValue(value);
 
             // Add visual indicators for boolean values
@@ -119,24 +118,6 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
     // Build action menu items
     const actionItems: MenuProps["items"] = [];
 
-    if (onEdit) {
-      actionItems.push({
-        key: "edit",
-        label: "Edit",
-        icon: <EditOutlined />,
-      });
-    }
-
-    if (onDuplicate) {
-      actionItems.push({
-        key: "duplicate",
-        label: "Duplicate",
-        icon: <CopyOutlined />,
-      });
-    }
-
-    // Delete is handled separately with Popconfirm, not in dropdown
-
     // Add actions column (fixed position)
     const actionsColumn: ColumnsType<Record<string, unknown>> = [
       {
@@ -159,61 +140,87 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
               />
             )}
 
-            {/* Delete Button with Popconfirm */}
-            {onDelete && (
-              <Popconfirm
-                title="Delete Content"
-                description="Are you sure you want to delete this item?"
-                onConfirm={() => onDelete(record)}
-                okText="Delete"
-                cancelText="Cancel"
-                okButtonProps={{ danger: true }}
-              >
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<DeleteOutlined />}
-                  onClick={(e) => e.stopPropagation()}
-                  title="Delete"
-                  danger
-                />
-              </Popconfirm>
-            )}
-
-            {/* Duplicate Button with Popconfirm */}
-            {onDuplicate && (
-              <Popconfirm
-                title="Duplicate Content"
-                description="Are you sure you want to duplicate this item?"
-                onConfirm={() => onDuplicate(record)}
-                okText="Duplicate"
-                cancelText="Cancel"
-              >
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CopyOutlined />}
-                  onClick={(e) => e.stopPropagation()}
-                  title="Duplicate"
-                />
-              </Popconfirm>
+            {/* Edit Button */}
+            {onEdit && (
+              <Button
+                type="text"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(record);
+                }}
+                title="Edit"
+              />
             )}
 
             {/* Action Menu */}
-            {actionItems.length > 0 && (
+            {(actionItems.length > 0 || onDelete || onDuplicate) && (
               <Dropdown
                 menu={{
-                  items: actionItems,
+                  items: [
+                    ...actionItems,
+                    ...(onDuplicate
+                      ? [
+                          {
+                            key: "duplicate",
+                            label: (
+                              <Popconfirm
+                                title="Duplicate Content"
+                                description="Are you sure you want to duplicate this item?"
+                                onConfirm={() => onDuplicate?.(record)}
+                                okText="Duplicate"
+                                cancelText="Cancel"
+                              >
+                                <span
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                  }}
+                                >
+                                  <CopyOutlined />
+                                  Duplicate
+                                </span>
+                              </Popconfirm>
+                            ),
+                          },
+                        ]
+                      : []),
+                    ...(onDelete
+                      ? [
+                          {
+                            key: "delete",
+                            label: (
+                              <Popconfirm
+                                title="Delete Content"
+                                description="Are you sure you want to delete this item?"
+                                onConfirm={() => onDelete?.(record)}
+                                okText="Delete"
+                                cancelText="Cancel"
+                                okButtonProps={{ danger: true }}
+                              >
+                                <span
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                  }}
+                                >
+                                  <DeleteOutlined />
+                                  Delete
+                                </span>
+                              </Popconfirm>
+                            ),
+                            danger: true,
+                          },
+                        ]
+                      : []),
+                  ],
                   onClick: ({ key, domEvent }) => {
                     domEvent?.stopPropagation();
 
                     switch (key) {
-                      case "edit":
-                        onEdit?.(record);
-                        break;
-                      case "duplicate":
-                        onDuplicate?.(record);
-                        break;
                       default: {
                         // Handle custom actions
                         break;

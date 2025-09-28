@@ -10,22 +10,35 @@ import {
 import { Space, Tabs } from "antd";
 import { GraphiQL } from "graphiql";
 import "graphiql/style.css";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { ENV } from "../../utils/env";
+import { useTourTracking } from "../../hooks/useTourTracking";
 //import { useAuth } from "../../contexts/AuthContext";
 
 const ApiPage: React.FC = () => {
   //const { readJWTToken } = useAuth();
   //const token = readJWTToken();
   const [activeTab, setActiveTab] = useState("graphql");
-  const [explorerIsOpen] = useState(true);
+  const { trackQueryExecuted } = useTourTracking();
+
+  // Ensure GraphiQL Explorer is open by setting localStorage
+  useEffect(() => {
+    localStorage.setItem("graphiql:visiblePlugin", "GraphiQL Explorer");
+  }, []);
+
+  // Handle GraphiQL query execution for tour progress
+  const handleGraphiQLExecute = useCallback(() => {
+    console.log("GraphiQL query executed - tracking for tour");
+    trackQueryExecuted();
+  }, [trackQueryExecuted]);
 
   // GraphQL configuration
   const graphqlEndpoint = `${
     ENV.VITE_PUBLIC_GRAPH_API || "https://api.apito.io/secured/graphql"
   }`;
 
-  const fetcher = createGraphiQLFetcher({
+  // Create the base fetcher
+  const baseFetcher = createGraphiQLFetcher({
     url: graphqlEndpoint,
     headers: {
       Accept: "application/json",
@@ -71,15 +84,51 @@ const ApiPage: React.FC = () => {
     },
   });
 
+  // Track GraphiQL query execution using DOM events
+  useEffect(() => {
+    const handleExecuteButtonClick = (event: Event) => {
+      const target = event.target as HTMLElement;
+      const button = target.closest("button");
+
+      if (
+        button &&
+        (button.title?.includes("Execute query") ||
+          button.getAttribute("aria-label")?.includes("Execute query") ||
+          button.querySelector('img[alt*="play icon"]'))
+      ) {
+        // Always track execute button clicks - the user has intentionally executed a query
+        console.log("Execute button clicked - tracking execution");
+        console.log(
+          "Current localStorage project-has-run-query:",
+          localStorage.getItem("project-has-run-query")
+        );
+        handleGraphiQLExecute();
+        console.log(
+          "After handleGraphiQLExecute - localStorage project-has-run-query:",
+          localStorage.getItem("project-has-run-query")
+        );
+      }
+    };
+
+    // Listen for clicks on execute button
+    document.addEventListener("click", handleExecuteButtonClick, true);
+
+    return () => {
+      document.removeEventListener("click", handleExecuteButtonClick, true);
+    };
+  }, [trackQueryExecuted, handleGraphiQLExecute]);
+
+  const fetcher = baseFetcher;
+
   const plugins = useMemo(
     () => [
       explorerPlugin({
         showAttribution: true,
-        explorerIsOpen: explorerIsOpen,
+        explorerIsOpen: true,
         title: "GraphQL API",
       }),
     ],
-    [explorerIsOpen]
+    []
   );
 
   // Sample OpenAPI spec for demonstration - in real app, this would come from your backend
@@ -204,14 +253,13 @@ const ApiPage: React.FC = () => {
         defaultQuery={`# Welcome to Apito GraphQL API
 # 
 # Use this playground to explore your API
-# Example query:
+# Try selecting a query from the Explorer on the left, or write your own:
 
-{
-  # Add your GraphQL queries here
-  __schema {
-    types {
-      name
-    }
+query {
+  # Example: Get all models
+  projectModelsInfo {
+    name
+    description
   }
 }`}
       />

@@ -31,7 +31,9 @@ export const PROJECT_SWITCH = `${BASE_URL}/system/project/switch`;
 export const PROJECT_CREATE = `${BASE_URL}/system/project/create`;
 export const USER_PROFILE = `${BASE_URL}/system/user/profile`;
 
-export const USER_SYNC_TOKEN = `${BASE_URL}/system/sync/token`;
+export const SYNC_TOKEN_LIST = `${BASE_URL}/system/sync/token/list`;
+export const SYNC_TOKEN_CREATE = `${BASE_URL}/system/sync/token/create`;
+export const SYNC_TOKEN_DELETE = `${BASE_URL}/system/sync/token/delete`;
 
 export const PROJECT_LIMIT_CHECK = `${BASE_URL}/system/project/limit`;
 export const PROJECT_LIST = `${BASE_URL}/system/project/list`;

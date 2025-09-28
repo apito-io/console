@@ -154,11 +154,6 @@ export type DateFilterFilter = {
   between_date?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
 };
 
-export type DeleteApiKeyResponse = {
-  __typename?: 'DeleteApiKeyResponse';
-  msg?: Maybe<Scalars['String']['output']>;
-};
-
 export type DeleteApiTokenResponse = {
   __typename?: 'DeleteApiTokenResponse';
   msg?: Maybe<Scalars['String']['output']>;
@@ -172,6 +167,11 @@ export type DeleteApitoFunctionResponse = {
 export type DeleteModelDataResponse = {
   __typename?: 'DeleteModelDataResponse';
   id?: Maybe<Scalars['String']['output']>;
+};
+
+export type DeleteSyncTokenResponse = {
+  __typename?: 'DeleteSyncTokenResponse';
+  msg?: Maybe<Scalars['String']['output']>;
 };
 
 export type DeleteWebHookResponse = {
@@ -302,14 +302,14 @@ export type Function_Provider_Env_Vars_Payload = {
   value?: InputMaybe<Scalars['String']['input']>;
 };
 
-export type GenerateApiKeyResponse = {
-  __typename?: 'GenerateApiKeyResponse';
-  name?: Maybe<Scalars['String']['output']>;
+export type GenerateProjectTokenResponse = {
+  __typename?: 'GenerateProjectTokenResponse';
   token?: Maybe<Scalars['String']['output']>;
 };
 
-export type GenerateApiTokenResponse = {
-  __typename?: 'GenerateApiTokenResponse';
+export type GenerateSyncTokenResponse = {
+  __typename?: 'GenerateSyncTokenResponse';
+  name?: Maybe<Scalars['String']['output']>;
   token?: Maybe<Scalars['String']['output']>;
 };
 
@@ -439,15 +439,15 @@ export type MutationQuery = {
   __typename?: 'MutationQuery';
   addModelToProject?: Maybe<Array<Maybe<ModelType>>>;
   createWebHook?: Maybe<Webhook>;
-  deleteApiKey?: Maybe<DeleteApiKeyResponse>;
-  deleteApiToken?: Maybe<DeleteApiTokenResponse>;
   deleteFunctionFromProject?: Maybe<Array<Maybe<CloudFunctionType>>>;
   deleteModelData?: Maybe<DeleteModelDataResponse>;
+  deleteProjectToken?: Maybe<DeleteApiTokenResponse>;
   deleteRoleFromProject?: Maybe<DeleteApitoFunctionResponse>;
+  deleteSyncToken?: Maybe<DeleteSyncTokenResponse>;
   deleteWebHook?: Maybe<DeleteWebHookResponse>;
   duplicateModelData?: Maybe<DuplicateModelDataResponse>;
-  generateApiKey?: Maybe<GenerateApiKeyResponse>;
-  generateApiToken?: Maybe<GenerateApiTokenResponse>;
+  generateProjectToken?: Maybe<GenerateProjectTokenResponse>;
+  generateSyncToken?: Maybe<GenerateSyncTokenResponse>;
   generateTenantToken?: Maybe<GenerateTenantTokenResponse>;
   modelFieldOperation?: Maybe<FieldInfo>;
   rearrangeSerialOfField?: Maybe<ModelType>;
@@ -480,18 +480,6 @@ export type MutationQueryCreateWebHookArgs = {
 };
 
 
-export type MutationQueryDeleteApiKeyArgs = {
-  duration: Scalars['String']['input'];
-  token: Scalars['String']['input'];
-};
-
-
-export type MutationQueryDeleteApiTokenArgs = {
-  duration: Scalars['String']['input'];
-  token: Scalars['String']['input'];
-};
-
-
 export type MutationQueryDeleteFunctionFromProjectArgs = {
   function: Scalars['String']['input'];
 };
@@ -503,8 +491,20 @@ export type MutationQueryDeleteModelDataArgs = {
 };
 
 
+export type MutationQueryDeleteProjectTokenArgs = {
+  duration: Scalars['String']['input'];
+  token: Scalars['String']['input'];
+};
+
+
 export type MutationQueryDeleteRoleFromProjectArgs = {
   role: Scalars['String']['input'];
+};
+
+
+export type MutationQueryDeleteSyncTokenArgs = {
+  duration: Scalars['String']['input'];
+  token: Scalars['String']['input'];
 };
 
 
@@ -519,16 +519,18 @@ export type MutationQueryDuplicateModelDataArgs = {
 };
 
 
-export type MutationQueryGenerateApiKeyArgs = {
-  duration: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationQueryGenerateApiTokenArgs = {
+export type MutationQueryGenerateProjectTokenArgs = {
   duration: Scalars['String']['input'];
   name: Scalars['String']['input'];
   role: Scalars['String']['input'];
+};
+
+
+export type MutationQueryGenerateSyncTokenArgs = {
+  duration: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+  project_ids?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  scopes?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
 };
 
 
@@ -1265,23 +1267,6 @@ export type Module_Validation_Payload = {
   unique?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
-export type GenerateApiKeyMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  duration: Scalars['String']['input'];
-  role: Scalars['String']['input'];
-}>;
-
-
-export type GenerateApiKeyMutation = { __typename?: 'MutationQuery', generateApiToken?: { __typename?: 'GenerateApiTokenResponse', token?: string | null } | null };
-
-export type DeleteApiCredentialMutationVariables = Exact<{
-  duration: Scalars['String']['input'];
-  token: Scalars['String']['input'];
-}>;
-
-
-export type DeleteApiCredentialMutation = { __typename?: 'MutationQuery', deleteApiToken?: { __typename?: 'DeleteApiTokenResponse', msg?: string | null } | null };
-
 export type UpsertFunctionToProjectMutationVariables = Exact<{
   name: Scalars['String']['input'];
   description?: InputMaybe<Scalars['String']['input']>;
@@ -1402,6 +1387,23 @@ export type UpsertPluginDetailsMutationVariables = Exact<{
 
 export type UpsertPluginDetailsMutation = { __typename?: 'MutationQuery', upsertPlugin?: { __typename?: 'PluginDetailsFields', author?: string | null, branch?: string | null, description?: string | null, enable?: boolean | null, exported_variable?: string | null, icon?: string | null, id?: string | null, load_status?: Plugin_Load_Type_Enum | null, activate_status?: Plugin_Activation_Type_Enum | null, repository_url?: string | null, role?: string | null, title?: string | null, type?: Plugin_Type_Enum | null, version?: string | null, env_vars?: Array<{ __typename?: 'EnvVariable', key?: string | null, value?: string | null } | null> | null } | null };
 
+export type GenerateProjectTokenMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+  duration: Scalars['String']['input'];
+  role: Scalars['String']['input'];
+}>;
+
+
+export type GenerateProjectTokenMutation = { __typename?: 'MutationQuery', generateProjectToken?: { __typename?: 'GenerateProjectTokenResponse', token?: string | null } | null };
+
+export type DeleteProjectTokenMutationVariables = Exact<{
+  duration: Scalars['String']['input'];
+  token: Scalars['String']['input'];
+}>;
+
+
+export type DeleteProjectTokenMutation = { __typename?: 'MutationQuery', deleteProjectToken?: { __typename?: 'DeleteApiTokenResponse', msg?: string | null } | null };
+
 export type UpdateProjectMutationVariables = Exact<{
   access_key?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
   db?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
@@ -1476,6 +1478,24 @@ export type DeleteSettingsRoleFromProjectMutationVariables = Exact<{
 
 
 export type DeleteSettingsRoleFromProjectMutation = { __typename?: 'MutationQuery', deleteRoleFromProject?: { __typename?: 'DeleteApitoFunctionResponse', message?: string | null } | null };
+
+export type GenerateSyncTokenMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+  duration: Scalars['String']['input'];
+  project_ids?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
+  scopes?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
+}>;
+
+
+export type GenerateSyncTokenMutation = { __typename?: 'MutationQuery', generateSyncToken?: { __typename?: 'GenerateSyncTokenResponse', token?: string | null } | null };
+
+export type DeleteSyncTokenMutationVariables = Exact<{
+  duration: Scalars['String']['input'];
+  token: Scalars['String']['input'];
+}>;
+
+
+export type DeleteSyncTokenMutation = { __typename?: 'MutationQuery', deleteSyncToken?: { __typename?: 'DeleteSyncTokenResponse', msg?: string | null } | null };
 
 export type UpdateUserProfileMutationVariables = Exact<{
   first_name?: InputMaybe<Scalars['String']['input']>;
@@ -1695,75 +1715,6 @@ export type GetSettingsQueryVariables = Exact<{ [key: string]: never; }>;
 export type GetSettingsQuery = { __typename?: 'QueryType', currentProject?: { __typename?: 'ProjectModel', id?: string | null, name?: string | null, description?: string | null, roles?: { [key: string]: any } | null, tenant_model_name?: string | null, project_secret_key?: string | null, created_at?: string | null, settings?: { __typename?: 'ProjectSettings', locals?: Array<string | null> | null, enable_revision_history?: boolean | null, system_graphql_hooks?: boolean | null, default_storage_plugin?: string | null, default_function_plugin?: string | null, default_locale?: string | null } | null } | null };
 
 
-export const GenerateApiKeyDocument = gql`
-    mutation generateApiKey($name: String!, $duration: String!, $role: String!) {
-  generateApiToken(name: $name, duration: $duration, role: $role) {
-    token
-  }
-}
-    `;
-export type GenerateApiKeyMutationFn = Apollo.MutationFunction<GenerateApiKeyMutation, GenerateApiKeyMutationVariables>;
-
-/**
- * __useGenerateApiKeyMutation__
- *
- * To run a mutation, you first call `useGenerateApiKeyMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGenerateApiKeyMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [generateApiKeyMutation, { data, loading, error }] = useGenerateApiKeyMutation({
- *   variables: {
- *      name: // value for 'name'
- *      duration: // value for 'duration'
- *      role: // value for 'role'
- *   },
- * });
- */
-export function useGenerateApiKeyMutation(baseOptions?: Apollo.MutationHookOptions<GenerateApiKeyMutation, GenerateApiKeyMutationVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useMutation<GenerateApiKeyMutation, GenerateApiKeyMutationVariables>(GenerateApiKeyDocument, options);
-      }
-export type GenerateApiKeyMutationHookResult = ReturnType<typeof useGenerateApiKeyMutation>;
-export type GenerateApiKeyMutationResult = Apollo.MutationResult<GenerateApiKeyMutation>;
-export type GenerateApiKeyMutationOptions = Apollo.BaseMutationOptions<GenerateApiKeyMutation, GenerateApiKeyMutationVariables>;
-export const DeleteApiCredentialDocument = gql`
-    mutation deleteApiCredential($duration: String!, $token: String!) {
-  deleteApiToken(duration: $duration, token: $token) {
-    msg
-  }
-}
-    `;
-export type DeleteApiCredentialMutationFn = Apollo.MutationFunction<DeleteApiCredentialMutation, DeleteApiCredentialMutationVariables>;
-
-/**
- * __useDeleteApiCredentialMutation__
- *
- * To run a mutation, you first call `useDeleteApiCredentialMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useDeleteApiCredentialMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [deleteApiCredentialMutation, { data, loading, error }] = useDeleteApiCredentialMutation({
- *   variables: {
- *      duration: // value for 'duration'
- *      token: // value for 'token'
- *   },
- * });
- */
-export function useDeleteApiCredentialMutation(baseOptions?: Apollo.MutationHookOptions<DeleteApiCredentialMutation, DeleteApiCredentialMutationVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useMutation<DeleteApiCredentialMutation, DeleteApiCredentialMutationVariables>(DeleteApiCredentialDocument, options);
-      }
-export type DeleteApiCredentialMutationHookResult = ReturnType<typeof useDeleteApiCredentialMutation>;
-export type DeleteApiCredentialMutationResult = Apollo.MutationResult<DeleteApiCredentialMutation>;
-export type DeleteApiCredentialMutationOptions = Apollo.BaseMutationOptions<DeleteApiCredentialMutation, DeleteApiCredentialMutationVariables>;
 export const UpsertFunctionToProjectDocument = gql`
     mutation upsertFunctionToProject($name: String!, $description: String, $function_connected: Boolean, $function_provider_id: String, $provider_exported_variable: String, $function_exported_variable: String, $graphql_schema_type: String, $function_path: String, $runtime_config: Function_Provider_Config_Payload, $env_vars: [Function_Provider_Env_Vars_Payload], $request: String, $request_payload_is_optional: Boolean, $response: String, $response_is_array: Boolean, $update: Boolean) {
   upsertFunctionToProject(
@@ -2286,6 +2237,75 @@ export function useUpsertPluginDetailsMutation(baseOptions?: Apollo.MutationHook
 export type UpsertPluginDetailsMutationHookResult = ReturnType<typeof useUpsertPluginDetailsMutation>;
 export type UpsertPluginDetailsMutationResult = Apollo.MutationResult<UpsertPluginDetailsMutation>;
 export type UpsertPluginDetailsMutationOptions = Apollo.BaseMutationOptions<UpsertPluginDetailsMutation, UpsertPluginDetailsMutationVariables>;
+export const GenerateProjectTokenDocument = gql`
+    mutation generateProjectToken($name: String!, $duration: String!, $role: String!) {
+  generateProjectToken(name: $name, duration: $duration, role: $role) {
+    token
+  }
+}
+    `;
+export type GenerateProjectTokenMutationFn = Apollo.MutationFunction<GenerateProjectTokenMutation, GenerateProjectTokenMutationVariables>;
+
+/**
+ * __useGenerateProjectTokenMutation__
+ *
+ * To run a mutation, you first call `useGenerateProjectTokenMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGenerateProjectTokenMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [generateProjectTokenMutation, { data, loading, error }] = useGenerateProjectTokenMutation({
+ *   variables: {
+ *      name: // value for 'name'
+ *      duration: // value for 'duration'
+ *      role: // value for 'role'
+ *   },
+ * });
+ */
+export function useGenerateProjectTokenMutation(baseOptions?: Apollo.MutationHookOptions<GenerateProjectTokenMutation, GenerateProjectTokenMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<GenerateProjectTokenMutation, GenerateProjectTokenMutationVariables>(GenerateProjectTokenDocument, options);
+      }
+export type GenerateProjectTokenMutationHookResult = ReturnType<typeof useGenerateProjectTokenMutation>;
+export type GenerateProjectTokenMutationResult = Apollo.MutationResult<GenerateProjectTokenMutation>;
+export type GenerateProjectTokenMutationOptions = Apollo.BaseMutationOptions<GenerateProjectTokenMutation, GenerateProjectTokenMutationVariables>;
+export const DeleteProjectTokenDocument = gql`
+    mutation deleteProjectToken($duration: String!, $token: String!) {
+  deleteProjectToken(duration: $duration, token: $token) {
+    msg
+  }
+}
+    `;
+export type DeleteProjectTokenMutationFn = Apollo.MutationFunction<DeleteProjectTokenMutation, DeleteProjectTokenMutationVariables>;
+
+/**
+ * __useDeleteProjectTokenMutation__
+ *
+ * To run a mutation, you first call `useDeleteProjectTokenMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useDeleteProjectTokenMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [deleteProjectTokenMutation, { data, loading, error }] = useDeleteProjectTokenMutation({
+ *   variables: {
+ *      duration: // value for 'duration'
+ *      token: // value for 'token'
+ *   },
+ * });
+ */
+export function useDeleteProjectTokenMutation(baseOptions?: Apollo.MutationHookOptions<DeleteProjectTokenMutation, DeleteProjectTokenMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DeleteProjectTokenMutation, DeleteProjectTokenMutationVariables>(DeleteProjectTokenDocument, options);
+      }
+export type DeleteProjectTokenMutationHookResult = ReturnType<typeof useDeleteProjectTokenMutation>;
+export type DeleteProjectTokenMutationResult = Apollo.MutationResult<DeleteProjectTokenMutation>;
+export type DeleteProjectTokenMutationOptions = Apollo.BaseMutationOptions<DeleteProjectTokenMutation, DeleteProjectTokenMutationVariables>;
 export const UpdateProjectDocument = gql`
     mutation updateProject($access_key: [String] = "", $db: [String] = "", $host: String = "", $password: [String] = "", $port: String = "", $secret_key: [String] = "", $user: [String] = "", $_id: String = "") {
   updateProject(
@@ -2628,6 +2648,81 @@ export function useDeleteSettingsRoleFromProjectMutation(baseOptions?: Apollo.Mu
 export type DeleteSettingsRoleFromProjectMutationHookResult = ReturnType<typeof useDeleteSettingsRoleFromProjectMutation>;
 export type DeleteSettingsRoleFromProjectMutationResult = Apollo.MutationResult<DeleteSettingsRoleFromProjectMutation>;
 export type DeleteSettingsRoleFromProjectMutationOptions = Apollo.BaseMutationOptions<DeleteSettingsRoleFromProjectMutation, DeleteSettingsRoleFromProjectMutationVariables>;
+export const GenerateSyncTokenDocument = gql`
+    mutation generateSyncToken($name: String!, $duration: String!, $project_ids: [String!], $scopes: [String!]) {
+  generateSyncToken(
+    name: $name
+    duration: $duration
+    project_ids: $project_ids
+    scopes: $scopes
+  ) {
+    token
+  }
+}
+    `;
+export type GenerateSyncTokenMutationFn = Apollo.MutationFunction<GenerateSyncTokenMutation, GenerateSyncTokenMutationVariables>;
+
+/**
+ * __useGenerateSyncTokenMutation__
+ *
+ * To run a mutation, you first call `useGenerateSyncTokenMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGenerateSyncTokenMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [generateSyncTokenMutation, { data, loading, error }] = useGenerateSyncTokenMutation({
+ *   variables: {
+ *      name: // value for 'name'
+ *      duration: // value for 'duration'
+ *      project_ids: // value for 'project_ids'
+ *      scopes: // value for 'scopes'
+ *   },
+ * });
+ */
+export function useGenerateSyncTokenMutation(baseOptions?: Apollo.MutationHookOptions<GenerateSyncTokenMutation, GenerateSyncTokenMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<GenerateSyncTokenMutation, GenerateSyncTokenMutationVariables>(GenerateSyncTokenDocument, options);
+      }
+export type GenerateSyncTokenMutationHookResult = ReturnType<typeof useGenerateSyncTokenMutation>;
+export type GenerateSyncTokenMutationResult = Apollo.MutationResult<GenerateSyncTokenMutation>;
+export type GenerateSyncTokenMutationOptions = Apollo.BaseMutationOptions<GenerateSyncTokenMutation, GenerateSyncTokenMutationVariables>;
+export const DeleteSyncTokenDocument = gql`
+    mutation deleteSyncToken($duration: String!, $token: String!) {
+  deleteSyncToken(duration: $duration, token: $token) {
+    msg
+  }
+}
+    `;
+export type DeleteSyncTokenMutationFn = Apollo.MutationFunction<DeleteSyncTokenMutation, DeleteSyncTokenMutationVariables>;
+
+/**
+ * __useDeleteSyncTokenMutation__
+ *
+ * To run a mutation, you first call `useDeleteSyncTokenMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useDeleteSyncTokenMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [deleteSyncTokenMutation, { data, loading, error }] = useDeleteSyncTokenMutation({
+ *   variables: {
+ *      duration: // value for 'duration'
+ *      token: // value for 'token'
+ *   },
+ * });
+ */
+export function useDeleteSyncTokenMutation(baseOptions?: Apollo.MutationHookOptions<DeleteSyncTokenMutation, DeleteSyncTokenMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DeleteSyncTokenMutation, DeleteSyncTokenMutationVariables>(DeleteSyncTokenDocument, options);
+      }
+export type DeleteSyncTokenMutationHookResult = ReturnType<typeof useDeleteSyncTokenMutation>;
+export type DeleteSyncTokenMutationResult = Apollo.MutationResult<DeleteSyncTokenMutation>;
+export type DeleteSyncTokenMutationOptions = Apollo.BaseMutationOptions<DeleteSyncTokenMutation, DeleteSyncTokenMutationVariables>;
 export const UpdateUserProfileDocument = gql`
     mutation updateUserProfile($first_name: String, $last_name: String, $organization_id: String, $role: String, $new_pass: String, $old_pass: String, $username: String) {
   updateProfile(

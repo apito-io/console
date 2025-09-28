@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useReducer } from "react";
-import { Layout, Menu, theme, Spin, Empty, Button, Tag } from "antd";
+import { Layout, Menu, theme, Spin, Empty, Button } from "antd";
 import { useLocation, Outlet, useNavigate, useParams } from "react-router-dom";
 import {
   TableOutlined,
@@ -13,7 +13,6 @@ import {
   UserSwitchOutlined,
   AppstoreOutlined,
   PictureOutlined,
-  ProjectOutlined,
 } from "@ant-design/icons";
 import {
   useGetOnlyModelsInfoQuery,
@@ -26,6 +25,8 @@ import TenantSelector from "../components/common/TenantSelector";
 import CreateModelModal from "../components/model/CreateModelModal";
 import ModelOperationsDropdown from "../components/model/ModelOperationsDropdown";
 import { usePluginManager } from "../plugins/PluginManager";
+import { TourProvider } from "../contexts/TourContext";
+import Tour from "../components/tour/Tour";
 import "../components/common/Sidebar.css";
 
 const { Sider, Content } = Layout;
@@ -221,8 +222,17 @@ const ConsoleLayout: React.FC = () => {
           <Empty
             description="No models found"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            style={{ marginBottom: 0 }}
-          />
+            style={{ marginBottom: 16 }}
+          >
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => navigate("/console/model?type=new")}
+              data-tour="add-model-button"
+            >
+              Add Model
+            </Button>
+          </Empty>
         </div>
       );
     }
@@ -291,348 +301,361 @@ const ConsoleLayout: React.FC = () => {
   console.log("tokenData", tokenData);
 
   return (
-    <ContentContext.Provider
-      value={{
-        state: contentState,
-        dispatch: contentDispatch,
-      }}
-    >
-      <Layout style={{ minHeight: "100vh", background: token.colorBgLayout }}>
-        {/* Left Sidebar Column - Fixed */}
-        <Sider
-          width={280}
-          style={{
-            background: token.colorBgSpotlight, // Using #FAFAFA from theme
-            borderRight: `1px solid ${token.colorBorderSecondary}`,
-            position: "fixed",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            zIndex: 100,
-            display: "flex",
-            flexDirection: "column",
-            height: "100vh",
-            overflow: "hidden", // Prevent scrollbars on the sidebar itself
-          }}
-        >
-          {/* Header Section with Logo, Project Name and Tenant Selector - Fixed */}
-          <div
+    <TourProvider>
+      <ContentContext.Provider
+        value={{
+          state: contentState,
+          dispatch: contentDispatch,
+        }}
+      >
+        <Layout style={{ minHeight: "100vh", background: token.colorBgLayout }}>
+          {/* Left Sidebar Column - Fixed */}
+          <Sider
+            width={280}
             style={{
-              padding: "16px 20px 12px 20px",
-              background: token.colorBgSpotlight,
-              borderBottom: `1px solid ${token.colorBorderSecondary}`,
-              flexShrink: 0,
+              background: token.colorBgSpotlight, // Using #FAFAFA from theme
+              borderRight: `1px solid ${token.colorBorderSecondary}`,
+              position: "fixed",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              zIndex: 100,
+              display: "flex",
+              flexDirection: "column",
+              height: "100vh",
+              overflow: "hidden", // Prevent scrollbars on the sidebar itself
             }}
           >
+            {/* Header Section with Logo, Project Name and Tenant Selector - Fixed */}
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                width: "100%",
-                marginBottom: "4px",
-              }}
-            >
-              {/* Left side - Logo and User */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                }}
-                onClick={() => navigate("/")}
-              >
-                <img
-                  src="/logo.svg"
-                  alt="Apito"
-                  style={{ width: "20px", height: "20px" }}
-                />
-                <div>
-                  <div
-                    style={{
-                      fontSize: "14px",
-                      fontWeight: 600,
-                      color: token.colorText,
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {tokenData?.project_name || "Apito"}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "11px",
-                      //color: token.colorTextTertiary,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      lineHeight: 1.2,
-                      marginTop: "2px",
-                    }}
-                  >
-                    {/* Right side - Project ID Tag (center aligned) */}
-                    {tokenData?.project_id && (
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "center",
-                          alignItems: "center",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontWeight: 400,
-                            fontSize: "10px",
-                            margin: 0,
-                            //borderBottom: `1px solid black`,
-                          }}
-                        >
-                          
-                          {tokenData.project_id}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Tenant Selector - Only show for SaaS projects (project_type === 1) */}
-            {tokenData?.project_type === 1 && (
-              <div style={{ marginTop: "16px" }}>
-                <TenantSelector />
-              </div>
-            )}
-          </div>
-
-          {/* Add Model Button - Only show on model page - Fixed */}
-          {!isSettingsPage && currentPath === "model" && (
-            <div
-              style={{
-                padding: "8px 20px 16px 20px",
+                padding: "16px 20px 12px 20px",
+                background: token.colorBgSpotlight,
+                borderBottom: `1px solid ${token.colorBorderSecondary}`,
                 flexShrink: 0,
               }}
             >
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setIsCreateModelModalVisible(true)}
+              <div
                 style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   width: "100%",
+                  marginBottom: "4px",
                 }}
               >
-                Add Model
-              </Button>
-            </div>
-          )}
-
-          {/* Console Models Section - Scrollable with constrained height */}
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              overflowX: "hidden", // Prevent horizontal scrollbar
-              minHeight: 0,
-              padding: "8px 0",
-              maxHeight: "calc(100vh - 280px)", // Adjusted to reduce footer space
-            }}
-          >
-            {/* Show settings navigation when on settings page */}
-            {isSettingsPage ? (
-              <div>
-                {(() => {
-                  // Get plugin settings items
-                  const pluginSettingsItems =
-                    pluginAPI.getPluginSettingsItems();
-
-                  // Core settings menu items
-                  const coreSettingsMenuItems = [
-                    {
-                      key: "general",
-                      icon: <SettingOutlined />,
-                      label: "General",
-                      onClick: () => navigate("/console/settings/general"),
-                    },
-                    {
-                      key: "teams",
-                      icon: <TeamOutlined />,
-                      label: "Teams",
-                      onClick: () => navigate("/console/settings/teams"),
-                    },
-                    {
-                      key: "api-secrets",
-                      icon: <KeyOutlined />,
-                      label: "API Secrets",
-                      onClick: () => navigate("/console/settings/api-secrets"),
-                    },
-                    {
-                      key: "webhooks",
-                      icon: <ApiOutlined />,
-                      label: "Webhooks",
-                      onClick: () => navigate("/console/settings/webhooks"),
-                    },
-                    {
-                      key: "roles",
-                      icon: <UserSwitchOutlined />,
-                      label: "Roles & Permissions",
-                      onClick: () => navigate("/console/settings/roles"),
-                    },
-                    {
-                      key: "plugins",
-                      icon: <AppstoreOutlined />,
-                      label: "Plugins",
-                      onClick: () => navigate("/console/settings/plugins"),
-                    },
-                  ];
-
-                  // Plugin settings menu items
-                  const pluginMenuItems = pluginSettingsItems.map((plugin) => {
-                    // Map icon names to components
-                    const getIcon = (iconName?: string) => {
-                      switch (iconName) {
-                        case "PictureOutlined":
-                          return <PictureOutlined />;
-                        default:
-                          return <AppstoreOutlined />;
-                      }
-                    };
-
-                    return {
-                      key: `plugin-${plugin.pluginName}`,
-                      icon: getIcon(plugin.icon),
-                      label: plugin.label,
-                      onClick: () => navigate(plugin.path),
-                    };
-                  });
-
-                  // Combine core and plugin items
-                  const allMenuItems = [
-                    ...coreSettingsMenuItems,
-                    ...pluginMenuItems,
-                  ];
-
-                  return (
-                    <Menu
-                      mode="inline"
-                      selectedKeys={[
-                        location.pathname
-                          .replace("/console/settings/", "")
-                          .replace("/console/settings", "general"),
-                      ]}
-                      items={allMenuItems}
+                {/* Left side - Logo and User */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => navigate("/")}
+                >
+                  <img
+                    src="/logo.svg"
+                    alt="Apito"
+                    style={{ width: "20px", height: "20px" }}
+                  />
+                  <div>
+                    <div
                       style={{
-                        border: "none",
-                        background: "transparent",
                         fontSize: "14px",
+                        fontWeight: 600,
+                        color: token.colorText,
+                        lineHeight: 1.2,
                       }}
-                      className="apito-sidebar-menu"
-                    />
-                  );
-                })()}
+                    >
+                      {tokenData?.project_name || "Apito"}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        //color: token.colorTextTertiary,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        lineHeight: 1.2,
+                        marginTop: "2px",
+                      }}
+                    >
+                      {/* Right side - Project ID Tag (center aligned) */}
+                      {tokenData?.project_id && (
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontWeight: 400,
+                              fontSize: "10px",
+                              margin: 0,
+                              //borderBottom: `1px solid black`,
+                            }}
+                          >
+                            {tokenData.project_id}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-            ) : (
-              renderModelMenu()
-            )}
-          </div>
 
-          {/* Footer Section with Settings and Help Center - Fixed */}
-          <div
-            style={{
-              padding: "12px 20px",
-              borderTop: `1px solid ${token.colorBorderSecondary}`,
-              background: token.colorBgSpotlight,
-              flexShrink: 0,
-            }}
-          >
-            {/* Footer Items */}
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "2px" }}
-            >
+              {/* Tenant Selector - Only show for SaaS projects (project_type === 1) */}
+              {tokenData?.project_type === 1 && (
+                <div style={{ marginTop: "16px" }}>
+                  <TenantSelector />
+                </div>
+              )}
+            </div>
+
+            {/* Add Model Button - Only show on model page - Fixed */}
+            {!isSettingsPage && currentPath === "model" && (
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 12px",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  color: token.colorTextSecondary,
-                  transition: "all 0.2s ease",
-                  height: "36px",
-                }}
-                onClick={() => navigate("/console/settings")}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.04)";
-                  e.currentTarget.style.color = token.colorText;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = token.colorTextSecondary;
+                  padding: "8px 20px 16px 20px",
+                  flexShrink: 0,
                 }}
               >
-                <SettingOutlined style={{ fontSize: "16px" }} />
-                <span>Project Settings</span>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setIsCreateModelModalVisible(true)}
+                  data-tour="add-model-button"
+                  style={{
+                    width: "100%",
+                  }}
+                >
+                  Add Model
+                </Button>
               </div>
+            )}
+
+            {/* Console Models Section - Scrollable with constrained height */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                overflowX: "hidden", // Prevent horizontal scrollbar
+                minHeight: 0,
+                maxHeight: "calc(100vh - 200px)", // Constrain height to enable scrolling
+                padding: "8px 0",
+                paddingBottom: "120px", // Add bottom padding to account for fixed footer
+              }}
+            >
+              {/* Show settings navigation when on settings page */}
+              {isSettingsPage ? (
+                <div>
+                  {(() => {
+                    // Get plugin settings items
+                    const pluginSettingsItems =
+                      pluginAPI.getPluginSettingsItems();
+
+                    // Core settings menu items
+                    const coreSettingsMenuItems = [
+                      {
+                        key: "general",
+                        icon: <SettingOutlined />,
+                        label: "General",
+                        onClick: () => navigate("/console/settings/general"),
+                      },
+                      {
+                        key: "teams",
+                        icon: <TeamOutlined />,
+                        label: "Teams",
+                        onClick: () => navigate("/console/settings/teams"),
+                      },
+                      {
+                        key: "api-secrets",
+                        icon: <KeyOutlined />,
+                        label: "API Secrets",
+                        onClick: () =>
+                          navigate("/console/settings/api-secrets"),
+                      },
+                      {
+                        key: "webhooks",
+                        icon: <ApiOutlined />,
+                        label: "Webhooks",
+                        onClick: () => navigate("/console/settings/webhooks"),
+                      },
+                      {
+                        key: "roles",
+                        icon: <UserSwitchOutlined />,
+                        label: "Roles & Permissions",
+                        onClick: () => navigate("/console/settings/roles"),
+                      },
+                      {
+                        key: "plugins",
+                        icon: <AppstoreOutlined />,
+                        label: "Plugins",
+                        onClick: () => navigate("/console/settings/plugins"),
+                      },
+                    ];
+
+                    // Plugin settings menu items
+                    const pluginMenuItems = pluginSettingsItems.map(
+                      (plugin) => {
+                        // Map icon names to components
+                        const getIcon = (iconName?: string) => {
+                          switch (iconName) {
+                            case "PictureOutlined":
+                              return <PictureOutlined />;
+                            default:
+                              return <AppstoreOutlined />;
+                          }
+                        };
+
+                        return {
+                          key: `plugin-${plugin.pluginName}`,
+                          icon: getIcon(plugin.icon),
+                          label: plugin.label,
+                          onClick: () => navigate(plugin.path),
+                        };
+                      }
+                    );
+
+                    // Combine core and plugin items
+                    const allMenuItems = [
+                      ...coreSettingsMenuItems,
+                      ...pluginMenuItems,
+                    ];
+
+                    return (
+                      <Menu
+                        mode="inline"
+                        selectedKeys={[
+                          location.pathname
+                            .replace("/console/settings/", "")
+                            .replace("/console/settings", "general"),
+                        ]}
+                        items={allMenuItems}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          fontSize: "14px",
+                        }}
+                        className="apito-sidebar-menu"
+                      />
+                    );
+                  })()}
+                </div>
+              ) : (
+                renderModelMenu()
+              )}
+            </div>
+
+            {/* Footer Section with Settings and Help Center - Absolutely positioned at bottom */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: "12px 20px",
+                borderTop: `1px solid ${token.colorBorderSecondary}`,
+                background: token.colorBgSpotlight,
+                zIndex: 10,
+              }}
+            >
+              {/* Footer Items */}
               <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 12px",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  color: token.colorTextSecondary,
-                  transition: "all 0.2s ease",
-                  height: "36px",
-                }}
-                onClick={() => navigate("/support")}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.04)";
-                  e.currentTarget.style.color = token.colorText;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = token.colorTextSecondary;
-                }}
+                style={{ display: "flex", flexDirection: "column", gap: "2px" }}
               >
-                <QuestionCircleOutlined style={{ fontSize: "16px" }} />
-                <span>Help & Support</span>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    color: token.colorTextSecondary,
+                    transition: "all 0.2s ease",
+                    height: "36px",
+                  }}
+                  onClick={() => navigate("/console/settings")}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(0, 0, 0, 0.04)";
+                    e.currentTarget.style.color = token.colorText;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = token.colorTextSecondary;
+                  }}
+                >
+                  <SettingOutlined style={{ fontSize: "16px" }} />
+                  <span>Project Settings</span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    color: token.colorTextSecondary,
+                    transition: "all 0.2s ease",
+                    height: "36px",
+                  }}
+                  onClick={() => navigate("/support")}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(0, 0, 0, 0.04)";
+                    e.currentTarget.style.color = token.colorText;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = token.colorTextSecondary;
+                  }}
+                >
+                  <QuestionCircleOutlined style={{ fontSize: "16px" }} />
+                  <span>Help & Support</span>
+                </div>
               </div>
             </div>
-          </div>
-        </Sider>
+          </Sider>
 
-        {/* Right Content Column */}
-        <Layout>
-          {/* Header Component */}
-          <Header currentPath={headerPath} />
+          {/* Right Content Column */}
+          <Layout>
+            {/* Header Component */}
+            <Header currentPath={headerPath} />
 
-          {/* Main Content - Scrollable */}
-          <Content
-            style={{
-              background: token.colorBgLayout,
-              padding: 0,
-              overflowX: "hidden",
-              overflowY: "auto",
-              height: "calc(100vh - 72px)",
+            {/* Main Content - Scrollable */}
+            <Content
+              style={{
+                background: token.colorBgLayout,
+                padding: 0,
+                overflowX: "hidden",
+                overflowY: "auto",
+                height: "calc(100vh - 72px)",
+              }}
+            >
+              <Outlet context={{ selectedModel, models, contentState }} />
+            </Content>
+          </Layout>
+
+          {/* Create Model Modal */}
+          <CreateModelModal
+            visible={isCreateModelModalVisible}
+            onCancel={() => setIsCreateModelModalVisible(false)}
+            onSuccess={() => {
+              setIsCreateModelModalVisible(false);
+              refetch();
             }}
-          >
-            <Outlet context={{ selectedModel, models, contentState }} />
-          </Content>
-        </Layout>
+          />
 
-        {/* Create Model Modal */}
-        <CreateModelModal
-          visible={isCreateModelModalVisible}
-          onCancel={() => setIsCreateModelModalVisible(false)}
-          onSuccess={() => {
-            setIsCreateModelModalVisible(false);
-            refetch();
-          }}
-        />
-      </Layout>
-    </ContentContext.Provider>
+          {/* Tour Components */}
+          <Tour />
+        </Layout>
+      </ContentContext.Provider>
+    </TourProvider>
   );
 };
 

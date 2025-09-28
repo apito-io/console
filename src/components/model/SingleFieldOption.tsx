@@ -55,7 +55,7 @@ const SingleFieldOption: React.FC<SingleFieldOptionProps> = ({
         >
           <div className="field-option-content">
             <div className="field-option-icon">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              { }
               {generateIcon(fieldInfo as any)}
             </div>
             <div className="field-option-text">

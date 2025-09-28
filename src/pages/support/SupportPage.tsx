@@ -25,7 +25,7 @@ const SupportPage: React.FC = () => {
       title: "Discord Community",
       description: "Join our active Discord community for real-time help",
       action: "Join Discord",
-      link: "https://discord.gg/4ehRp3nk",
+      link: "https://discord.gg/4EmZYYQATb",
       buttonText: "Join Discord",
     },
     {
@@ -131,7 +131,7 @@ const SupportPage: React.FC = () => {
                   type="primary"
                   icon={<MessageOutlined />}
                   onClick={() =>
-                    window.open("https://discord.gg/4ehRp3nk", "_blank")
+                    window.open("https://discord.gg/4EmZYYQATb", "_blank")
                   }
                 >
                   Join Discord

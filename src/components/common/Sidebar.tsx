@@ -85,16 +85,16 @@ const Sidebar = () => {
       onClick: () => navigate("/accounts"),
     },
     {
+      key: "sync",
+      icon: <CloudSyncOutlined />,
+      label: "CLI Tokens",
+      onClick: () => navigate("/sync"),
+    },
+    {
       key: "support",
       icon: <QuestionCircleOutlined />,
       label: "Help & Support",
       onClick: () => navigate("/support"),
-    },
-    {
-      key: "sync",
-      icon: <CloudSyncOutlined />,
-      label: "Cloud Sync",
-      onClick: () => navigate("/sync"),
     },
     {
       key: "system-api",
@@ -246,7 +246,7 @@ const Sidebar = () => {
             borderColor: "#5865F2",
             fontWeight: 500,
           }}
-          onClick={() => window.open("https://discord.gg/apito", "_blank")}
+          onClick={() => window.open("https://discord.gg/4EmZYYQATb", "_blank")}
         >
           Join Discord Community
         </Button>

@@ -14,6 +14,7 @@ import {
   getSettingsHeaderSubtitle,
 } from "../../constants/settingsNavigation";
 import type { MenuProps } from "antd";
+import TourProgressHeader from "../tour/TourProgressHeader";
 
 interface HeaderProps {
   currentPath: string;
@@ -42,9 +43,9 @@ const Header = ({ currentPath }: HeaderProps) => {
   // Generate navigation options including plugins
   const getNavigationOptions = () => {
     const baseOptions = [
-      { label: "Content", value: "content" },
-      { label: "Model", value: "model" },
-      { label: "API", value: "api" },
+      { label: "Content", value: "content", tourId: "content-tab" },
+      { label: "Model", value: "model", tourId: "model-tab" },
+      { label: "API", value: "api", tourId: "api-tab" },
     ];
 
     // Get plugin menu items
@@ -54,6 +55,7 @@ const Header = ({ currentPath }: HeaderProps) => {
     const pluginOptions = pluginMenuItems.map((item) => ({
       label: item.label,
       value: `plugin-${item.path.replace("/console/plugin/", "")}`,
+      tourId: undefined, // Plugins don't need tour attributes
     }));
 
     // Insert plugin options after API (as specified in requirements)
@@ -164,6 +166,7 @@ const Header = ({ currentPath }: HeaderProps) => {
                     type={isActive ? "primary" : "text"}
                     size="small"
                     onClick={() => handleSegmentChange(option.value)}
+                    data-tour={option.tourId}
                     style={{
                       height: "32px",
                       padding: "0 16px",
@@ -233,7 +236,7 @@ const Header = ({ currentPath }: HeaderProps) => {
                 type="text"
                 icon={<GithubOutlined />}
                 onClick={() =>
-                  window.open("https://github.com/apito-io/apito", "_blank")
+                  window.open("https://github.com/apito-io", "_blank")
                 }
                 style={{
                   color: token.colorTextSecondary,
@@ -257,6 +260,11 @@ const Header = ({ currentPath }: HeaderProps) => {
               </Button>
             </div>
           </>
+        )}
+
+        {/* Tour Progress Header */}
+        {isConsolePage && !location.pathname.includes("/console/settings") && (
+          <TourProgressHeader />
         )}
 
         <Dropdown menu={{ items: userMenuItems }} trigger={["click"]}>

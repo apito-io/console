@@ -10,6 +10,7 @@ import {
   RocketOutlined,
   SettingOutlined,
   CopyOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import {
   Avatar,
@@ -371,14 +372,14 @@ const ProjectsPage: React.FC = () => {
       ),
     },
     {
-      title: "Plan",
-      dataIndex: "plan",
-      key: "plan",
+      title: "Project Type",
+      dataIndex: "project_type",
+      key: "project_type",
       width: "15%",
-      render: (plan: string) => (
+      render: (project_type: number) => (
         <Tag
           color={
-            plan === "enterprise" ? "purple" : plan === "pro" ? "gold" : "blue"
+            project_type === 1 ? "blue" : "green"
           }
           style={{
             fontSize: 12,
@@ -387,7 +388,7 @@ const ProjectsPage: React.FC = () => {
             textTransform: "capitalize",
           }}
         >
-          {plan}
+          {project_type === 1 ? "SaaS" : "General"}
         </Tag>
       ),
     },
@@ -401,6 +402,13 @@ const ProjectsPage: React.FC = () => {
           {getRelativeTime(date)}
         </div>
       ),
+    },
+    {
+      title: "Unique ID",
+      dataIndex: "id",
+      key: "id",
+      width: "10%",
+      render: (id: string) => <Tag color="blue">{id}</Tag>,
     },
     {
       title: "Status",
@@ -784,10 +792,23 @@ const ProjectsPage: React.FC = () => {
           </Button>,
         ]}
       >
-        <div style={{ marginBottom: "16px" }}>
-          <Text type="secondary">
+        <div
+          style={{
+            marginBottom: "16px",
+            padding: "12px 16px",
+            background: "#fff2f0",
+            border: "1px solid #ffccc7",
+            borderRadius: "6px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <ExclamationCircleOutlined style={{ color: "#cf1322", fontSize: 20, marginRight: 8 }} />
+          <Text style={{ color: "#cf1322", fontWeight: 500 }}>
             This action cannot be undone. This will permanently delete project{" "}
-            <Tag color="red">{projectToDelete?.name}</Tag>and all of its data.
+            <Tag color="red" style={{ fontWeight: 600 }}>{projectToDelete?.name}</Tag>
+            and all of its data.
           </Text>
         </div>
 

@@ -10,8 +10,11 @@ import {
   Switch,
   Row,
   Col,
+  Modal,
+  Typography,
 } from "antd";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, PlayCircleOutlined } from "@ant-design/icons";
+import { useTour } from "../../../contexts/TourContext";
 import {
   useGetSettingsQuery,
   useUpdateSettingsMutation,
@@ -19,6 +22,8 @@ import {
 } from "../../../generated/graphql";
 
 const { Option } = Select;
+const { confirm } = Modal;
+const { Text } = Typography;
 
 // Sample locale data - you might want to move this to a constants file
 const localsData = {
@@ -39,6 +44,7 @@ const localsData = {
 const GeneralSettingsPage: React.FC = () => {
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { checkProjectStatus } = useTour();
 
   // Fetch current project settings
   const {
@@ -117,6 +123,41 @@ const GeneralSettingsPage: React.FC = () => {
       console.error("Update error:", error);
       setIsSubmitting(false);
     }
+  };
+
+  const handleResetTour = () => {
+    confirm({
+      title: "Reset Quick Start Journey",
+      content:
+        "This will clear your progress and restart the onboarding tour from the beginning. Are you sure you want to continue?",
+      okText: "Reset Journey",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk() {
+        // Clear all tour-related localStorage flags
+        localStorage.removeItem("tour-dismissed");
+        localStorage.removeItem("tour-completed");
+        localStorage.removeItem("tour-waiting-for-model");
+        localStorage.removeItem("tour-waiting-for-fields");
+        localStorage.removeItem("tour-waiting-for-content");
+        localStorage.removeItem("tour-waiting-for-query");
+        localStorage.removeItem("project-has-fields");
+        localStorage.removeItem("project-has-content");
+        localStorage.removeItem("project-has-run-query");
+
+        // Clear session storage
+        sessionStorage.clear();
+
+        message.success(
+          "Quick Start Journey has been reset! Navigate to any console page to begin again."
+        );
+
+        // Refresh tour status
+        setTimeout(() => {
+          checkProjectStatus();
+        }, 500);
+      },
+    });
   };
 
   const localsOptions = Object.entries(localsData);
@@ -286,6 +327,44 @@ const GeneralSettingsPage: React.FC = () => {
             </Col>
           </Row>
         </Form>
+      </Card>
+
+      {/* Tour Reset Card */}
+      <Card
+        title={
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <PlayCircleOutlined />
+            Quick Start Journey
+          </div>
+        }
+        style={{ marginTop: "24px" }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 500, marginBottom: "4px" }}>
+              Restart Onboarding Tour
+            </div>
+            <Text type="secondary">
+              Reset your progress and experience the guided setup journey again.
+              This will clear all tour progress and start fresh.
+            </Text>
+          </div>
+          <Button
+            type="primary"
+            danger
+            icon={<PlayCircleOutlined />}
+            onClick={handleResetTour}
+            style={{ marginLeft: "16px", flexShrink: 0 }}
+          >
+            Start Again
+          </Button>
+        </div>
       </Card>
     </div>
   );

@@ -3,6 +3,7 @@ import { Modal, Form, Input, Switch, message } from "antd";
 import { useMutation } from "@apollo/client";
 import { CREATE_MODEL } from "../../graphql/mutations/models";
 import { useGetOnlyModelsInfoQuery } from "../../generated/graphql";
+import { useTourTracking } from "../../hooks/useTourTracking";
 
 interface CreateModelModalProps {
   visible: boolean;
@@ -22,6 +23,7 @@ const CreateModelModal: React.FC<CreateModelModalProps> = ({
 }) => {
   const [form] = Form.useForm<CreateModelFormData>();
   const [loading, setLoading] = useState(false);
+  const { trackModelCreated } = useTourTracking();
 
   const [createModelMutation] = useMutation(CREATE_MODEL);
   const { refetch: refetchModels } = useGetOnlyModelsInfoQuery();
@@ -40,10 +42,17 @@ const CreateModelModal: React.FC<CreateModelModalProps> = ({
         message.success(`Model "${values.name}" created successfully`);
         await refetchModels();
         form.resetFields();
+
+        // Clear tour waiting flag and track progress
+        localStorage.removeItem("tour-waiting-for-model");
+        // Keep session flag since model was created successfully
+        trackModelCreated(); // Track tour progress
+
         onSuccess();
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create model";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to create model";
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -52,6 +61,14 @@ const CreateModelModal: React.FC<CreateModelModalProps> = ({
 
   const handleCancel = () => {
     form.resetFields();
+
+    // If user cancels without creating model, signal tour to restart
+    if (localStorage.getItem("tour-waiting-for-model") === "true") {
+      localStorage.removeItem("tour-waiting-for-model");
+      // Set flag to restart tour
+      sessionStorage.setItem("tour-should-restart", "true");
+    }
+
     onCancel();
   };
 
@@ -80,7 +97,8 @@ const CreateModelModal: React.FC<CreateModelModalProps> = ({
             { max: 50, message: "Model name must be at most 50 characters" },
             {
               pattern: /^[a-zA-Z][a-zA-Z0-9_]*$/,
-              message: "Model name must start with a letter and contain only letters, numbers, and underscores",
+              message:
+                "Model name must start with a letter and contain only letters, numbers, and underscores",
             },
           ]}
         >
@@ -103,4 +121,4 @@ const CreateModelModal: React.FC<CreateModelModalProps> = ({
   );
 };
 
-export default CreateModelModal; 
+export default CreateModelModal;

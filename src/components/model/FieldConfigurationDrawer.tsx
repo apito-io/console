@@ -15,6 +15,7 @@ import { type FieldTypeOption } from "../../constants/fieldTypes";
 import { type FieldInfo } from "../../types/model";
 import { ContentContext } from "../../contexts/ContentContext";
 import { buildFieldIdentifier } from "../../utils/identifierBuilder";
+import { useTourTracking } from "../../hooks/useTourTracking";
 import {
   Field_Sub_Type_Enum,
   Field_Type_Enum,
@@ -69,6 +70,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
   const context = useContext(ContentContext) as ContentContextType | null;
   const state = context?.state || { target: "" };
   const { message: messageApi } = App.useApp();
+  const { trackFieldAdded } = useTourTracking();
 
   // Fetch available models for relation configuration
   const { data: modelsData } = useGetOnlyModelsInfoQuery({
@@ -130,6 +132,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
       form.resetFields();
       setIsLocal(false);
       setFormError("");
+      trackFieldAdded(); // Track tour progress
       onFieldCreated();
     },
     onError: (error) => {
