@@ -323,6 +323,53 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
     localStorage.setItem("tour-dismissed", "true");
   };
 
+  const skipStep = () => {
+    const currentStepId = TOUR_STEPS[tourProgress.currentStep]?.id;
+
+    // Mark the current step as completed in localStorage
+    switch (currentStepId) {
+      case "create-model":
+        localStorage.setItem("project-has-model-skipped", "true");
+        break;
+      case "add-fields":
+        localStorage.setItem("project-has-fields", "true");
+        break;
+      case "add-content":
+        localStorage.setItem("project-has-content", "true");
+        break;
+      case "run-query":
+        localStorage.setItem("project-has-run-query", "true");
+        break;
+    }
+
+    // Remove any waiting flags
+    localStorage.removeItem("tour-waiting-for-model");
+    localStorage.removeItem("tour-waiting-for-fields");
+    localStorage.removeItem("tour-waiting-for-content");
+    localStorage.removeItem("tour-waiting-for-query");
+
+    // Add the current step to completed steps
+    setTourProgress((prev) => ({
+      ...prev,
+      completedSteps: [...prev.completedSteps, currentStepId],
+    }));
+
+    // Move to next step or end tour if this was the last step
+    if (tourProgress.currentStep < tourProgress.totalSteps - 1) {
+      setTourProgress((prev) => ({
+        ...prev,
+        currentStep: prev.currentStep + 1,
+      }));
+      // Refresh project status to reflect the skip
+      checkProjectStatus();
+    } else {
+      // Last step was skipped, end tour
+      setIsTourActive(false);
+      setIsTourModalVisible(false);
+      localStorage.setItem("tour-completed", "true");
+    }
+  };
+
   const value: TourContextType = {
     isTourActive,
     isTourModalVisible,
@@ -335,6 +382,7 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
     nextStep,
     prevStep,
     skipTour,
+    skipStep,
     checkProjectStatus,
     shouldShowTour: false, // This is not used but required by the type
   };

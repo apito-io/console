@@ -10,6 +10,9 @@ export const TOUR_STEPS: TourStep[] = [
         nextButtonProps: {
             children: 'Add Model',
         },
+        skipButtonProps: {
+            children: 'Skip',
+        },
     },
     {
         id: 'add-fields',
@@ -19,6 +22,9 @@ export const TOUR_STEPS: TourStep[] = [
         placement: 'bottom',
         nextButtonProps: {
             children: 'Add Fields',
+        },
+        skipButtonProps: {
+            children: 'Skip',
         },
     },
     {
@@ -30,6 +36,9 @@ export const TOUR_STEPS: TourStep[] = [
         nextButtonProps: {
             children: 'Add Content',
         },
+        skipButtonProps: {
+            children: 'Skip',
+        },
     },
     {
         id: 'run-query',
@@ -39,6 +48,9 @@ export const TOUR_STEPS: TourStep[] = [
         placement: 'left',
         nextButtonProps: {
             children: 'Go to API',
+        },
+        skipButtonProps: {
+            children: 'Skip',
         },
     },
 ];

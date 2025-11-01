@@ -7,6 +7,7 @@ import {
   Space,
   message,
   Modal,
+  Alert,
 } from "antd";
 import {
   EyeInvisibleOutlined,
@@ -29,18 +30,22 @@ const LoginPage = () => {
   const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] =
     useState(false);
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const { handleSigninAPI, handleGoogleLogin, handleGithubLogin, loading } =
     useAuth();
 
   const handleSubmit = async (values: LoginFormData) => {
+    // Clear any previous errors
+    setLoginError(null);
+
     try {
       const errorMessage = await handleSigninAPI(values);
       if (errorMessage) {
-        message.error(errorMessage);
+        setLoginError(errorMessage);
       }
     } catch (error) {
       console.error("Login error:", error);
-      message.error("An unexpected error occurred");
+      setLoginError("An unexpected error occurred");
     }
   };
 
@@ -166,6 +171,23 @@ const LoginPage = () => {
               </Text>
             </div>
 
+            {/* Error Display */}
+            {loginError && (
+              <Alert
+                message={loginError}
+                type="error"
+                showIcon
+                closable
+                onClose={() => setLoginError(null)}
+                style={{
+                  marginBottom: "24px",
+                  borderRadius: "8px",
+                  border: "1px solid #fecaca",
+                  backgroundColor: "#fef2f2",
+                }}
+              />
+            )}
+
             <Form
               form={form}
               onFinish={handleSubmit}
@@ -194,6 +216,7 @@ const LoginPage = () => {
                 <Input
                   placeholder="Enter Your Email Address"
                   size="large"
+                  onChange={() => setLoginError(null)}
                   style={{
                     height: "44px",
                     border: "1px solid #d1d5db",
@@ -227,6 +250,7 @@ const LoginPage = () => {
                 <Input.Password
                   placeholder="Your Password"
                   size="large"
+                  onChange={() => setLoginError(null)}
                   iconRender={(visible) =>
                     visible ? (
                       <EyeTwoTone twoToneColor="#6b7280" />

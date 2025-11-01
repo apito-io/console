@@ -25,13 +25,19 @@ httpService.interceptors.response.use(
   (res) => res,
   (err) => {
     const currentPath = window.location.pathname;
+    const isLoginRequest = err.config?.url?.includes('/auth/v2/login');
+    const isLogoutRequest = err.config?.url?.includes('/auth/v2/logout');
 
     if (err?.response?.status === 400) {
       message.error(err.message);
     } else if (err?.response?.status === 401 || err?.response?.status === 403) {
-      // Only redirect to login if we're not in the middle of project switching
-      // or if the current path is not already a console route
-      if (!currentPath.startsWith('/console/') && !err.config?.url?.includes('project/switch')) {
+      // Don't redirect if this is a login request - let the login component handle the error
+      if (isLoginRequest) {
+        // For login requests, just pass the error through without redirecting
+        console.warn('Login failed:', err);
+      } else if (!currentPath.startsWith('/console/') && !err.config?.url?.includes('project/switch')) {
+        // Only redirect to login if we're not in the middle of project switching
+        // or if the current path is not already a console route
         deleteAllCookies();
         window.location.href = '/login';
       } else {

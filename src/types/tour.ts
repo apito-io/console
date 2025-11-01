@@ -10,6 +10,9 @@ export interface TourStep {
     prevButtonProps?: {
         children?: React.ReactNode;
     };
+    skipButtonProps?: {
+        children?: React.ReactNode;
+    };
 }
 
 export interface TourProgress {
@@ -38,6 +41,7 @@ export interface TourContextType {
     nextStep: () => void;
     prevStep: () => void;
     skipTour: () => void;
+    skipStep: () => void;
     checkProjectStatus: () => Promise<void>;
     shouldShowTour: boolean;
 }

@@ -6,18 +6,19 @@ import {
   type FetcherOpts,
   type FetcherParams,
 } from "@graphiql/toolkit";
-// import { ApiReference } from "@scalar/api-reference";
+// import { ApiReferenceReact } from "@scalar/api-reference-react";
+// import "@scalar/api-reference-react/style.css";
 import { Space, Tabs } from "antd";
 import { GraphiQL } from "graphiql";
 import "graphiql/style.css";
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { ENV } from "../../utils/env";
 import { useTourTracking } from "../../hooks/useTourTracking";
-//import { useAuth } from "../../contexts/AuthContext";
+// import { useAuth } from "../../contexts/AuthContext";
+import RestApiDoc from "../../components/RestApiDoc";
 
 const ApiPage: React.FC = () => {
-  //const { readJWTToken } = useAuth();
-  //const token = readJWTToken();
+  // Auth context is now handled inside RestApiDoc component
   const [activeTab, setActiveTab] = useState("graphql");
   const { trackQueryExecuted } = useTourTracking();
 
@@ -233,7 +234,7 @@ const ApiPage: React.FC = () => {
   const renderGraphQLContent = () => (
     <div
       style={{
-        height: "calc(100vh - 120px)",
+        height: "100%",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
@@ -249,6 +250,10 @@ const ApiPage: React.FC = () => {
         style={{
           height: "100%",
           position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
         }}
         defaultQuery={`# Welcome to Apito GraphQL API
 # 
@@ -269,26 +274,24 @@ query {
   const renderRESTContent = () => (
     <div
       style={{
-        height: "calc(100vh - 180px)",
+        height: "100%",
         width: "100%",
-        overflow: "auto",
+        display: "flex",
+        flexDirection: "column",
+        margin: 0,
+        padding: 0,
+        position: "relative",
       }}
     >
-      {/* TODO: Fix ApiReference component type issues */}
-      {/* <ApiReference
-        configuration={{
-          spec: {
-            content: JSON.stringify(openApiSpec),
-          },
-          authentication: {
-            bearerToken: token || "",
-          },
-          theme: "default",
-          layout: "modern",
-          showSidebar: true,
+      <RestApiDoc
+        style={{
+          height: "100%",
+          width: "100%",
+          flex: 1,
+          margin: 0,
+          padding: 0,
         }}
-      /> */}
-      <div>API Reference component temporarily disabled due to type issues</div>
+      />
     </div>
   );
 
@@ -296,9 +299,9 @@ query {
     {
       key: "graphql",
       label: (
-        <Space>
-          <ConsoleSqlOutlined />
-          GraphQL
+        <Space size={8}>
+          <ConsoleSqlOutlined style={{ fontSize: "16px" }} />
+          <span style={{ fontSize: "14px", fontWeight: 500 }}>GraphQL API</span>
         </Space>
       ),
       children: renderGraphQLContent(),
@@ -306,9 +309,9 @@ query {
     {
       key: "rest",
       label: (
-        <Space>
-          <GlobalOutlined />
-          REST API
+        <Space size={8}>
+          <GlobalOutlined style={{ fontSize: "16px" }} />
+          <span style={{ fontSize: "14px", fontWeight: 500 }}>REST API</span>
         </Space>
       ),
       children: renderRESTContent(),
@@ -379,23 +382,32 @@ query {
             display: "flex",
             flexDirection: "column",
             minHeight: 0,
+            position: "relative",
           }}
         >
           <Tabs
             activeKey={activeTab}
             onChange={setActiveTab}
             items={tabItems}
-            style={{ height: "100%", display: "flex", flexDirection: "column" }}
+            style={{
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              margin: 0,
+            }}
             tabBarStyle={{
               paddingLeft: "24px",
               paddingRight: "24px",
+              paddingTop: "8px",
+              paddingBottom: "8px",
               marginBottom: 0,
-              background: "#fff",
-              borderBottom: "1px solid #f0f0f0",
+              background: "#fafafa",
+              borderBottom: "2px solid #e8e8e8",
             }}
-            tabBarGutter={0}
+            tabBarGutter={24}
             destroyInactiveTabPane={false}
             tabPosition="top"
+            className="api-tabs"
           />
         </div>
       </div>

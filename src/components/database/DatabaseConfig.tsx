@@ -39,11 +39,11 @@ type DatabaseOption = {
   icon: React.ReactNode;
 };
 
-const databaseOptions: DatabaseOption[] = [
+const getDatabaseOptions = (token: any): DatabaseOption[] => [
   {
     value: "embed",
-    label: "Built-in (Dev/Test)",
-    icon: <DatabaseOutlined style={{ color: "#52c41a" }} />,
+    label: "Sandbox DB (Dev/Test)",
+    icon: <DatabaseOutlined style={{ color: token.colorSuccess }} />,
   },
   {
     value: "sqlite",
@@ -51,7 +51,7 @@ const databaseOptions: DatabaseOption[] = [
     icon: (
       <Icon
         icon="simple-icons:sqlite"
-        style={{ fontSize: 20, color: "#003B57" }}
+        style={{ fontSize: 20, color: token.colorPrimary }}
       />
     ),
   },
@@ -61,7 +61,7 @@ const databaseOptions: DatabaseOption[] = [
     icon: (
       <Icon
         icon="simple-icons:postgresql"
-        style={{ fontSize: 20, color: "#336791" }}
+        style={{ fontSize: 20, color: token.colorPrimary }}
       />
     ),
   },
@@ -71,7 +71,7 @@ const databaseOptions: DatabaseOption[] = [
     icon: (
       <Icon
         icon="simple-icons:mysql"
-        style={{ fontSize: 20, color: "#4479A1" }}
+        style={{ fontSize: 20, color: token.colorPrimary }}
       />
     ),
   },
@@ -81,7 +81,7 @@ const databaseOptions: DatabaseOption[] = [
     icon: (
       <Icon
         icon="simple-icons:mariadb"
-        style={{ fontSize: 20, color: "#003545" }}
+        style={{ fontSize: 20, color: token.colorPrimary }}
       />
     ),
   },
@@ -91,7 +91,7 @@ const databaseOptions: DatabaseOption[] = [
     icon: (
       <Icon
         icon="simple-icons:mongodb"
-        style={{ fontSize: 20, color: "#47A248" }}
+        style={{ fontSize: 20, color: token.colorSuccess }}
       />
     ),
   },
@@ -119,7 +119,7 @@ const getDefaultDbConfig = (db: string) => {
     case "mongodb":
       return { uri: "mongodb://localhost:27017/apito" };
     case "sqlite":
-      return { file: "./apito-system.sqlite" };
+      return { file: "~/.apito/engine-data/apito-project.sqlite" };
     case "embed":
     default:
       return {};
@@ -149,7 +149,10 @@ const getCliCommand = (stage: "setup" | "project", dbType: string): string => {
   }
 };
 
-const CliCommand: React.FC<{ command: string }> = ({ command }) => {
+const CliCommand: React.FC<{ command: string; token?: any }> = ({
+  command,
+  token,
+}) => {
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(command);
@@ -162,33 +165,36 @@ const CliCommand: React.FC<{ command: string }> = ({ command }) => {
   return (
     <div
       style={{
-        background: "#1e1e1e",
-        border: "1px solid #333",
+        background: token?.colorFillQuaternary || "#f9fafb",
+        border: `1px solid ${token?.colorBorder || "#e5e7eb"}`,
         borderRadius: 8,
         overflow: "hidden",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+        boxShadow:
+          token?.boxShadowSecondary || "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
         cursor: "pointer",
         transition: "all 0.2s ease",
       }}
       onClick={copyToClipboard}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-2px)";
-        e.currentTarget.style.boxShadow = "0 6px 16px rgba(0, 0, 0, 0.4)";
+        e.currentTarget.style.boxShadow =
+          token?.boxShadow || "0 6px 16px rgba(0, 0, 0, 0.12)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+        e.currentTarget.style.boxShadow =
+          token?.boxShadowSecondary || "0 1px 2px 0 rgba(0, 0, 0, 0.05)";
       }}
     >
       {/* Terminal Header Bar */}
       <div
         style={{
-          background: "#2d2d2d",
+          background: token?.colorFillSecondary || "#f3f4f6",
           padding: "8px 12px",
           display: "flex",
           alignItems: "center",
           gap: "8px",
-          borderBottom: "1px solid #333",
+          borderBottom: `1px solid ${token?.colorBorder || "#e5e7eb"}`,
         }}
       >
         {/* Terminal Control Buttons */}
@@ -198,8 +204,8 @@ const CliCommand: React.FC<{ command: string }> = ({ command }) => {
               width: "12px",
               height: "12px",
               borderRadius: "50%",
-              background: "#ff5f56",
-              border: "1px solid #e0443e",
+              background: token?.colorError || "#ff4d4f",
+              border: `1px solid ${token?.colorErrorBorder || "#ff7875"}`,
             }}
           />
           <div
@@ -207,8 +213,8 @@ const CliCommand: React.FC<{ command: string }> = ({ command }) => {
               width: "12px",
               height: "12px",
               borderRadius: "50%",
-              background: "#ffbd2e",
-              border: "1px solid #dea123",
+              background: token?.colorWarning || "#faad14",
+              border: `1px solid ${token?.colorWarningBorder || "#ffc53d"}`,
             }}
           />
           <div
@@ -216,8 +222,8 @@ const CliCommand: React.FC<{ command: string }> = ({ command }) => {
               width: "12px",
               height: "12px",
               borderRadius: "50%",
-              background: "#27ca3f",
-              border: "1px solid #1aab29",
+              background: token?.colorSuccess || "#52c41a",
+              border: `1px solid ${token?.colorSuccessBorder || "#73d13d"}`,
             }}
           />
         </div>
@@ -225,7 +231,7 @@ const CliCommand: React.FC<{ command: string }> = ({ command }) => {
         {/* Terminal Title */}
         <div
           style={{
-            color: "#999",
+            color: token?.colorTextSecondary || "#6b7280",
             fontSize: "11px",
             fontWeight: "500",
             marginLeft: "8px",
@@ -239,7 +245,7 @@ const CliCommand: React.FC<{ command: string }> = ({ command }) => {
         {/* Copy Icon */}
         <CopyOutlined
           style={{
-            color: "#666",
+            color: token?.colorTextTertiary || "#9ca3af",
             fontSize: "12px",
             cursor: "pointer",
           }}
@@ -258,9 +264,13 @@ const CliCommand: React.FC<{ command: string }> = ({ command }) => {
       >
         {/* Prompt */}
         <div style={{ marginBottom: "8px" }}>
-          <span style={{ color: "#27ca3f" }}>$ </span>
-          <span style={{ color: "#999" }}>apito</span>
-          <span style={{ color: "#fff", marginLeft: "8px" }}>
+          <span style={{ color: token?.colorSuccess || "#52c41a" }}>$ </span>
+          <span style={{ color: token?.colorTextSecondary || "#6b7280" }}>
+            apito
+          </span>
+          <span
+            style={{ color: token?.colorText || "#0f1419", marginLeft: "8px" }}
+          >
             {command.split(" ").slice(1).join(" ")}
           </span>
         </div>
@@ -268,7 +278,13 @@ const CliCommand: React.FC<{ command: string }> = ({ command }) => {
         {/* Remove the separate command box */}
 
         {/* Output hint */}
-        <div style={{ marginTop: "8px", color: "#666", fontSize: "11px" }}>
+        <div
+          style={{
+            marginTop: "8px",
+            color: token?.colorTextTertiary || "#9ca3af",
+            fontSize: "11px",
+          }}
+        >
           Click to copy command
         </div>
       </div>
@@ -283,17 +299,20 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
   configField = "db_config",
   defaultType = "embed",
   enableTest = false,
-  testEndpoint = "/journey/dbTest",
+  testEndpoint = "/system/database/check",
   onTypeChange,
   onConnectionStatusChange,
 }) => {
   const { token } = theme.useToken();
+  const projectId = Form.useWatch("id", form);
   const [selectedDatabase, setSelectedDatabase] = useState<string>(defaultType);
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState<ConnectionStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | undefined>(
     undefined
   );
+
+  const databaseOptions = getDatabaseOptions(token);
 
   // Initialize defaults
   useEffect(() => {
@@ -305,6 +324,78 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // When SQLite is selected, auto-populate DB file name using project id
+  useEffect(() => {
+    if (selectedDatabase !== "sqlite") return;
+    const currentProjectId = projectId || form.getFieldValue("id");
+    if (!currentProjectId) return;
+    const currentCfg = form.getFieldValue(configField) || {};
+    const desiredPath = `~/.apito/engine-data/apito_${currentProjectId}.sqlite`;
+    if (currentCfg.file !== desiredPath) {
+      form.setFieldsValue({
+        [configField]: { ...currentCfg, file: desiredPath },
+      });
+    }
+  }, [projectId, selectedDatabase, form, configField]);
+
+  // For all other DBs, set default database name to apito-{projectId}
+  useEffect(() => {
+    const currentProjectId = projectId || form.getFieldValue("id");
+    if (!currentProjectId) return;
+    const currentCfg = form.getFieldValue(configField) || {};
+
+    if (
+      selectedDatabase === "postgresql" ||
+      selectedDatabase === "mysql" ||
+      selectedDatabase === "mariadb"
+    ) {
+      const desiredDbName = `apito_${currentProjectId}`;
+      if (currentCfg.database !== desiredDbName) {
+        form.setFieldsValue({
+          [configField]: { ...currentCfg, database: desiredDbName },
+        });
+      }
+    }
+
+    if (selectedDatabase === "mongodb") {
+      const desiredDbName = `apito_${currentProjectId}`;
+      const existingUri: string | undefined = currentCfg.uri;
+      if (!existingUri) {
+        form.setFieldsValue({
+          [configField]: {
+            ...currentCfg,
+            uri: `mongodb://localhost:27017/${desiredDbName}`,
+          },
+        });
+        return;
+      }
+      try {
+        const qIndex = existingUri.indexOf("?");
+        const query = qIndex >= 0 ? existingUri.slice(qIndex) : "";
+        const pathPart =
+          qIndex >= 0 ? existingUri.slice(0, qIndex) : existingUri;
+        const lastSlash = pathPart.lastIndexOf("/");
+        if (lastSlash > -1) {
+          const base = pathPart.slice(0, lastSlash + 1);
+          const newUri = `${base}${desiredDbName}${query}`;
+          if (existingUri !== newUri) {
+            form.setFieldsValue({
+              [configField]: { ...currentCfg, uri: newUri },
+            });
+          }
+        }
+      } catch {
+        // If parsing fails, fall back to simple default
+        const fallback = `mongodb://localhost:27017/${desiredDbName}`;
+        if (existingUri !== fallback) {
+          form.setFieldsValue({
+            [configField]: { ...currentCfg, uri: fallback },
+          });
+        }
+      }
+    }
+  }, [projectId, selectedDatabase, form, configField]);
 
   const handleDatabaseSelect = (db: string) => {
     setSelectedDatabase(db);
@@ -423,7 +514,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
             label="DB File"
             rules={[{ required: true }]}
           >
-            <Input placeholder="./apito-system.sqlite" />
+            <Input placeholder="~/.apito/engine-data/apito-project.sqlite" />
           </Form.Item>
         );
       case "embed":
@@ -452,11 +543,11 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
                 cursor: "pointer",
                 border:
                   selectedDatabase === db.value
-                    ? "2px solid #1890ff"
+                    ? `2px solid ${token.colorPrimary}`
                     : `1px solid ${token.colorBorder}`,
-                background:
+                backgroundColor:
                   selectedDatabase === db.value
-                    ? token.colorInfoBg
+                    ? "#f0f7ff"
                     : token.colorBgContainer,
               }}
             >
@@ -478,7 +569,10 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
               showIcon
               message="Use your own remote database or spin a new one using apito cli"
             />
-            <CliCommand command={getCliCommand(stage, "postgresql")} />
+            <CliCommand
+              command={getCliCommand(stage, "postgresql")}
+              token={token}
+            />
           </>
         )}
         {selectedDatabase === "mysql" && (
@@ -488,7 +582,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
               showIcon
               message="Use your own remote database or spin a new one using apito cli"
             />
-            <CliCommand command={getCliCommand(stage, "mysql")} />
+            <CliCommand command={getCliCommand(stage, "mysql")} token={token} />
           </>
         )}
         {selectedDatabase === "mariadb" && (
@@ -498,7 +592,10 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
               showIcon
               message="Use your own remote database or spin a new one using apito cli"
             />
-            <CliCommand command={getCliCommand(stage, "mariadb")} />
+            <CliCommand
+              command={getCliCommand(stage, "mariadb")}
+              token={token}
+            />
           </>
         )}
         {selectedDatabase === "mongodb" && (
@@ -508,7 +605,10 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
               showIcon
               message="Use your own remote database or spin a new one using apito cli"
             />
-            <CliCommand command={getCliCommand(stage, "mongodb")} />
+            <CliCommand
+              command={getCliCommand(stage, "mongodb")}
+              token={token}
+            />
           </>
         )}
         {selectedDatabase === "sqlite" && (
@@ -548,26 +648,26 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
                 borderRadius: 0,
                 borderColor:
                   status === "success"
-                    ? "#52c41a"
+                    ? token.colorSuccess
                     : status === "error"
-                    ? "#ff4d4f"
-                    : undefined,
+                      ? token.colorError
+                      : undefined,
                 color:
                   status === "success"
-                    ? "#52c41a"
+                    ? token.colorSuccess
                     : status === "error"
-                    ? "#ff4d4f"
-                    : undefined,
+                      ? token.colorError
+                      : undefined,
               }}
               danger={status === "error"}
             >
               {testing
                 ? "Testing..."
                 : status === "success"
-                ? "Connected ✓"
-                : status === "error"
-                ? "Connection Failed"
-                : "Test Connection"}
+                  ? "Connected ✓"
+                  : status === "error"
+                    ? "Connection Failed"
+                    : "Test Connection"}
             </Button>
           )}
         </div>

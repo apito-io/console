@@ -179,6 +179,13 @@ export const apitoTheme: ThemeConfig = {
             itemSize: 32,
             borderRadius: 6,
         },
+
+        // Alert styling
+        Alert: {
+            borderRadiusLG: 8,
+            defaultPadding: '12px 16px',
+            withDescriptionPadding: '16px 16px',
+        },
     },
 };
 

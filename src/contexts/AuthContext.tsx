@@ -80,8 +80,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return undefined;
     } catch (err: unknown) {
       setLoading(false);
-      if (err && typeof err === 'object' && 'response' in err) {
-        const error = err as { response?: { status?: number; data?: { message?: string } } };
+      if (err && typeof err === "object" && "response" in err) {
+        const error = err as {
+          response?: { status?: number; data?: { message?: string } };
+        };
         if (error.response && Number(error.response.status) === 400) {
           return error.response.data?.message;
         }
@@ -102,11 +104,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         window.location.reload();
         return undefined;
       }
+      // If response status is not 200, treat as error
+      setLoading(false);
+      return response.data?.message || "Login failed";
     } catch (err: unknown) {
       setLoading(false);
-      if (err && typeof err === 'object' && 'response' in err) {
-        const error = err as { response?: { data?: { message?: string } } };
-        return error.response?.data?.message || "Login failed";
+      console.error("Login error details:", err);
+      
+      if (err && typeof err === "object" && "response" in err) {
+        const error = err as { 
+          response?: { 
+            data?: { 
+              message?: string;
+              error?: string;
+            };
+            status?: number;
+            statusText?: string;
+          } 
+        };
+        
+        // Try to get error message from different possible locations
+        const errorMessage = error.response?.data?.message || 
+                           error.response?.data?.error || 
+                           error.response?.statusText ||
+                           `Login failed with status ${error.response?.status}`;
+        
+        console.log("Extracted error message:", errorMessage);
+        return errorMessage;
       }
       return "Login failed";
     }
@@ -137,8 +161,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (err: unknown) {
       setLoading(false);
-      if (err && typeof err === 'object' && 'response' in err) {
-        const error = err as { response?: { status?: number; data?: { message?: string } } };
+      if (err && typeof err === "object" && "response" in err) {
+        const error = err as {
+          response?: { status?: number; data?: { message?: string } };
+        };
         if (error.response && Number(error.response.status) === 400) {
           return error.response.data?.message;
         }
@@ -160,8 +186,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (err: unknown) {
       setLoading(false);
-      if (err && typeof err === 'object' && 'response' in err) {
-        const error = err as { response?: { status?: number; data?: { message?: string } } };
+      if (err && typeof err === "object" && "response" in err) {
+        const error = err as {
+          response?: { status?: number; data?: { message?: string } };
+        };
         if (error.response && Number(error.response.status) === 400) {
           return error.response.data?.message;
         }
@@ -183,8 +211,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (err: unknown) {
       setLoading(false);
-      if (err && typeof err === 'object' && 'response' in err) {
-        const error = err as { response?: { status?: number; data?: { message?: string } } };
+      if (err && typeof err === "object" && "response" in err) {
+        const error = err as {
+          response?: { status?: number; data?: { message?: string } };
+        };
         if (error.response && Number(error.response.status) === 400) {
           return error.response.data?.message;
         }

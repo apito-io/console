@@ -6,8 +6,13 @@ import { TOUR_STEPS } from "../../constants/tourSteps";
 
 const Tour: React.FC = () => {
   const navigate = useNavigate();
-  const { isTourModalVisible, tourProgress, endTour, closeTourModal } =
-    useTour();
+  const {
+    isTourModalVisible,
+    tourProgress,
+    endTour,
+    closeTourModal,
+    skipStep,
+  } = useTour();
 
   const handleClose = () => {
     endTour();
@@ -101,17 +106,89 @@ const Tour: React.FC = () => {
   };
 
   // Convert our tour steps to Ant Design Tour format
-  const antdTourSteps = TOUR_STEPS.map((step) => ({
+  const antdTourSteps = TOUR_STEPS.map((step, index) => ({
     title: step.title,
-    description: step.description,
+    description: (
+      <>
+        {step.description}
+        <div
+          style={{
+            marginTop: "16px",
+            display: "flex",
+            gap: "8px",
+            justifyContent: "flex-end",
+          }}
+        >
+          {index > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (tourProgress.currentStep > 0) {
+                  // Handle previous step
+                }
+              }}
+              style={{
+                padding: "4px 15px",
+                borderRadius: "6px",
+                border: "1px solid #d9d9d9",
+                background: "#fff",
+                cursor: "pointer",
+                fontSize: "14px",
+              }}
+            >
+              Previous
+            </button>
+          )}
+          {step.skipButtonProps && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                skipStep();
+              }}
+              style={{
+                padding: "4px 15px",
+                borderRadius: "6px",
+                border: "1px solid #d9d9d9",
+                background: "#fff",
+                cursor: "pointer",
+                fontSize: "14px",
+                color: "#666",
+              }}
+            >
+              {step.skipButtonProps.children || "Skip"}
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAction();
+            }}
+            style={{
+              padding: "4px 15px",
+              borderRadius: "6px",
+              border: "none",
+              background: "#1677ff",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: 500,
+            }}
+          >
+            {step.nextButtonProps?.children || "Next"}
+          </button>
+        </div>
+      </>
+    ),
     target: () => {
       const element = document.querySelector(step.target);
       return element as HTMLElement | null;
     },
     placement: step.placement,
     nextButtonProps: {
-      ...step.nextButtonProps,
-      onClick: handleAction,
+      style: { display: "none" }, // Hide default next button
+    },
+    prevButtonProps: {
+      style: { display: "none" }, // Hide default prev button
     },
   })) as any; // Type assertion to work around Ant Design type issues
 

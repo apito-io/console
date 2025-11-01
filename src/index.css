@@ -128,6 +128,52 @@ button:focus-visible {
   color: #000000 !important;
 }
 
+/* Alert Component Styling - Ensure proper Ant Design styling */
+.ant-alert {
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+}
+
+.ant-alert-info {
+  background-color: #e6f7ff !important;
+  border-color: #91d5ff !important;
+  color: #0958d9 !important;
+}
+
+.ant-alert-info .ant-alert-icon {
+  color: #1890ff !important;
+}
+
+.ant-alert-warning {
+  background-color: #fffbe6 !important;
+  border-color: #ffe58f !important;
+  color: #ad6800 !important;
+}
+
+.ant-alert-warning .ant-alert-icon {
+  color: #faad14 !important;
+}
+
+.ant-alert-error {
+  background-color: #fff2f0 !important;
+  border-color: #ffccc7 !important;
+  color: #cf1322 !important;
+}
+
+.ant-alert-error .ant-alert-icon {
+  color: #ff4d4f !important;
+}
+
+.ant-alert-success {
+  background-color: #f6ffed !important;
+  border-color: #b7eb8f !important;
+  color: #389e0d !important;
+}
+
+.ant-alert-success .ant-alert-icon {
+  color: #52c41a !important;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
