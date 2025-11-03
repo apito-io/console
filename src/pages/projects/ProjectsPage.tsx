@@ -113,7 +113,7 @@ const ProjectsPage: React.FC = () => {
 
   // Function to get database icon based on driver type
   const getDatabaseIcon = (db: string | undefined) => {
-    if (!db || db.toLowerCase().includes("embed")) {
+    if (!db || db.toLowerCase().includes("coredb")) {
       return (
         <img
           src="/logo.svg"
@@ -148,7 +148,7 @@ const ProjectsPage: React.FC = () => {
 
   // Function to get database display name
   const getDatabaseName = (db: string | undefined) => {
-    if (!db || db.toLowerCase().includes("embed")) {
+    if (!db || db.toLowerCase().includes("coredb")) {
       return "Apito Managed DB";
     }
     return db;

@@ -41,7 +41,7 @@ type DatabaseOption = {
 
 const getDatabaseOptions = (token: any): DatabaseOption[] => [
   {
-    value: "embed",
+    value: "coreDB",
     label: "Sandbox DB (Dev/Test)",
     icon: <DatabaseOutlined style={{ color: token.colorSuccess }} />,
   },
@@ -120,7 +120,8 @@ const getDefaultDbConfig = (db: string) => {
       return { uri: "mongodb://localhost:27017/apito" };
     case "sqlite":
       return { file: "~/.apito/engine-data/apito-project.sqlite" };
-    case "embed":
+    case "coreDB":
+      return { file: "~/.apito/engine-data/apito-project.db" };
     default:
       return {};
   }
@@ -297,7 +298,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
   form,
   databaseTypeField = "database_type",
   configField = "db_config",
-  defaultType = "embed",
+  defaultType = "coreDB",
   enableTest = false,
   testEndpoint = "/system/database/check",
   onTypeChange,
@@ -332,6 +333,20 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
     if (!currentProjectId) return;
     const currentCfg = form.getFieldValue(configField) || {};
     const desiredPath = `~/.apito/engine-data/apito_${currentProjectId}.sqlite`;
+    if (currentCfg.file !== desiredPath) {
+      form.setFieldsValue({
+        [configField]: { ...currentCfg, file: desiredPath },
+      });
+    }
+  }, [projectId, selectedDatabase, form, configField]);
+
+  // When coreDB (Sandbox DB) is selected, auto-populate DB file name using project id
+  useEffect(() => {
+    if (selectedDatabase !== "coreDB") return;
+    const currentProjectId = projectId || form.getFieldValue("id");
+    if (!currentProjectId) return;
+    const currentCfg = form.getFieldValue(configField) || {};
+    const desiredPath = `~/.apito/engine-data/apito_${currentProjectId}.db`;
     if (currentCfg.file !== desiredPath) {
       form.setFieldsValue({
         [configField]: { ...currentCfg, file: desiredPath },
@@ -410,7 +425,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
   };
 
   const testConnection = async () => {
-    if (!enableTest || selectedDatabase === "embed") return;
+    if (!enableTest) return;
     try {
       setTesting(true);
       setStatus("idle");
@@ -517,13 +532,15 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
             <Input placeholder="~/.apito/engine-data/apito-project.sqlite" />
           </Form.Item>
         );
-      case "embed":
+      case "coreDB":
         return (
-          <Alert
-            type="info"
-            showIcon
-            message="No setup or configuration is required for Build-In (Dev/Test). Great for development. Not for production use."
-          />
+          <Form.Item
+            name={[configField, "file"]}
+            label="DB File"
+            rules={[{ required: true }]}
+          >
+            <Input placeholder="~/.apito/engine-data/apito-project.db" />
+          </Form.Item>
         );
       default:
     }
@@ -618,10 +635,17 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
             message="SQLite is file-based and great for local development; not recommended for production."
           />
         )}
+        {selectedDatabase === "coreDB" && (
+          <Alert
+            type="warning"
+            showIcon
+            message="Sandbox DB is file-based and great for local development; not recommended for production."
+          />
+        )}
       </Space>
 
       {/* Header with test */}
-      {selectedDatabase !== "embed" && (
+      {selectedDatabase && (
         <div
           style={{
             display: "flex",

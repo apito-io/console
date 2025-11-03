@@ -46,7 +46,7 @@ const StartProjectPage: React.FC = () => {
   const { notification: notificationApi } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [selectedDatabase, setSelectedDatabase] = useState<string>("embed");
+  const [selectedDatabase, setSelectedDatabase] = useState<string>("coreDB");
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
@@ -127,7 +127,7 @@ const StartProjectPage: React.FC = () => {
   };
 
   const isFormValid = () => {
-    if (selectedDatabase === "embed") {
+    if (selectedDatabase === "coreDB") {
       return isValidId === true;
     }
     return isValidId === true && connectionStatus === "success";
@@ -186,7 +186,7 @@ const StartProjectPage: React.FC = () => {
         layout="vertical"
         onFinish={handleCreateProject}
         initialValues={{
-          database_type: "postgresql",
+          database_type: "coreDB",
         }}
       >
         <Row gutter={32}>
@@ -233,7 +233,7 @@ const StartProjectPage: React.FC = () => {
                     <Tooltip
                       title={
                         !isFormValid()
-                          ? selectedDatabase !== "embed" &&
+                          ? selectedDatabase !== "coreDB" &&
                             connectionStatus !== "success"
                             ? "Please test database connection first"
                             : !isValidId
