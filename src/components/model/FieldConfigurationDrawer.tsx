@@ -7,7 +7,7 @@ import {
   Checkbox,
   Select,
   InputNumber,
-  App,
+  message,
 } from "antd";
 import { capitalize } from "lodash";
 import pluralize from "pluralize";
@@ -69,7 +69,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
   const [formError, setFormError] = useState<string>("");
   const context = useContext(ContentContext) as ContentContextType | null;
   const state = context?.state || { target: "" };
-  const { message: messageApi } = App.useApp();
+  const messageApi = message;
   const { trackFieldAdded } = useTourTracking();
 
   // Fetch available models for relation configuration
@@ -361,8 +361,8 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
       field_sub_type === Field_Sub_Type_Enum.Dropdown
         ? "Dropdown Option"
         : field_sub_type === Field_Sub_Type_Enum.MultiSelect
-        ? "Select Option"
-        : "";
+          ? "Select Option"
+          : "";
 
     const showLocalization =
       ![

@@ -119,9 +119,9 @@ const getDefaultDbConfig = (db: string) => {
     case "mongodb":
       return { uri: "mongodb://localhost:27017/apito" };
     case "sqlite":
-      return { file: "~/.apito/engine-data/apito-project.sqlite" };
+      return { file: "apito-project.sqlite" };
     case "coreDB":
-      return { file: "~/.apito/engine-data/apito-project.db" };
+      return { file: "apito-project.db" };
     default:
       return {};
   }
@@ -332,7 +332,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
     const currentProjectId = projectId || form.getFieldValue("id");
     if (!currentProjectId) return;
     const currentCfg = form.getFieldValue(configField) || {};
-    const desiredPath = `~/.apito/engine-data/apito_${currentProjectId}.sqlite`;
+    const desiredPath = `apito_${currentProjectId}.sqlite`;
     if (currentCfg.file !== desiredPath) {
       form.setFieldsValue({
         [configField]: { ...currentCfg, file: desiredPath },
@@ -346,7 +346,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
     const currentProjectId = projectId || form.getFieldValue("id");
     if (!currentProjectId) return;
     const currentCfg = form.getFieldValue(configField) || {};
-    const desiredPath = `~/.apito/engine-data/apito_${currentProjectId}.db`;
+    const desiredPath = `apito_${currentProjectId}.db`;
     if (currentCfg.file !== desiredPath) {
       form.setFieldsValue({
         [configField]: { ...currentCfg, file: desiredPath },
@@ -529,7 +529,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
             label="DB File"
             rules={[{ required: true }]}
           >
-            <Input placeholder="~/.apito/engine-data/apito-project.sqlite" />
+            <Input placeholder="apito-project.sqlite" />
           </Form.Item>
         );
       case "coreDB":
@@ -539,7 +539,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
             label="DB File"
             rules={[{ required: true }]}
           >
-            <Input placeholder="~/.apito/engine-data/apito-project.db" />
+            <Input placeholder="apito-project.db" />
           </Form.Item>
         );
       default:
