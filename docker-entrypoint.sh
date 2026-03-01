@@ -45,12 +45,12 @@ esac
 
 echo "Proxy targets: REST ${REST_BACKEND} -> ${REST_PATH}, GraphQL ${GQL_BACKEND} -> ${GQL_PATH}"
 
-# env.js: VITE_REST_API is the proxy prefix only ('/api'). Frontend must use path-only URLs
-# (e.g. /auth/v2/login) with axios so request = baseURL + path = /api/auth/v2/login (not /api/api/...).
+# env.js: VITE_REST_API empty so requests go to /auth/v2/login, /system/..., etc. (no /api prefix).
+# Nginx proxies these path prefixes directly to BACKEND_REST_API.
 cat > /usr/share/nginx/html/env.js << ENVJS_EOF
-// Runtime config - proxy prefix only; app uses path-only (e.g. /auth/v2/login) to avoid double /api
+// Runtime config - no /api prefix; requests are /auth/v2/login etc., nginx proxies to backend
 window.env = {
-  VITE_REST_API: '/api',
+  VITE_REST_API: '',
   VITE_GRAPH_API: '/graphql',
   VITE_GRAPH_SUBS_API: '/ws-graphql',
   VITE_PUBLIC_GRAPH_API: '/public-graphql',
@@ -77,8 +77,60 @@ server {
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
 
-    location /api/ {
-        rewrite ^/api(.*)\$ ${REST_PATH}\$1 break;
+    # REST API paths - proxy directly (no /api prefix): /auth/v2/login, /system/..., etc.
+    location /auth/ {
+        proxy_pass ${REST_BACKEND};
+        proxy_http_version 1.1;
+        proxy_set_header Host ${REST_HOST};
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Cookie \$http_cookie;
+        proxy_pass_header Set-Cookie;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    location /system/ {
+        proxy_pass ${REST_BACKEND};
+        proxy_http_version 1.1;
+        proxy_set_header Host ${REST_HOST};
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Cookie \$http_cookie;
+        proxy_pass_header Set-Cookie;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    location /media/ {
+        proxy_pass ${REST_BACKEND};
+        proxy_http_version 1.1;
+        proxy_set_header Host ${REST_HOST};
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Cookie \$http_cookie;
+        proxy_pass_header Set-Cookie;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    location /plugin/ {
+        proxy_pass ${REST_BACKEND};
+        proxy_http_version 1.1;
+        proxy_set_header Host ${REST_HOST};
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Cookie \$http_cookie;
+        proxy_pass_header Set-Cookie;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    location /secured/ {
         proxy_pass ${REST_BACKEND};
         proxy_http_version 1.1;
         proxy_set_header Host ${REST_HOST};
