@@ -43,17 +43,21 @@ case "$WSGQL_PROTO" in
   *)      WSGQL_BACKEND="https://${WSGQL_HOST}" ;;
 esac
 
-echo "Proxy targets: REST ${REST_BACKEND} -> ${REST_PATH}, GraphQL ${GQL_BACKEND} -> ${GQL_PATH}"
+echo "Parsed backend targets:"
+echo "  REST: ${REST_BACKEND} -> ${REST_PATH}"
+echo "  GraphQL: ${GQL_BACKEND} -> ${GQL_PATH}"
+echo "  WS GraphQL: ${WSGQL_BACKEND} -> ${WSGQL_PATH}"
+echo "  Public GraphQL: ${PUBGQL_BACKEND} -> ${PUBGQL_PATH}"
 
-# env.js: VITE_REST_API empty so requests go to /auth/v2/login, /system/..., etc. (no /api prefix).
-# Nginx proxies these path prefixes directly to BACKEND_REST_API.
+# Generate env.js - same as pro: use BACKEND_* vars (no hardcoded values)
 cat > /usr/share/nginx/html/env.js << ENVJS_EOF
-// Runtime config - no /api prefix; requests are /auth/v2/login etc., nginx proxies to backend
+// Runtime environment configuration - generated at container startup (same as pro)
+// Frontend reads from window.env first, then falls back to build-time values
 window.env = {
-  VITE_REST_API: '',
-  VITE_GRAPH_API: '/graphql',
-  VITE_GRAPH_SUBS_API: '/ws-graphql',
-  VITE_PUBLIC_GRAPH_API: '/public-graphql',
+  VITE_REST_API: '${BACKEND_REST_API}',
+  VITE_GRAPH_API: '${BACKEND_GRAPH_API}',
+  VITE_GRAPH_SUBS_API: '${BACKEND_GRAPH_SUBS_API}',
+  VITE_PUBLIC_GRAPH_API: '${BACKEND_PUBLIC_GRAPH_API}',
   VITE_AUTH_PROVIDER: '${VITE_AUTH_PROVIDER}',
   VITE_COOKIE_DOMAIN: '${VITE_COOKIE_DOMAIN}',
 };
@@ -62,23 +66,29 @@ ENVJS_EOF
 
 echo "Generated /usr/share/nginx/html/env.js"
 
-# Nginx config with reverse proxy (same as pro)
+# Nginx config - same as pro. Only proxy API paths; do NOT add location /auth/ or /login/
+# (those are SPA routes: /auth/login = login page, /login = redirect; they must serve index.html)
+# When backend runs on host: set BACKEND_REST_API=http://host.docker.internal:5050 (not localhost)
 cat > /etc/nginx/http.d/default.conf << NGINX_EOF
 server {
     listen ${WEB_PORT};
     server_name _;
+
     root /usr/share/nginx/html;
     index index.html;
+
     access_log /dev/stdout;
     error_log /dev/stderr;
+
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
     gzip_min_length 1000;
+
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
 
-    # REST API paths - proxy directly (no /api prefix): /auth/v2/login, /system/..., etc.
-    location /auth/ {
+    location /api/ {
+        rewrite ^/api(.*)\$ ${REST_PATH}\$1 break;
         proxy_pass ${REST_BACKEND};
         proxy_http_version 1.1;
         proxy_set_header Host ${REST_HOST};
@@ -91,58 +101,7 @@ server {
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
     }
-    location /system/ {
-        proxy_pass ${REST_BACKEND};
-        proxy_http_version 1.1;
-        proxy_set_header Host ${REST_HOST};
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header Cookie \$http_cookie;
-        proxy_pass_header Set-Cookie;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-    location /media/ {
-        proxy_pass ${REST_BACKEND};
-        proxy_http_version 1.1;
-        proxy_set_header Host ${REST_HOST};
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header Cookie \$http_cookie;
-        proxy_pass_header Set-Cookie;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-    location /plugin/ {
-        proxy_pass ${REST_BACKEND};
-        proxy_http_version 1.1;
-        proxy_set_header Host ${REST_HOST};
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header Cookie \$http_cookie;
-        proxy_pass_header Set-Cookie;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-    location /secured/ {
-        proxy_pass ${REST_BACKEND};
-        proxy_http_version 1.1;
-        proxy_set_header Host ${REST_HOST};
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header Cookie \$http_cookie;
-        proxy_pass_header Set-Cookie;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
+
     location /graphql/ {
         rewrite ^/graphql(.*)\$ ${GQL_PATH}\$1 break;
         proxy_pass ${GQL_BACKEND};
@@ -157,6 +116,7 @@ server {
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
     }
+
     location /ws-graphql/ {
         rewrite ^/ws-graphql(.*)\$ ${WSGQL_PATH}\$1 break;
         proxy_pass ${WSGQL_BACKEND};
@@ -173,6 +133,7 @@ server {
         proxy_send_timeout 600s;
         proxy_read_timeout 600s;
     }
+
     location /public-graphql/ {
         rewrite ^/public-graphql(.*)\$ ${PUBGQL_PATH}\$1 break;
         proxy_pass ${PUBGQL_BACKEND};
@@ -187,12 +148,16 @@ server {
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
     }
+
+    # SPA: all other paths (/auth/login, /login, /console/..., etc.) serve index.html
     location / {
         try_files \$uri \$uri/ /index.html;
+
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)\$ {
             expires 1y;
             add_header Cache-Control "public, immutable";
         }
+
         location ~* \.html\$ {
             expires -1;
             add_header Cache-Control "no-cache, no-store, must-revalidate";
@@ -201,5 +166,6 @@ server {
 }
 NGINX_EOF
 
-echo "Generated nginx configuration. Starting nginx..."
+echo "Generated nginx configuration"
+echo "Starting nginx..."
 exec nginx -g "daemon off;"
