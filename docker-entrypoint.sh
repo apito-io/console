@@ -45,9 +45,10 @@ esac
 
 echo "Proxy targets: REST ${REST_BACKEND} -> ${REST_PATH}, GraphQL ${GQL_BACKEND} -> ${GQL_PATH}"
 
-# env.js: inject proxy paths so frontend uses same-origin /api, /graphql, /ws-graphql (nginx proxies to BACKEND_*)
+# env.js: VITE_REST_API is the proxy prefix only ('/api'). Frontend must use path-only URLs
+# (e.g. /auth/v2/login) with axios so request = baseURL + path = /api/auth/v2/login (not /api/api/...).
 cat > /usr/share/nginx/html/env.js << ENVJS_EOF
-// Runtime config - frontend uses proxy paths; nginx proxies to BACKEND_*
+// Runtime config - proxy prefix only; app uses path-only (e.g. /auth/v2/login) to avoid double /api
 window.env = {
   VITE_REST_API: '/api',
   VITE_GRAPH_API: '/graphql',

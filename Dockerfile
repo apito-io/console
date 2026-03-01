@@ -5,10 +5,10 @@ FROM alpine:latest
 ENV WEB_PORT=8080
 
 # Backend API URLs - proxied through nginx (override at runtime)
-ENV BACKEND_REST_API=https://api.apito.io
-ENV BACKEND_GRAPH_API=https://api.apito.io/system/graphql
-ENV BACKEND_GRAPH_SUBS_API=wss://api.apito.io/system/graphql/subscription
-ENV BACKEND_PUBLIC_GRAPH_API=https://api.apito.io/secured/graphql
+ENV BACKEND_REST_API=http://localhost:5050
+ENV BACKEND_GRAPH_API=http://localhost:5050/system/graphql
+ENV BACKEND_GRAPH_SUBS_API=ws://localhost:5050/system/graphql/subscription
+ENV BACKEND_PUBLIC_GRAPH_API=http://localhost:5050/secured/graphql
 
 ENV VITE_AUTH_PROVIDER=apito
 ENV VITE_COOKIE_DOMAIN=
