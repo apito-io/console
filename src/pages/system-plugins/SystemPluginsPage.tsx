@@ -24,7 +24,7 @@ const SystemPluginsPage: React.FC = () => {
             }}
           >
             <SecurityScanOutlined />
-            System Plugins
+            Plugins
           </Title>
           <Text type="secondary">
             Manage system-wide plugins that affect all projects. These plugins

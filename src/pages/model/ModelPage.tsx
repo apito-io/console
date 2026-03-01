@@ -1046,7 +1046,7 @@ const ModelPage: React.FC = () => {
     allModelsData.projectModelsInfo.length === 0
   ) {
     return (
-      <div style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
+      <div style={{ padding: "24px", margin: "0 auto" }}>
         <div style={{ marginBottom: "32px" }}>
           <Title level={2} style={{ margin: 0, marginBottom: "8px" }}>
             Model

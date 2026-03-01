@@ -103,7 +103,7 @@ const SystemApiPage: React.FC = () => {
       title: "API Documentation",
       description: "Comprehensive documentation for all system APIs",
       buttonText: "View Docs",
-      action: () => window.open("https://docs.apito.io/api", "_blank"),
+      action: () => window.open("https://apito.io/docs/api", "_blank"),
     },
     {
       icon: <CodeOutlined style={{ fontSize: "24px", color: "#722ed1" }} />,
@@ -310,7 +310,7 @@ query GetUserProjects {
           </Button>
           <Button
             icon={<BookOutlined />}
-            onClick={() => window.open("https://docs.apito.io", "_blank")}
+            onClick={() => window.open("https://apito.io/docs", "_blank")}
           >
             View Documentation
           </Button>
@@ -343,7 +343,7 @@ query GetUserProjects {
             border: "1px solid #e1e4e8",
           }}
         >
-          {`curl -X POST https://api.apito.io/system/project/list \\
+          {`curl -X POST ${window.location.origin}/api/system/project/list \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \\
   --data '{}'`}

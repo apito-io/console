@@ -341,7 +341,7 @@ const FieldConfigurationDrawer: React.FC<FieldConfigurationDrawerProps> = ({
                   Please do check out the{" "}
                   <a
                     target="_blank"
-                    href="https://docs.apito.io/console/models-fields#creating-relations-between-models"
+                    href="https://apito.io/docs/console/models-fields#creating-relations-between-models"
                   >
                     guide
                   </a>{" "}

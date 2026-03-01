@@ -11,20 +11,22 @@ import {
   Empty,
   Drawer,
   Alert,
-  Switch,
   message,
+  Input,
+  Divider,
 } from "antd";
 import {
   AppstoreOutlined,
   PlusOutlined,
-  SettingOutlined,
-  DownloadOutlined,
   InfoCircleOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
 } from "@ant-design/icons";
+import { Avatar } from "antd";
 import {
   useGetPluginsQuery,
   useUpsertPluginDetailsMutation,
-  Plugin_Activation_Type_Enum,
+  type PluginConfigEnvVarsPayload,
 } from "../../../generated/graphql";
 import { useTenant } from "../../../hooks/useTenant";
 
@@ -39,31 +41,34 @@ interface PluginCardProps {
     author?: string | null;
     enable?: boolean | null;
     load_status?: string | null;
-    activate_status?: string | null;
     type?: string | null;
     icon?: string | null;
+    ui_config?: any;
+    [key: string]: any;
   } | null;
   onSettingsClick: (plugin: any) => void;
 }
 
 const PluginCard: React.FC<PluginCardProps> = ({ plugin, onSettingsClick }) => {
-  const [upsertPluginDetails] = useUpsertPluginDetailsMutation();
-
   if (!plugin) {
     return null;
   }
 
   const getStatusColor = (status: string | null | undefined) => {
     if (!status) return "default";
-    switch (status.toLowerCase()) {
+    const statusLower = status.toLowerCase();
+    switch (statusLower) {
       case "loaded":
-      case "active":
+      case "installed":
         return "success";
       case "error":
       case "failed":
         return "error";
       case "loading":
+      case "installing":
         return "processing";
+      case "not_installed":
+        return "default";
       default:
         return "default";
     }
@@ -71,90 +76,165 @@ const PluginCard: React.FC<PluginCardProps> = ({ plugin, onSettingsClick }) => {
 
   const getStatusText = (status: string | null | undefined) => {
     if (!status) return "Unknown";
-    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    return status
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
   };
 
-  const isActivated =
-    (plugin.activate_status || "").toLowerCase() === "activated";
-
-  const handleToggleActivate = async (activated: boolean) => {
-    if (!plugin.id) return;
-
-    try {
-      await upsertPluginDetails({
-        variables: {
-          id: plugin.id,
-          activate_status: activated
-            ? Plugin_Activation_Type_Enum.Activated
-            : Plugin_Activation_Type_Enum.Deactivated,
-        },
-        refetchQueries: ["GetPlugins"],
-      });
-
-      message.success(
-        `Plugin ${activated ? "activated" : "deactivated"} successfully`
-      );
-    } catch (error) {
-      console.error("Failed to update plugin:", error);
-      message.error("Failed to update plugin status");
-    }
+  // Get first letter for avatar fallback
+  const getInitials = (text: string | null | undefined) => {
+    if (!text) return "?";
+    return text.charAt(0).toUpperCase();
   };
+
+  const pluginName = plugin.title || plugin.id || "Unnamed Plugin";
+  const pluginIcon = plugin.icon;
 
   return (
     <Card
       hoverable
-      style={{ height: "100%" }}
-      actions={[
-        <SettingOutlined
-          key="settings"
-          title="Configure"
-          onClick={() => onSettingsClick(plugin)}
-        />,
-        <DownloadOutlined key="update" title="Update" />,
-      ]}
+      style={{
+        height: "100%",
+        cursor: "pointer",
+        transition: "all 0.3s ease",
+      }}
+      onClick={() => onSettingsClick(plugin)}
+      bodyStyle={{ padding: "20px" }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {/* Header with Icon and Title */}
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "flex-start",
+            gap: "12px",
           }}
         >
-          <Title level={5} style={{ margin: 0 }}>
-            {plugin.title || plugin.id || "Unnamed Plugin"}
-          </Title>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Switch
-              checked={isActivated}
-              onChange={handleToggleActivate}
-              size="small"
-            />
-            <Tag color={isActivated ? "green" : "red"}>
-              {isActivated ? "Activated" : "Deactivated"}
-            </Tag>
+          {/* Avatar/Icon */}
+          {pluginIcon ? (
+            <Avatar
+              src={pluginIcon}
+              size={48}
+              style={{
+                flexShrink: 0,
+                backgroundColor: "#f0f0f0",
+              }}
+            >
+              {getInitials(pluginName)}
+            </Avatar>
+          ) : (
+            <Avatar
+              size={48}
+              style={{
+                flexShrink: 0,
+                backgroundColor: "#1890ff",
+                color: "#fff",
+                fontSize: "20px",
+                fontWeight: 600,
+              }}
+            >
+              {getInitials(pluginName)}
+            </Avatar>
+          )}
+
+          {/* Title and Version */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "4px",
+              }}
+            >
+              <Title
+                level={5}
+                style={{
+                  margin: 0,
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  lineHeight: "1.4",
+                }}
+              >
+                {pluginName}
+              </Title>
+              {plugin.load_status && (
+                <Tag
+                  color={getStatusColor(plugin.load_status)}
+                  style={{ margin: 0 }}
+                >
+                  {getStatusText(plugin.load_status)}
+                </Tag>
+              )}
+            </div>
+            {plugin.version && (
+              <Text
+                type="secondary"
+                style={{
+                  fontSize: "13px",
+                  display: "block",
+                  lineHeight: "1.4",
+                }}
+              >
+                v{plugin.version}
+                {plugin.author && ` • by ${plugin.author}`}
+              </Text>
+            )}
           </div>
         </div>
 
-        {plugin.version && (
-          <Text type="secondary" style={{ fontSize: "12px" }}>
-            v{plugin.version}
-            {plugin.author && ` • by ${plugin.author}`}
+        {/* Description */}
+        {plugin.description && (
+          <Text
+            style={{
+              fontSize: "13px",
+              lineHeight: "1.6",
+              color: "#595959",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {plugin.description}
           </Text>
         )}
 
-        <Text style={{ fontSize: "13px", lineHeight: "1.4" }}>
-          {plugin.description || "No description available"}
-        </Text>
-
-        <Space size="small" style={{ marginTop: "4px" }}>
-          {plugin.load_status && (
-            <Tag color={getStatusColor(plugin.load_status)}>
-              Load: {getStatusText(plugin.load_status)}
+        {/* Tags Section */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "6px",
+            marginTop: "4px",
+          }}
+        >
+          {plugin.type && (
+            <Tag color="blue" style={{ margin: 0 }}>
+              {plugin.type}
             </Tag>
           )}
-          {plugin.type && <Tag color="blue">{plugin.type}</Tag>}
-        </Space>
+          {plugin.ui_config && typeof plugin.ui_config === "object" && (
+            <Tag color="purple" style={{ margin: 0 }}>
+              UI Config
+            </Tag>
+          )}
+          {plugin.enable !== null && plugin.enable !== undefined && (
+            <Tag
+              color={plugin.enable ? "green" : "default"}
+              style={{ margin: 0 }}
+            >
+              {plugin.enable ? "Enabled" : "Disabled"}
+            </Tag>
+          )}
+          {plugin.role && (
+            <Tag color="orange" style={{ margin: 0 }}>
+              {plugin.role}
+            </Tag>
+          )}
+        </div>
       </div>
     </Card>
   );
@@ -164,6 +244,14 @@ const PluginsSettingsPage: React.FC = () => {
   const { tenantId } = useTenant();
   const [selectedPlugin, setSelectedPlugin] = useState<any>(null);
   const [settingsDrawerVisible, setSettingsDrawerVisible] = useState(false);
+  const [envVarsVisible, setEnvVarsVisible] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [envVarsValues, setEnvVarsValues] = useState<
+    Record<string, { key: string; value: string }>
+  >({});
+  const [upsertPluginDetails, { loading: saving }] =
+    useUpsertPluginDetailsMutation();
 
   const { data, loading, error, refetch } = useGetPluginsQuery({
     variables: {
@@ -178,21 +266,89 @@ const PluginsSettingsPage: React.FC = () => {
   const plugins = data?.getPlugins || [];
   const installedPlugins = plugins.filter(
     (plugin) =>
-      plugin && (plugin.activate_status || "").toLowerCase() === "activated"
+      plugin &&
+      ((plugin.load_status || "").toLowerCase() === "installed" ||
+        (plugin.load_status || "").toLowerCase() === "loaded")
   );
   const availablePlugins = plugins.filter(
     (plugin) =>
-      plugin && (plugin.activate_status || "").toLowerCase() !== "activated"
+      plugin &&
+      (plugin.load_status || "").toLowerCase() !== "installed" &&
+      (plugin.load_status || "").toLowerCase() !== "loaded"
   );
 
   const handleSettingsClick = (plugin: any) => {
     setSelectedPlugin(plugin);
     setSettingsDrawerVisible(true);
+    // Initialize env vars visibility and values
+    if (plugin?.env_vars) {
+      const initialVisibility: Record<string, boolean> = {};
+      const initialValues: Record<string, { key: string; value: string }> = {};
+      plugin.env_vars.forEach(
+        (envVar: { key?: string | null; value?: string | null }) => {
+          if (envVar.key) {
+            initialVisibility[envVar.key] = false;
+            initialValues[envVar.key] = {
+              key: envVar.key,
+              value: envVar.value || "",
+            };
+          }
+        }
+      );
+      setEnvVarsVisible(initialVisibility);
+      setEnvVarsValues(initialValues);
+    }
   };
 
   const handleCloseSettings = () => {
     setSettingsDrawerVisible(false);
     setSelectedPlugin(null);
+    setEnvVarsVisible({});
+    setEnvVarsValues({});
+  };
+
+  const toggleEnvVarVisibility = (key: string) => {
+    setEnvVarsVisible((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const updateEnvVarValue = (key: string, value: string) => {
+    setEnvVarsValues((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        value,
+      },
+    }));
+  };
+
+  const handleSaveSettings = async () => {
+    if (!selectedPlugin?.id) return;
+
+    try {
+      const envVarsPayload: PluginConfigEnvVarsPayload[] = Object.values(
+        envVarsValues
+      ).map((envVar) => ({
+        key: envVar.key,
+        value: envVar.value,
+      }));
+
+      await upsertPluginDetails({
+        variables: {
+          id: selectedPlugin.id,
+          env_vars: envVarsPayload,
+        },
+        refetchQueries: ["GetPlugins"],
+      });
+
+      message.success("Plugin settings updated successfully");
+      handleCloseSettings();
+    } catch (error) {
+      console.error("Failed to update plugin settings:", error);
+      message.error("Failed to update plugin settings");
+    }
   };
 
   const handleRefresh = () => {
@@ -241,7 +397,16 @@ const PluginsSettingsPage: React.FC = () => {
   }
 
   return (
-    <div>
+    <div style={{ padding: "16px" }}>
+      <div style={{ marginBottom: "24px" }}>
+        <Title level={2} style={{ margin: 0 }}>
+          System Plugins
+        </Title>
+        <Text type="secondary">
+          Manage and configure plugins for your project
+        </Text>
+      </div>
+
       {/* Installed Plugins Section */}
       <Card style={{ marginBottom: "24px" }}>
         <div style={{ marginBottom: "16px" }}>
@@ -322,55 +487,163 @@ const PluginsSettingsPage: React.FC = () => {
             : "Plugin Settings"
         }
         placement="right"
-        width={400}
+        width={500}
         closable
         onClose={handleCloseSettings}
         open={settingsDrawerVisible}
+        footer={
+          selectedPlugin ? (
+            <div
+              style={{
+                display: "flex",
+                gap: "8px",
+                justifyContent: "flex-end",
+              }}
+            >
+              <Button onClick={handleCloseSettings}>Cancel</Button>
+              <Button
+                type="primary"
+                onClick={handleSaveSettings}
+                loading={saving}
+              >
+                Save Settings
+              </Button>
+            </div>
+          ) : null
+        }
       >
         {selectedPlugin ? (
           <div>
-            <Alert
-              message="Plugin Configuration"
-              description="Adjust settings and configure environment variables for this plugin."
-              type="info"
-              showIcon
-              style={{ marginBottom: "16px" }}
-            />
+            {/* Plugin Details Section */}
+            <div style={{ marginBottom: "24px" }}>
+              <Title level={5} style={{ marginBottom: "16px" }}>
+                Plugin Details
+              </Title>
 
-            <div style={{ marginBottom: "16px" }}>
-              <Text strong>Plugin ID:</Text>
-              <br />
-              <Text code>{selectedPlugin.id}</Text>
+              <Divider />
+
+              <div style={{ marginBottom: "12px" }}>
+                <Text strong>Plugin ID:</Text>
+                <br />
+                <Text code style={{ fontSize: "13px" }}>
+                  {selectedPlugin.id}
+                </Text>
+              </div>
+
+              {selectedPlugin.description && (
+                <div style={{ marginBottom: "12px" }}>
+                  <Text strong>Description:</Text>
+                  <br />
+                  <Text style={{ fontSize: "13px" }}>
+                    {selectedPlugin.description}
+                  </Text>
+                </div>
+              )}
+
+              {selectedPlugin.version && (
+                <div style={{ marginBottom: "12px" }}>
+                  <Text strong>Version:</Text>
+                  <br />
+                  <Text style={{ fontSize: "13px" }}>
+                    {selectedPlugin.version}
+                  </Text>
+                </div>
+              )}
+
+              {selectedPlugin.author && (
+                <div style={{ marginBottom: "12px" }}>
+                  <Text strong>Author:</Text>
+                  <br />
+                  <Text style={{ fontSize: "13px" }}>
+                    {selectedPlugin.author}
+                  </Text>
+                </div>
+              )}
             </div>
 
-            {selectedPlugin.description && (
-              <div style={{ marginBottom: "16px" }}>
-                <Text strong>Description:</Text>
-                <br />
-                <Text>{selectedPlugin.description}</Text>
-              </div>
-            )}
+            <Divider />
 
-            {selectedPlugin.version && (
-              <div style={{ marginBottom: "16px" }}>
-                <Text strong>Version:</Text>
-                <br />
-                <Text>{selectedPlugin.version}</Text>
-              </div>
-            )}
+            {/* Environment Variables Section */}
+            <div>
+              <Title level={5} style={{ marginBottom: "16px" }}>
+                Environment Variables
+              </Title>
 
-            {selectedPlugin.author && (
-              <div style={{ marginBottom: "16px" }}>
-                <Text strong>Author:</Text>
-                <br />
-                <Text>{selectedPlugin.author}</Text>
-              </div>
-            )}
+              {selectedPlugin.env_vars && selectedPlugin.env_vars.length > 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                  }}
+                >
+                  {selectedPlugin.env_vars.map(
+                    (envVar: {
+                      key?: string | null;
+                      value?: string | null;
+                    }) => {
+                      if (!envVar.key) return null;
+                      const isVisible = envVarsVisible[envVar.key] || false;
+                      const currentValue =
+                        envVarsValues[envVar.key]?.value ?? envVar.value ?? "";
 
-            <div style={{ marginTop: "24px" }}>
-              <Button type="primary" block>
-                Save Settings
-              </Button>
+                      return (
+                        <div
+                          key={envVar.key}
+                          style={{
+                            padding: "12px",
+                            border: "1px solid #d9d9d9",
+                            borderRadius: "4px",
+                            backgroundColor: "#fafafa",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: "8px",
+                            }}
+                          >
+                            <Text strong style={{ fontSize: "13px" }}>
+                              {envVar.key}
+                            </Text>
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={
+                                isVisible ? (
+                                  <EyeInvisibleOutlined />
+                                ) : (
+                                  <EyeOutlined />
+                                )
+                              }
+                              onClick={() =>
+                                toggleEnvVarVisibility(envVar.key!)
+                              }
+                            >
+                              {isVisible ? "Hide" : "Show"}
+                            </Button>
+                          </div>
+                          <Input
+                            type={isVisible ? "text" : "password"}
+                            value={currentValue}
+                            onChange={(e) =>
+                              updateEnvVarValue(envVar.key!, e.target.value)
+                            }
+                            placeholder="Enter value"
+                            style={{ fontSize: "13px" }}
+                          />
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              ) : (
+                <Text type="secondary" style={{ fontSize: "13px" }}>
+                  No environment variables configured
+                </Text>
+              )}
             </div>
           </div>
         ) : (

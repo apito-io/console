@@ -57,12 +57,6 @@ const SettingsPage: React.FC = () => {
         label: "Roles & Permissions",
         onClick: () => navigate("/console/settings/roles"),
       },
-      {
-        key: "plugins",
-        icon: <AppstoreOutlined />,
-        label: "Plugins",
-        onClick: () => navigate("/console/settings/plugins"),
-      },
     ],
     [navigate]
   );
@@ -151,8 +145,6 @@ const SettingsPage: React.FC = () => {
                       {item.key === "webhooks" &&
                         "Event notifications and integrations"}
                       {item.key === "roles" && "User roles and permissions"}
-                      {item.key === "plugins" &&
-                        "Extend functionality with plugins"}
                       {item.key === "database" &&
                         "Database connection settings"}
                       {item.key === "api-usage" &&

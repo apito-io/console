@@ -1,43 +1,57 @@
 import { ENV } from '../utils/env';
 
-export const BASE_URL = ENV.VITE_REST_API;
 export const AUTH_VERSION = 'v2';
-export const SYSTEM_GRAPHQL_URL = `${BASE_URL}/system/graphql`;
-export const CLIENT_GRAPHQL_URL = `${BASE_URL}/secured/graphql`;
-export const CLIENT_GRAPHQL_URL_v2 = `${BASE_URL}/secured/graphql/v2`;
-export const REST_DOC_URL = `${BASE_URL}/system/doc`;
-export const AUTH_URL = `${BASE_URL}/auth/callback`;
-export const MEDIA_UPLOAD_URL = `${BASE_URL}/plugin/media/upload`;
-export const TOKEN_REFRESH_URL = `${BASE_URL}/auth/refresh/token`;
 
-export const REGISTER_URL = `${BASE_URL}/auth/${AUTH_VERSION}/register`;
-export const LOGIN_URL = `${BASE_URL}/auth/${AUTH_VERSION}/login`;
-export const LOGOUT_URL = `${BASE_URL}/auth/${AUTH_VERSION}/logout`;
+// All URLs are computed dynamically via ENV getters
+// ENV reads from window.env (runtime) first, then import.meta.env (build-time)
 
-export const GOOGLE_LOGIN_URL = `${BASE_URL}/auth/${AUTH_VERSION}/google/login`;
-export const GITHUB_LOGIN_URL = `${BASE_URL}/auth/${AUTH_VERSION}/github/login`;
+// Base URL getter
+export const getBaseUrl = () => ENV.VITE_REST_API;
 
-export const EMAIL_VERIFY = `${BASE_URL}/auth/${AUTH_VERSION}/verify/email`;
-export const FORGET_PASSWORD = `${BASE_URL}/auth/${AUTH_VERSION}/forget/password/request`;
-export const VERIFY_PASSWORD = `${BASE_URL}/auth/${AUTH_VERSION}/forget/password/verify`;
+// For backward compatibility - these use the getter indirectly
+export const BASE_URL = ENV.VITE_REST_API;
 
-export const CHANGE_PASSWORD = `${BASE_URL}/auth/${AUTH_VERSION}/change/password`;
+// GraphQL endpoints
+export const SYSTEM_GRAPHQL_URL = ENV.VITE_GRAPH_API;
+export const CLIENT_GRAPHQL_URL = ENV.VITE_PUBLIC_GRAPH_API;
+export const CLIENT_GRAPHQL_URL_v2 = `${ENV.VITE_REST_API}/secured/graphql/v2`;
 
-export const USER_SUB_FETCH = `${BASE_URL}/system/user/subscription`;
-export const USER_SUB_CHECK = `${BASE_URL}/system/user/subscription/check`;
+// REST endpoints
+export const REST_DOC_URL = `${ENV.VITE_REST_API}/system/doc`;
+export const AUTH_URL = `${ENV.VITE_REST_API}/auth/callback`;
+export const MEDIA_UPLOAD_URL = `${ENV.VITE_REST_API}/plugin/media/upload`;
+export const TOKEN_REFRESH_URL = `${ENV.VITE_REST_API}/auth/refresh/token`;
 
-export const PROJECT_NAME_CHECK = `${BASE_URL}/system/project/name/check`;
-export const PROJECT_SWITCH = `${BASE_URL}/system/project/switch`;
-export const PROJECT_CREATE = `${BASE_URL}/system/project/create`;
-export const USER_PROFILE = `${BASE_URL}/system/user/profile`;
+// Auth endpoints
+export const REGISTER_URL = `${ENV.VITE_REST_API}/auth/${AUTH_VERSION}/register`;
+export const LOGIN_URL = `${ENV.VITE_REST_API}/auth/${AUTH_VERSION}/login`;
+export const LOGOUT_URL = `${ENV.VITE_REST_API}/auth/${AUTH_VERSION}/logout`;
 
-export const SYNC_TOKEN_LIST = `${BASE_URL}/system/sync/token/list`;
-export const SYNC_TOKEN_CREATE = `${BASE_URL}/system/sync/token/create`;
-export const SYNC_TOKEN_DELETE = `${BASE_URL}/system/sync/token/delete`;
+export const EMAIL_VERIFY = `${ENV.VITE_REST_API}/auth/${AUTH_VERSION}/verify/email`;
+export const FORGET_PASSWORD = `${ENV.VITE_REST_API}/auth/${AUTH_VERSION}/forget/password/request`;
+export const VERIFY_PASSWORD = `${ENV.VITE_REST_API}/auth/${AUTH_VERSION}/forget/password/verify`;
 
-export const PROJECT_LIMIT_CHECK = `${BASE_URL}/system/project/limit`;
-export const PROJECT_LIST = `${BASE_URL}/system/project/list`;
-export const PROJECT_DELETE = `${BASE_URL}/system/project/delete`;
-export const MEDIA_UPLOAD = `${BASE_URL}/media/upload`;
+export const CHANGE_PASSWORD = `${ENV.VITE_REST_API}/auth/${AUTH_VERSION}/change/password`;
 
-export const PLUGIN_UPLOAD = `${BASE_URL}/system/plugin/upload`; 
+// User/Subscription endpoints
+export const USER_SUB_FETCH = `${ENV.VITE_REST_API}/system/user/subscription`;
+export const USER_SUB_CHECK = `${ENV.VITE_REST_API}/system/user/subscription/check`;
+
+// Project endpoints
+export const PROJECT_NAME_CHECK = `${ENV.VITE_REST_API}/system/project/name/check`;
+export const PROJECT_SWITCH = `${ENV.VITE_REST_API}/system/project/switch`;
+export const PROJECT_CREATE = `${ENV.VITE_REST_API}/system/project/create`;
+export const USER_PROFILE = `${ENV.VITE_REST_API}/system/user/profile`;
+
+// Sync endpoints
+export const SYNC_TOKEN_LIST = `${ENV.VITE_REST_API}/system/sync/token/list`;
+export const SYNC_TOKEN_CREATE = `${ENV.VITE_REST_API}/system/sync/token/create`;
+export const SYNC_TOKEN_DELETE = `${ENV.VITE_REST_API}/system/sync/token/delete`;
+
+// Other endpoints
+export const PROJECT_LIMIT_CHECK = `${ENV.VITE_REST_API}/system/project/limit`;
+export const PROJECT_LIST = `${ENV.VITE_REST_API}/system/project/list`;
+export const PROJECT_DELETE = `${ENV.VITE_REST_API}/system/project/delete`;
+export const MEDIA_UPLOAD = `${ENV.VITE_REST_API}/media/upload`;
+
+export const PLUGIN_UPLOAD = `${ENV.VITE_REST_API}/system/plugin/upload`;

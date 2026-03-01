@@ -91,10 +91,10 @@ const Sidebar = () => {
       onClick: () => navigate("/sync"),
     },
     {
-      key: "support",
-      icon: <QuestionCircleOutlined />,
-      label: "Help & Support",
-      onClick: () => navigate("/support"),
+      key: "plugins",
+      icon: <AppstoreOutlined />,
+      label: "Plugins",
+      onClick: () => navigate("/plugins"),
     },
     {
       key: "system-api",
@@ -103,11 +103,12 @@ const Sidebar = () => {
       onClick: () => navigate("/system-api"),
     },
     {
-      key: "plugins",
-      icon: <AppstoreOutlined />,
-      label: "System Plugins",
-      onClick: () => navigate("/plugins"),
+      key: "support",
+      icon: <QuestionCircleOutlined />,
+      label: "Help & Support",
+      onClick: () => navigate("/support"),
     },
+
   ];
 
   // Combine base menu items with additional ones

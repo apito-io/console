@@ -12,7 +12,6 @@ import ApiSecretsSettingsPage from "../pages/settings/api-secrets/ApiSecretsSett
 import WebhooksSettingsPage from "../pages/settings/webhooks/WebhooksSettingsPage";
 import RolesSettingsPage from "../pages/settings/roles/RolesSettingsPage";
 import PluginsSettingsPage from "../pages/settings/plugins/PluginsSettingsPage";
-import PluginSettingsRenderer from "../components/plugins/PluginSettingsRenderer";
 import { LoginPage } from "../pages/auth";
 
 import { ProjectsPage, StartProjectPage } from "../pages/projects";
@@ -22,7 +21,6 @@ import SyncPage from "../pages/sync";
 import SystemApiPage from "../pages/system-api";
 import LogicPage from "../pages/logic";
 import MediaPage from "../pages/media";
-import { ProjectPluginsPage } from "../pages/plugins";
 import { SystemPluginsPage } from "../pages/system-plugins";
 import { PluginRouter } from "../plugins/PluginRouter";
 
@@ -79,6 +77,14 @@ export const getMainRoutes = (
         path: "system/plugins",
         element: <SystemPluginsPage />,
       },
+      {
+        path: "plugins",
+        element: <PluginsSettingsPage />,
+      },
+      {
+        path: "plugin/:pluginName/*",
+        element: <PluginRouter />,
+      },
       // Console routes (no projectId in URL)
       {
         path: "console",
@@ -117,14 +123,6 @@ export const getMainRoutes = (
             element: <MediaPage />,
           },
           {
-            path: "plugins",
-            element: <ProjectPluginsPage />,
-          },
-          {
-            path: "plugin/:pluginName/*",
-            element: <PluginRouter />,
-          },
-          {
             path: "settings",
             element: <SettingsPage />,
             children: [
@@ -151,14 +149,6 @@ export const getMainRoutes = (
               {
                 path: "roles",
                 element: <RolesSettingsPage />,
-              },
-              {
-                path: "plugins",
-                element: <PluginsSettingsPage />,
-              },
-              {
-                path: "plugins/:pluginName",
-                element: <PluginSettingsRenderer />,
               },
             ],
           },
@@ -191,6 +181,8 @@ export const renderMainRoutes = (
     <Route path="sync" element={<SyncPage />} />
     <Route path="system-api" element={<SystemApiPage />} />
     <Route path="system/plugins" element={<SystemPluginsPage />} />
+    <Route path="plugins" element={<PluginsSettingsPage />} />
+    <Route path="plugin/:pluginName/*" element={<PluginRouter />} />
 
     {/* Console routes */}
     <Route path="console" element={<ConsoleLayout />}>
@@ -202,8 +194,6 @@ export const renderMainRoutes = (
       <Route path="api" element={<ApiPage />} />
       <Route path="logic" element={<LogicPage />} />
       <Route path="media" element={<MediaPage />} />
-      <Route path="plugins" element={<ProjectPluginsPage />} />
-      <Route path="plugin/:pluginName/*" element={<PluginRouter />} />
       <Route path="settings" element={<SettingsPage />}>
         <Route index element={<Navigate to="general" replace />} />
         <Route path="general" element={<GeneralSettingsPage />} />
@@ -211,11 +201,6 @@ export const renderMainRoutes = (
         <Route path="api-secrets" element={<ApiSecretsSettingsPage />} />
         <Route path="webhooks" element={<WebhooksSettingsPage />} />
         <Route path="roles" element={<RolesSettingsPage />} />
-        <Route path="plugins" element={<PluginsSettingsPage />} />
-        <Route
-          path="plugins/:pluginName"
-          element={<PluginSettingsRenderer />}
-        />
       </Route>
     </Route>
 

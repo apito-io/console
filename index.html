@@ -48,6 +48,8 @@
     <script src="/apito-plugin-utils.js"></script>
   </head>
   <body>
+    <!-- Runtime config from Docker/entrypoint (env.js); loaded before app so window.env is available -->
+    <script src="/env.js"></script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -22,6 +22,10 @@ export const NAVIGATION_HEADERS: Record<string, NavigationConfig> = {
         title: "Account Settings",
         subtitle: "Manage your profile and security settings"
     },
+    "plugins": {
+        title: "Plugins",
+        subtitle: "Manage and configure plugins"
+    },
     "support": {
         title: "Help & Support",
         subtitle: "Get help and support from the Apito team"
@@ -34,10 +38,7 @@ export const NAVIGATION_HEADERS: Record<string, NavigationConfig> = {
         title: "System API",
         subtitle: "Explore and test the Apito System APIs"
     },
-    "plugins": {
-        title: "System Plugins",
-        subtitle: "Manage and configure system plugins"
-    },
+
 
     // Console pages
     "content": {

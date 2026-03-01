@@ -210,7 +210,7 @@ const Header = ({ currentPath }: HeaderProps) => {
               <Button
                 type="text"
                 icon={<AppstoreOutlined />}
-                onClick={() => navigate("/console/plugins")}
+                onClick={() => navigate("/plugins")}
                 style={{
                   color: token.colorTextSecondary,
                   border: "none",

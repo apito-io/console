@@ -186,6 +186,17 @@ export const apitoTheme: ThemeConfig = {
             defaultPadding: '12px 16px',
             withDescriptionPadding: '16px 16px',
         },
+
+        // Segmented - black/white theme (e.g. Database Configuration on Start Project)
+        Segmented: {
+            trackBg: '#f0f0f0',
+            itemColor: 'rgba(0,0,0,0.88)',
+            itemHoverBg: 'rgba(0,0,0,0.06)',
+            itemHoverColor: 'rgba(0,0,0,0.88)',
+            itemSelectedBg: '#000',
+            itemSelectedColor: '#fff',
+            itemActiveBg: 'rgba(0,0,0,0.15)',
+        },
     },
 };
 

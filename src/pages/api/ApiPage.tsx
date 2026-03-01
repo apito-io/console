@@ -35,7 +35,7 @@ const ApiPage: React.FC = () => {
 
   // GraphQL configuration
   const graphqlEndpoint = `${
-    ENV.VITE_PUBLIC_GRAPH_API || "https://api.apito.io/secured/graphql"
+    ENV.VITE_PUBLIC_GRAPH_API || "/public-graphql"
   }`;
 
   // Create the base fetcher
@@ -144,7 +144,7 @@ const ApiPage: React.FC = () => {
     servers: [
       {
         url:
-          import.meta.env.VITE_REST_API_ENDPOINT || "https://api.apito.io/rest",
+          import.meta.env.VITE_REST_API_ENDPOINT || "/api",
         description: "Production server",
       },
     ],
@@ -361,7 +361,7 @@ query {
                 <Text>
                   <strong>REST API Endpoint:</strong>{" "}
                   {import.meta.env.VITE_REST_API_ENDPOINT ||
-                    "https://api.apito.io/rest"}
+                    `${window.location.origin}/api`}
                 </Text>
                 <Text type="secondary">
                   Both endpoints require authentication with your API token.

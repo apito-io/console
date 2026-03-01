@@ -33,7 +33,7 @@ const SupportPage: React.FC = () => {
       title: "Documentation",
       description: "Comprehensive guides and API documentation",
       action: "Browse Docs",
-      link: "https://docs.apito.io",
+      link: "https://apito.io/docs",
       buttonText: "View Docs",
     },
     {
@@ -138,7 +138,7 @@ const SupportPage: React.FC = () => {
                 </Button>
                 <Button
                   icon={<GlobalOutlined />}
-                  onClick={() => window.open("https://docs.apito.io", "_blank")}
+                  onClick={() => window.open("https://apito.io/docs", "_blank")}
                 >
                   View Documentation
                 </Button>

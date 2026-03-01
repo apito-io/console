@@ -112,12 +112,12 @@ const ApiSecretsSettingsPage: React.FC = () => {
   const projectSecretKey =
     currentProjectData?.currentProject?.project_secret_key;
 
-  // API endpoints
+  // API endpoints - use relative proxy paths for Docker deployments
   const graphqlEndpoint =
     import.meta.env.REACT_APP_GRAPHQL_ENDPOINT ||
-    "https://api.apito.io/graphql";
+    `${window.location.origin}/graphql`;
   const restEndpoint =
-    import.meta.env.REACT_APP_REST_API_ENDPOINT || "https://api.apito.io/rest";
+    import.meta.env.REACT_APP_REST_API_ENDPOINT || `${window.location.origin}/api`;
 
   // Table columns for API tokens
   const columns = [

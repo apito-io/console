@@ -59,8 +59,6 @@ export interface AuthContextType {
   handleForgotPasswordRequestAPI: (data: ForgotPasswordFormData) => Promise<string | undefined>;
   handleForgotPasswordConfirmationAPI: (data: ChangePasswordFormData) => Promise<string | undefined>;
   handleLogout: () => Promise<void>;
-  handleGoogleLogin: () => Promise<void>;
-  handleGithubLogin: () => Promise<void>;
   loading: boolean;
   navigateFrom: string;
 } 

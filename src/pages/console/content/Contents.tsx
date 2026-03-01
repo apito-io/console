@@ -278,7 +278,7 @@ const Contents: React.FC<ContentsProps> = ({
   // Render single page model form directly
   if (isSinglePageModel) {
     return (
-      <div style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
+      <div style={{ padding: "24px", margin: "0 auto" }}>
         {/* Header Section */}
         <div
           style={{
@@ -326,7 +326,7 @@ const Contents: React.FC<ContentsProps> = ({
   }
 
   return (
-    <div style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
+    <div style={{ padding: "24px", margin: "0 auto" }}>
       {/* Header Section */}
       <div
         style={{

@@ -489,12 +489,6 @@ const ConsoleLayout: React.FC = () => {
                         label: "Roles & Permissions",
                         onClick: () => navigate("/console/settings/roles"),
                       },
-                      {
-                        key: "plugins",
-                        icon: <AppstoreOutlined />,
-                        label: "Plugins",
-                        onClick: () => navigate("/console/settings/plugins"),
-                      },
                     ];
 
                     // Plugin settings menu items

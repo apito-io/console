@@ -11,8 +11,6 @@ import {
   EMAIL_VERIFY,
   FORGET_PASSWORD,
   VERIFY_PASSWORD,
-  GOOGLE_LOGIN_URL,
-  GITHUB_LOGIN_URL,
 } from "../constants/api";
 import type {
   LoginFormData,
@@ -228,34 +226,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     navigate("/login");
   };
 
-  const handleGoogleLogin = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      const response = await httpService.get(GOOGLE_LOGIN_URL);
-      if (response.status === 200 && response.data.message) {
-        // Backend returns the OAuth URL, redirect to it
-        window.location.href = response.data.message;
-      }
-    } catch (error) {
-      setLoading(false);
-      console.error("Google login error:", error);
-    }
-  };
-
-  const handleGithubLogin = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      const response = await httpService.get(GITHUB_LOGIN_URL);
-      if (response.status === 200 && response.data.message) {
-        // Backend returns the OAuth URL, redirect to it
-        window.location.href = response.data.message;
-      }
-    } catch (error) {
-      setLoading(false);
-      console.error("GitHub login error:", error);
-    }
-  };
-
   const value: AuthContextType = {
     isAuthenticated,
     readJWTToken,
@@ -267,8 +237,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     handleForgotPasswordRequestAPI,
     handleForgotPasswordConfirmationAPI,
     handleLogout,
-    handleGoogleLogin,
-    handleGithubLogin,
     loading,
     navigateFrom,
   };

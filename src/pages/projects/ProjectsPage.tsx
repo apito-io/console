@@ -612,7 +612,7 @@ const ProjectsPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: "32px", maxWidth: "1400px", margin: "0 auto" }}>
+    <div style={{ padding: "25px", margin: "0 auto" }}>
       {/* Breadcrumb Navigation - like Turso */}
       <div style={{ marginBottom: "24px" }}>
         <Breadcrumb

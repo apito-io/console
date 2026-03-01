@@ -1,23 +1,41 @@
-// Utility to get environment variables with runtime override support
-function getEnvVar(key: string): string {
-    // First try to get from runtime env (window.env)
-    const runtimeEnv = (window as any)?.env;
-    if (runtimeEnv && runtimeEnv[key]) {
-        return runtimeEnv[key];
-    }
+// Runtime environment configuration
+// Priority: window.env (runtime) > import.meta.env (build-time)
+// This allows Docker containers to inject config at startup via env.js
 
-    // Fallback to build-time environment variables
-    return (import.meta.env as any)[key] || '';
+declare global {
+    interface Window {
+        env?: {
+            VITE_REST_API?: string;
+            VITE_GRAPH_API?: string;
+            VITE_GRAPH_SUBS_API?: string;
+            VITE_AUTH_PROVIDER?: string;
+            VITE_PUBLIC_GRAPH_API?: string;
+            VITE_COOKIE_DOMAIN?: string;
+            VITE_PADDLE_VENDOR_ID?: string;
+            VITE_PADDLE_CLIENT_SIDE_TOKEN?: string;
+            VITE_PADDLE_STARTER_PRICE_ID?: string;
+            VITE_PADDLE_PRO_PRICE_ID?: string;
+            VITE_PADDLE_BUSINESS_PRICE_ID?: string;
+        };
+    }
 }
 
-export const ENV = {
-    VITE_REST_API: getEnvVar('VITE_REST_API'),
-    VITE_GRAPH_API: getEnvVar('VITE_GRAPH_API'),
-    VITE_GRAPH_SUBS_API: getEnvVar('VITE_GRAPH_SUBS_API'),
-    VITE_AUTH_PROVIDER: getEnvVar('VITE_AUTH_PROVIDER'),
-    VITE_PUBLIC_GRAPH_API: getEnvVar('VITE_PUBLIC_GRAPH_API'),
-    VITE_COOKIE_DOMAIN: getEnvVar('VITE_COOKIE_DOMAIN'),
-};
+// Get environment variable - runtime first, then build-time fallback
+function getEnv(key: string): string {
+    // Runtime config from env.js (injected by Docker at container start)
+    if (typeof window !== 'undefined' && window.env && window.env[key as keyof Window['env']]) {
+        return window.env[key as keyof Window['env']] as string;
+    }
+    // Build-time fallback
+    return (import.meta.env as Record<string, string>)[key] || '';
+}
 
-// Re-export for backward compatibility
-export const BASE_URL = ENV.VITE_REST_API; 
+// Export as getters for lazy evaluation
+export const ENV = {
+    get VITE_REST_API() { return getEnv('VITE_REST_API'); },
+    get VITE_GRAPH_API() { return getEnv('VITE_GRAPH_API'); },
+    get VITE_GRAPH_SUBS_API() { return getEnv('VITE_GRAPH_SUBS_API'); },
+    get VITE_AUTH_PROVIDER() { return getEnv('VITE_AUTH_PROVIDER'); },
+    get VITE_PUBLIC_GRAPH_API() { return getEnv('VITE_PUBLIC_GRAPH_API'); },
+    get VITE_COOKIE_DOMAIN() { return getEnv('VITE_COOKIE_DOMAIN'); },
+};
