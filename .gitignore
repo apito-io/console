@@ -26,8 +26,7 @@ dist-ssr
 dist
 .vscode
 
-# Agent notes and local workflows stay off the public tree.
+# Agent notes stay off the public tree. Release workflows stay on GitHub.
 .cursor/
-.github/workflows/
 .knowledge/
 .memory/
