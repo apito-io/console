@@ -25,3 +25,9 @@ dist-ssr
 .vite
 dist
 .vscode
+
+# Agent notes and local workflows stay off the public tree.
+.cursor/
+.github/workflows/
+.knowledge/
+.memory/
