@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet } from "../../router/navigation";
 import { AuthProvider } from "../../contexts/AuthContext";
 
 const AuthWrapper = () => {

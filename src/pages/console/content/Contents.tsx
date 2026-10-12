@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Button,
   Drawer,
@@ -7,25 +7,30 @@ import {
   message,
   Typography,
   Space,
-  Card,
-  Spin,
 } from "antd";
-import { PlusCircleOutlined, TagsOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "../../../router/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetMultipleDataQuery,
   useGetModelDetailsQuery,
   useDeleteModelDataMutation,
   useDuplicateModelDataMutation,
-} from "../../../generated/graphql";
+} from "../../../generated_gql/tanstack-query";
 import { useContentContext } from "../../../contexts/ContentContext";
 import type { MenuProps } from "antd";
 import EditAndCreateContentForm from "./EditAndCreateContentForm";
 import FakeContentForm from "./FakeContentForm";
 import TableGenerator from "../../../components/common/TableGenerator";
 import TagRelationForm from "./TagRelationForm";
+import { invalidateContentQueries } from "../../../lib/schemaCache";
+import ConsolePageHeader from "../../../components/console/ConsolePageHeader";
+import ConsoleCard from "../../../components/console/ConsoleCard";
+import "../../../components/console/ConsoleShell.css";
+import { CirclePlus, Tags } from "lucide-react";
 
 const { Title, Text } = Typography;
+
+const DEFAULT_PAGE_SIZE = 50;
 
 interface ContentsProps {
   modelName: string;
@@ -44,6 +49,7 @@ const Contents: React.FC<ContentsProps> = ({
   loadingTag,
 }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { state: contentState } = useContentContext();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [drawerTitle, setDrawerTitle] = useState<string>("");
@@ -51,61 +57,74 @@ const Contents: React.FC<ContentsProps> = ({
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [relationDrawerVisible, setRelationDrawerVisible] = useState(false);
   const [relationRecord, setRelationRecord] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
-  // Delete mutation hook
-  const [deleteModelData] = useDeleteModelDataMutation({
-    onCompleted: () => {
+  const refreshContentQueries = useCallback(async () => {
+    await invalidateContentQueries(queryClient);
+  }, [queryClient]);
+
+  const { mutateAsync: deleteModelData } = useDeleteModelDataMutation({
+    onSuccess: async () => {
       message.success("Content deleted successfully!");
-      refetch(); // Refresh the table data
+      await refreshContentQueries();
     },
     onError: (error) => {
-      message.error(`Failed to delete content: ${error.message}`);
+      message.error(
+        `Failed to delete content: ${
+          error instanceof Error ? error.message : "Delete failed"
+        }`
+      );
     },
   });
 
-  // Duplicate mutation hook
-  const [duplicateModelData] = useDuplicateModelDataMutation({
-    onCompleted: () => {
+  const { mutateAsync: duplicateModelData } = useDuplicateModelDataMutation({
+    onSuccess: async () => {
       message.success("Content duplicated successfully!");
-      refetch(); // Refresh the table data
+      await refreshContentQueries();
     },
     onError: (error) => {
-      message.error(`Failed to duplicate content: ${error.message}`);
+      message.error(
+        `Failed to duplicate content: ${
+          error instanceof Error ? error.message : "Duplicate failed"
+        }`
+      );
     },
   });
 
   // Use the selected model from ContentContext or props
   const currentModel = contentState.target || modelName;
 
+  useEffect(() => {
+    setPage(1);
+    setSelectedRowKeys([]);
+  }, [currentModel]);
+
   // Check if this is a single page model
   const isSinglePageModel =
     contentState.single_page || !!contentState.single_page_uuid;
 
   // Fetch model details to check for connections
-  const { data: modelDetailsData } = useGetModelDetailsQuery({
-    variables: {
-      model_name: currentModel,
-    },
-    skip: !currentModel,
-    errorPolicy: "all",
-  });
+  const { data: modelDetailsData } = useGetModelDetailsQuery(
+    { model_name: currentModel },
+    { enabled: Boolean(currentModel) }
+  );
 
-  // Fetch content data using generated hook (only for table models)
   const {
     data: contentData,
-    loading,
+    isLoading: loading,
     error,
     refetch,
-  } = useGetMultipleDataQuery({
-    variables: {
+  } = useGetMultipleDataQuery(
+    {
       model: currentModel,
-      limit: 50,
-      page: 1,
+      limit: pageSize,
+      page,
     },
-    skip: !currentModel || isSinglePageModel, // Skip query if no model selected or if it's a single page model
-    errorPolicy: "all",
-    fetchPolicy: "cache-and-network",
-  });
+    { enabled: Boolean(currentModel) && !isSinglePageModel }
+  );
+
+  const total = contentData?.getModelData?.count ?? 0;
 
   // Transform GraphQL data to table format
   const tableData = useMemo(() => {
@@ -138,8 +157,8 @@ const Contents: React.FC<ContentsProps> = ({
       <EditAndCreateContentForm
         contentData={{ model: currentModel, action: "create" }}
         formType="create"
-        onContentCreated={() => {
-          refetch(); // Refetch data after creating new content
+        onContentCreated={async () => {
+          await refreshContentQueries();
           setDrawerVisible(false);
         }}
       />
@@ -153,8 +172,8 @@ const Contents: React.FC<ContentsProps> = ({
       <EditAndCreateContentForm
         contentData={{ model: currentModel, id: record.id, action: "edit" }}
         formType="edit"
-        onContentEdited={() => {
-          refetch(); // Refetch data after editing content
+        onContentEdited={async () => {
+          await refreshContentQueries();
           setDrawerVisible(false);
         }}
       />
@@ -164,19 +183,15 @@ const Contents: React.FC<ContentsProps> = ({
 
   const handleDelete = async (record: ContentRecord) => {
     await deleteModelData({
-      variables: {
-        model_name: currentModel,
-        _id: record.id as string,
-      },
+      model_name: currentModel,
+      _id: record.id as string,
     });
   };
 
   const handleDuplicate = async (record: ContentRecord) => {
     await duplicateModelData({
-      variables: {
-        model_name: currentModel,
-        _id: record.id as string,
-      },
+      model_name: currentModel,
+      _id: record.id as string,
     });
   };
 
@@ -203,8 +218,8 @@ const Contents: React.FC<ContentsProps> = ({
         setDrawerComponent(
           <FakeContentForm
             contentData={{ model: currentModel }}
-            onContentCreated={() => {
-              refetch(); // Refetch data after generating fake content
+            onContentCreated={async () => {
+              await refreshContentQueries();
               setDrawerVisible(false);
             }}
           />
@@ -229,21 +244,21 @@ const Contents: React.FC<ContentsProps> = ({
     },
   ];
 
-  // Handle loading state
-  if (loading) {
-    return (
-      <div style={{ padding: "16px", textAlign: "center" }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  // Handle error state
+  // Handle error state (keep table shell visible while paginating)
   if (error && !contentData) {
+    const graphqlMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" &&
+            error !== null &&
+            "message" in error &&
+            typeof (error as { message: unknown }).message === "string"
+          ? (error as { message: string }).message
+          : "Failed to load content data";
     return (
-      <div style={{ padding: "16px" }}>
+      <div className="console-pad-sm">
         <Empty
-          description="Failed to load content data"
+          description={graphqlMessage}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         >
           <Button type="primary" onClick={() => refetch()}>
@@ -262,7 +277,7 @@ const Contents: React.FC<ContentsProps> = ({
 
   if (!modelName) {
     return (
-      <div style={{ padding: "24px" }}>
+      <div className="console-pad-md">
         <Empty
           description="No Model Selected"
           image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -278,32 +293,17 @@ const Contents: React.FC<ContentsProps> = ({
   // Render single page model form directly
   if (isSinglePageModel) {
     return (
-      <div style={{ padding: "24px", margin: "0 auto" }}>
-        {/* Header Section */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "24px",
-          }}
-        >
+      <div className="console-page-body">
+        <div className="console-flex-between console-mb-lg">
           <div>
-            <Title level={4} style={{ margin: 0, textTransform: "capitalize" }}>
+            <Title level={4} className="console-capitalize">
               {currentModel}
             </Title>
             <Text type="secondary">Single Page Document</Text>
           </div>
         </div>
 
-        {/* Form Card */}
-        <Card
-          style={{
-            background: "#ffffff",
-            border: "1px solid #f0f0f0",
-            borderRadius: "8px",
-          }}
-        >
+        <ConsoleCard>
           <EditAndCreateContentForm
             contentData={{
               model: currentModel,
@@ -311,84 +311,67 @@ const Contents: React.FC<ContentsProps> = ({
               action: contentState.single_page_uuid ? "edit" : "create",
             }}
             formType={contentState.single_page_uuid ? "edit" : "create"}
-            onContentCreated={() => {
-              // Refresh the page or update context as needed
+            onContentCreated={async () => {
               message.success(`${currentModel} created successfully`);
+              await refreshContentQueries();
             }}
-            onContentEdited={() => {
-              // Refresh the page or update context as needed
+            onContentEdited={async () => {
               message.success(`${currentModel} updated successfully`);
+              await refreshContentQueries();
             }}
           />
-        </Card>
+        </ConsoleCard>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "24px", margin: "0 auto" }}>
-      {/* Header Section */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "24px",
-        }}
-      >
-        <div>
-          <Title level={4} style={{ margin: 0, textTransform: "capitalize" }}>
-            {currentModel}
-          </Title>
-          <Text type="secondary">Manage your {currentModel} content</Text>
-        </div>
+    <>
+      <ConsolePageHeader
+        title={<span className="console-capitalize">{currentModel}</span>}
+        description={`Manage records for the ${currentModel} model.`}
+        actions={
+          <Space>
+            {selectedRowKeys.length > 0 && (
+              <Button
+                icon={<Tags size={16} strokeWidth={1.75} />}
+                loading={loadingTag}
+                onClick={() => {
+                  message.info(
+                    "Tag selected items functionality will be implemented",
+                  );
+                }}
+              >
+                TAG SELECTED ({selectedRowKeys.length})
+              </Button>
+            )}
 
-        <Space>
-          {selectedRowKeys.length > 0 && (
-            <Button
-              icon={<TagsOutlined />}
-              loading={loadingTag}
-              onClick={() => {
-                message.info(
-                  "Tag selected items functionality will be implemented"
-                );
+            <Dropdown
+              menu={{
+                items: bulkMenuItems,
+                onClick: handleBulkMenuClick,
               }}
+              trigger={["click"]}
             >
-              TAG SELECTED ({selectedRowKeys.length})
+              <Button>BULK DATA UPLOAD</Button>
+            </Dropdown>
+
+            <Button
+              type="primary"
+              icon={<CirclePlus size={16} strokeWidth={1.75} />}
+              onClick={handleCreate}
+              data-tour="create-content-button"
+              className="console-btn-primary"
+            >
+              Create New {modelName}
             </Button>
-          )}
+          </Space>
+        }
+      />
 
-          <Dropdown
-            menu={{
-              items: bulkMenuItems,
-              onClick: handleBulkMenuClick,
-            }}
-            trigger={["click"]}
-          >
-            <Button>BULK DATA UPLOAD</Button>
-          </Dropdown>
-
-          <Button
-            type="primary"
-            icon={<PlusCircleOutlined />}
-            onClick={handleCreate}
-            data-tour="create-content-button"
-          >
-            CREATE NEW {modelName.toUpperCase()}
-          </Button>
-        </Space>
-      </div>
-
-      {/* Table Card */}
-      <Card
-        style={{
-          background: "#ffffff",
-          border: "1px solid #f0f0f0",
-          borderRadius: "8px",
-        }}
-        bodyStyle={{ padding: 0 }}
-      >
-        <TableGenerator
+      <div className="console-page-body">
+        <div className="console-card">
+          <TableGenerator
           data={tableData}
           loading={loading}
           selectedRowKeys={selectedRowKeys}
@@ -405,8 +388,25 @@ const Contents: React.FC<ContentsProps> = ({
           showRelationButton={hasConnections}
           showSelection={true}
           showMetaColumns={true}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (itemTotal, range) =>
+              `${range[0]}-${range[1]} of ${itemTotal} items`,
+            onChange: (nextPage, nextPageSize) => {
+              setPage(nextPage);
+              if (nextPageSize !== pageSize) {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }
+            },
+          }}
         />
-      </Card>
+        </div>
+      </div>
 
       <Drawer
         title={drawerTitle}
@@ -445,7 +445,7 @@ const Contents: React.FC<ContentsProps> = ({
           />
         )}
       </Drawer>
-    </div>
+    </>
   );
 };
 

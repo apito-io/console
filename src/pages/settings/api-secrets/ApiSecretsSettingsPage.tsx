@@ -1,426 +1,645 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
+  Alert,
   Button,
+  Collapse,
+  DatePicker,
   Form,
   Input,
-  DatePicker,
+  Modal,
   Select,
-  Table,
-  Typography,
-  Card,
-  message,
   Skeleton,
-  Tag,
   Space,
-  Row,
-  Col,
   Tooltip,
+  Typography,
+  message,
   Popconfirm,
-  Alert,
 } from "antd";
-import {
-  KeyOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  ApiOutlined,
-  ExclamationCircleOutlined,
-} from "@ant-design/icons";
 import {
   useGetProjectRolesQuery,
   useGenerateProjectTokenMutation,
-  useGetCurrentProjectTokensLazyQuery,
+  useGetCurrentProjectTokensQuery,
   useDeleteProjectTokenMutation,
-} from "../../../generated/graphql";
+} from "../../../generated_gql/tanstack-query";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import duration from "dayjs/plugin/duration";
-
+import {
+  CircleAlert,
+  Copy,
+  ExternalLink,
+  Key,
+  Plus,
+  Shield,
+  Trash2,
+  Webhook,
+} from "lucide-react";
+import {
+  ConsoleCard,
+  ConsoleCardTitle,
+  MonoTableCard,
+} from "../../../components/console";
+import { useNavigate } from "../../../router/navigation";
 dayjs.extend(relativeTime);
 dayjs.extend(duration);
 
 const { Text, Paragraph } = Typography;
-const { Option } = Select;
+
+/** Prefer non-admin bootstrap roles for client/BFF login keys. */
+const LOGIN_ROLE_HINTS = ["login", "anonymous", "public", "guest"];
+
+type RoleMeta = {
+  is_admin?: boolean | null;
+  system_generated?: boolean | null;
+};
+
+type ProjectTokenRow = {
+  name?: string | null;
+  role?: string | null;
+  expire?: string | null;
+  created_at?: string | null;
+  token_id?: string | null;
+  token_prefix?: string | null;
+  token_fingerprint?: string | null;
+};
+
+const tokenRowKey = (r: ProjectTokenRow) =>
+  String(
+    r.token_id ||
+      r.token_fingerprint ||
+      `${r.name ?? ""}-${r.created_at ?? ""}`,
+  );
 
 const ApiSecretsSettingsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [form] = Form.useForm();
-  const [projectTokenList, setProjectTokenList] = useState<any[]>([]);
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [revealedToken, setRevealedToken] = useState<string | null>(null);
+  const [projectTokenList, setProjectTokenList] = useState<ProjectTokenRow[]>(
+    [],
+  );
 
-  // GraphQL queries and mutations
-  const { data: rolesData, loading: rolesLoading } = useGetProjectRolesQuery();
-  const [
-    getProjectTokens,
-    { loading: tokenDataLoading, data: currentProjectData },
-  ] = useGetCurrentProjectTokensLazyQuery({
-    fetchPolicy: "cache-and-network",
-  });
+  const { data: rolesData, isLoading: rolesLoading } = useGetProjectRolesQuery();
+  const {
+    isLoading: tokenDataLoading,
+    data: currentProjectData,
+    refetch: refetchTokens,
+  } = useGetCurrentProjectTokensQuery();
 
-  const [generateAPIKey, { loading: generateLoading }] =
+  const { mutateAsync: generateAPIKey, isPending: generateLoading } =
     useGenerateProjectTokenMutation({
-      onCompleted: () => {
-        message.success("API Token generated successfully!");
-        form.resetFields();
-        getProjectTokens();
+      onSuccess: (data) => {
+        if (data?.generateProjectToken?.token) {
+          setRevealedToken(data.generateProjectToken.token);
+          setGenerateOpen(false);
+          form.resetFields();
+          void refetchTokens();
+          message.success("API token generated — copy it now");
+        } else {
+          setGenerateOpen(false);
+          form.resetFields();
+          void refetchTokens();
+          message.warning(
+            "Token generated, but the secret was not returned. Check the list.",
+          );
+        }
       },
       onError: (error) => {
-        message.error(`Error generating token: ${error.message}`);
+        message.error(
+          error instanceof Error ? error.message : "Generate failed",
+        );
       },
     });
 
-  const [deleteToken, { loading: deleteLoading }] =
+  const { mutateAsync: deleteToken, isPending: deleteLoading } =
     useDeleteProjectTokenMutation({
-      onCompleted: () => {
-        message.success("Token deleted successfully!");
-        getProjectTokens();
+      onSuccess: () => {
+        message.success("Token deleted");
+        void refetchTokens();
       },
       onError: (error) => {
-        message.error(`Error deleting token: ${error.message}`);
+        message.error(
+          error instanceof Error ? error.message : "Delete failed",
+        );
       },
     });
 
-  const onFinish = (values: any) => {
-    generateAPIKey({
-      variables: {
-        ...values,
-        duration: values.duration ? values.duration.format("YYYY-MM-DD") : null,
-      },
-    });
-  };
+  const rolesObj = (rolesData?.currentProject?.roles ?? {}) as Record<
+    string,
+    RoleMeta
+  >;
+  const roleList = Object.keys(rolesObj);
 
-  const handleDeleteToken = (token: string, expire: string) => {
-    deleteToken({
-      variables: {
-        token,
-        duration: expire,
-      },
-    });
-  };
+  const nonAdminRoles = useMemo(
+    () =>
+      roleList.filter((name) => {
+        const meta = rolesObj[name];
+        return !meta?.is_admin;
+      }),
+    [roleList, rolesObj],
+  );
 
-  useEffect(() => {
-    if (currentProjectData) {
-      const tokenList = currentProjectData?.currentProject?.tokens ?? [];
-      setProjectTokenList([...tokenList]);
-    } else {
-      getProjectTokens();
+  const recommendedLoginRole = useMemo(() => {
+    for (const hint of LOGIN_ROLE_HINTS) {
+      if (nonAdminRoles.includes(hint)) return hint;
     }
-  }, [currentProjectData, getProjectTokens]);
+    return nonAdminRoles[0] ?? null;
+  }, [nonAdminRoles]);
 
-  // Prepare data
-  const rolesObj = rolesData?.currentProject?.roles ?? {};
-  const roleList = rolesObj ? Object.keys(rolesObj) : [];
   const projectSecretKey =
     currentProjectData?.currentProject?.project_secret_key;
 
-  // API endpoints - use relative proxy paths for Docker deployments
   const graphqlEndpoint =
     import.meta.env.REACT_APP_GRAPHQL_ENDPOINT ||
     `${window.location.origin}/graphql`;
   const restEndpoint =
-    import.meta.env.REACT_APP_REST_API_ENDPOINT || `${window.location.origin}/api`;
+    import.meta.env.REACT_APP_REST_API_ENDPOINT ||
+    `${window.location.origin}/api`;
 
-  // Table columns for API tokens
+  useEffect(() => {
+    const tokenList = currentProjectData?.currentProject?.tokens ?? [];
+    setProjectTokenList(
+      tokenList.filter((t): t is ProjectTokenRow => t != null),
+    );
+  }, [currentProjectData]);
+
+  useEffect(() => {
+    if (!generateOpen) return;
+    if (recommendedLoginRole && !form.getFieldValue("role")) {
+      form.setFieldsValue({ role: recommendedLoginRole });
+    }
+  }, [generateOpen, recommendedLoginRole, form]);
+
+  const onFinish = (values: {
+    name: string;
+    role: string;
+    duration?: dayjs.Dayjs | null;
+  }) => {
+    void generateAPIKey({
+      name: values.name,
+      role: values.role,
+      duration: values.duration ? values.duration.format("YYYY-MM-DD") : null,
+    });
+  };
+
+  const handleDeleteToken = (record: ProjectTokenRow) => {
+    if (!record.token_id) {
+      message.error("Missing token id — cannot delete");
+      return;
+    }
+    void deleteToken({
+      token_id: record.token_id,
+      duration:
+        record.expire || dayjs().add(1, "year").format("YYYY-MM-DD"),
+    });
+  };
+
+  const formatReadableDate = (raw?: string | null) => {
+    if (!raw) return null;
+    const d = dayjs(raw);
+    if (!d.isValid()) return null;
+    return d.format("MMM D, YYYY");
+  };
+
   const columns = [
     {
       title: "Name",
       dataIndex: "name",
       key: "name",
-      width: 200,
+      width: 140,
+      ellipsis: true,
     },
     {
       title: "Role",
       dataIndex: "role",
       key: "role",
-      width: 150,
-      render: (role: string) => <Tag color="blue">{role}</Tag>,
+      width: 100,
+      render: (role: string) => (
+        <span className="mono-badge console-capitalize">{role}</span>
+      ),
     },
     {
-      title: "API Token",
-      dataIndex: "token",
-      key: "token",
+      title: "Prefix",
+      dataIndex: "token_prefix",
+      key: "token_prefix",
+      width: 140,
       ellipsis: true,
-      render: (token: string) => (
-        <Text code style={{ fontSize: "12px" }}>
-          {token ? `${token.substring(0, 20)}...` : ""}
-        </Text>
-      ),
+      render: (prefix: string | null | undefined) =>
+        prefix ? (
+          <Text code className="console-code-sm">
+            {prefix}
+          </Text>
+        ) : (
+          <Text type="secondary">—</Text>
+        ),
+    },
+    {
+      title: "Generated",
+      dataIndex: "created_at",
+      key: "created_at",
+      width: 130,
+      render: (createdAt: string | null | undefined) => {
+        const label = formatReadableDate(createdAt);
+        if (!label) return <Text type="secondary">—</Text>;
+        return (
+          <Tooltip title={dayjs(createdAt).format("MMM D, YYYY HH:mm")}>
+            <Text>{label}</Text>
+          </Tooltip>
+        );
+      },
     },
     {
       title: "Expires",
       dataIndex: "expire",
       key: "expire",
-      width: 150,
+      width: 140,
       render: (expire: string) => {
         if (!expire) return <Text type="secondary">Never</Text>;
-        const isExpired = dayjs(expire).isBefore(new Date());
-        const timeRemaining = dayjs
-          .duration(dayjs(expire).diff(new Date()))
-          .humanize(true);
-
+        const d = dayjs(expire);
+        const isExpired = d.isBefore(new Date());
+        const readable = d.isValid() ? d.format("MMM D, YYYY") : expire;
+        const timeRemaining = d.isValid()
+          ? dayjs.duration(d.diff(new Date())).humanize(true)
+          : "";
         return (
-          <Tag color={isExpired ? "red" : "green"}>
-            {isExpired ? "Expired" : timeRemaining}
-          </Tag>
+          <Tooltip title={isExpired ? "Expired" : timeRemaining}>
+            <span
+              className={
+                isExpired
+                  ? "mono-badge console-badge--inactive"
+                  : "mono-badge console-badge--active"
+              }
+            >
+              {isExpired ? `Expired ${readable}` : readable}
+            </span>
+          </Tooltip>
         );
       },
     },
     {
       title: "Actions",
       key: "actions",
-      width: 120,
-      render: (_: any, record: any) => (
-        <Space>
-          <CopyToClipboard
-            text={record.token}
-            onCopy={() => message.success("Token copied to clipboard!")}
-          >
-            <Tooltip title="Copy Token">
-              <Button type="text" icon={<CopyOutlined />} size="small" />
-            </Tooltip>
-          </CopyToClipboard>
-          <Popconfirm
-            title="Delete Token"
-            description="Are you sure you want to delete this token?"
-            onConfirm={() => handleDeleteToken(record.token, record.expire)}
-            okText="Yes"
-            cancelText="No"
-            icon={<ExclamationCircleOutlined style={{ color: "red" }} />}
-          >
-            <Tooltip title="Delete Token">
-              <Button
-                type="text"
-                icon={<DeleteOutlined />}
-                size="small"
-                danger
-                loading={deleteLoading}
-              />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
+      width: 64,
+      render: (_: unknown, record: ProjectTokenRow) => (
+        <Popconfirm
+          title="Delete this token?"
+          description="Clients using it will fail immediately."
+          onConfirm={() => handleDeleteToken(record)}
+          okText="Delete"
+          okButtonProps={{ danger: true }}
+          cancelText="Cancel"
+          icon={
+            <CircleAlert
+              size={16}
+              strokeWidth={1.75}
+              className="console-icon-danger"
+            />
+          }
+        >
+          <Tooltip title="Delete">
+            <Button
+              type="text"
+              size="small"
+              danger
+              className="cursor-pointer"
+              loading={deleteLoading}
+              icon={<Trash2 size={16} strokeWidth={1.75} />}
+              aria-label="Delete token"
+            />
+          </Tooltip>
+        </Popconfirm>
       ),
     },
   ];
 
   return (
-    <div>
-
-      {/* Generate New Token */}
-      <Card
-        title={
-          <Space>
-            <PlusOutlined />
-            Generate New API Token
+    <div className="console-page">
+      <Alert
+        type={nonAdminRoles.length === 0 ? "warning" : "info"}
+        showIcon
+        icon={<Shield size={16} strokeWidth={1.75} />}
+        className="console-mb-md"
+        message={
+          nonAdminRoles.length === 0
+            ? "Create a non-admin role before minting a login key"
+            : "Login / BFF keys need a non-admin role (prefer login)"
+        }
+        description={
+          <Space direction="vertical" size={4} style={{ width: "100%" }}>
+            <Text type="secondary">
+              Project API tokens (`ak_…`) inherit the selected role. Never use{" "}
+              <Text code>admin</Text> for Flutter or Astro login. Preferred
+              role: <Text code>login</Text> (not admin, minimal model CRUD).
+            </Text>
+            <Space wrap>
+              <Button
+                size="small"
+                className="cursor-pointer"
+                icon={<ExternalLink size={14} strokeWidth={1.75} />}
+                onClick={() => navigate("/console/settings/roles")}
+              >
+                Manage roles
+              </Button>
+              {recommendedLoginRole ? (
+                <Text type="secondary">
+                  Suggested for generate:{" "}
+                  <Text code>{recommendedLoginRole}</Text>
+                </Text>
+              ) : null}
+            </Space>
           </Space>
         }
-        style={{ marginBottom: "24px" }}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={onFinish}
-          autoComplete="off"
+      />
+
+      <div className="console-inline-row console-inline-row--between console-mb-md">
+        <div>
+          <Text strong>Project API tokens</Text>
+          <div>
+            <Text type="secondary">
+              {projectTokenList.length} active · used as{" "}
+              <Text code>APITO_LOGIN_API_KEY</Text> / Flutter defines
+            </Text>
+          </div>
+        </div>
+        <Button
+          type="primary"
+          className="cursor-pointer"
+          icon={<Plus size={16} strokeWidth={1.75} />}
+          disabled={rolesLoading || nonAdminRoles.length === 0}
+          onClick={() => {
+            form.resetFields();
+            if (recommendedLoginRole) {
+              form.setFieldsValue({ role: recommendedLoginRole });
+            }
+            setGenerateOpen(true);
+          }}
         >
-          <Row gutter={[16, 16]}>
-            <Col xs={24} lg={8}>
-              <Form.Item
-                name="name"
-                label="Token Name"
-                rules={[
-                  { required: true, message: "Please enter a token name!" },
-                ]}
-                extra="Give your token a descriptive name"
-              >
-                <Input placeholder="e.g. Mobile App Access" />
-              </Form.Item>
-            </Col>
+          Generate token
+        </Button>
+      </div>
 
-            <Col xs={24} lg={8}>
-              <Form.Item
-                name="role"
-                label="Role"
-                rules={[{ required: true, message: "Please select a role!" }]}
-                extra="The role determines the token's permissions"
-              >
-                {rolesLoading ? (
-                  <Skeleton.Input active style={{ width: "100%" }} />
-                ) : (
-                  <Select placeholder="Select a role">
-                    {roleList.map((role) => (
-                      <Option key={role} value={role}>
-                        {role}
-                      </Option>
-                    ))}
-                  </Select>
-                )}
-              </Form.Item>
-            </Col>
+      {tokenDataLoading ? (
+        <ConsoleCard
+          title={<ConsoleCardTitle icon={Key} label="Tokens" />}
+        >
+          <Skeleton active paragraph={{ rows: 4 }} />
+        </ConsoleCard>
+      ) : (
+        <MonoTableCard
+          title={
+            <ConsoleCardTitle
+              icon={Key}
+              label={`Tokens (${projectTokenList.length})`}
+            />
+          }
+          tableProps={{
+            columns,
+            dataSource: projectTokenList,
+            rowKey: (r) => tokenRowKey(r as ProjectTokenRow),
+            size: "small",
+            pagination:
+              projectTokenList.length > 8
+                ? {
+                    pageSize: 8,
+                    showSizeChanger: false,
+                    showTotal: (total, range) =>
+                      `${range[0]}–${range[1]} of ${total}`,
+                  }
+                : false,
+            locale: {
+              emptyText:
+                "No tokens yet. Create a login role, then Generate token.",
+            },
+            scroll: { x: true },
+          }}
+        />
+      )}
 
-            <Col xs={24} lg={8}>
-              <Form.Item
-                name="duration"
-                label="Token Duration"
-                extra="Leave empty for never-expiring token"
-              >
-                <DatePicker
-                  style={{ width: "100%" }}
-                  format="YYYY-MM-DD"
-                  placeholder="Select expiration date"
-                  disabledDate={(current) =>
-                    current && current < dayjs().endOf("day")
+      <Collapse
+        className="console-mt-md"
+        defaultActiveKey={[]}
+        items={[
+          {
+            key: "endpoints",
+            label: (
+              <Space>
+                <Webhook size={16} strokeWidth={1.75} />
+                <span>Connection details</span>
+                <Text type="secondary">(endpoints + project secret)</Text>
+              </Space>
+            ),
+            children: (
+              <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                <div>
+                  <Text strong>GraphQL</Text>
+                  <Space.Compact style={{ width: "100%" }}>
+                    <Input
+                      readOnly
+                      value={graphqlEndpoint}
+                      aria-label="GraphQL endpoint"
+                    />
+                    <CopyToClipboard
+                      text={graphqlEndpoint}
+                      onCopy={() => message.success("Copied GraphQL URL")}
+                    >
+                      <Button
+                        className="cursor-pointer"
+                        icon={<Copy size={14} strokeWidth={1.75} />}
+                        aria-label="Copy GraphQL URL"
+                      />
+                    </CopyToClipboard>
+                  </Space.Compact>
+                </div>
+                <div>
+                  <Text strong>REST</Text>
+                  <Space.Compact style={{ width: "100%" }}>
+                    <Input
+                      readOnly
+                      value={restEndpoint}
+                      aria-label="REST endpoint"
+                    />
+                    <CopyToClipboard
+                      text={restEndpoint}
+                      onCopy={() => message.success("Copied REST URL")}
+                    >
+                      <Button
+                        className="cursor-pointer"
+                        icon={<Copy size={14} strokeWidth={1.75} />}
+                        aria-label="Copy REST URL"
+                      />
+                    </CopyToClipboard>
+                  </Space.Compact>
+                </div>
+                <Alert
+                  type="info"
+                  showIcon
+                  message="Auth header"
+                  description={
+                    <Text code>
+                      Authorization: Bearer &lt;ak_…&gt;
+                    </Text>
                   }
                 />
-              </Form.Item>
-            </Col>
-          </Row>
+                {projectSecretKey ? (
+                  <div>
+                    <Text strong>Project secret key</Text>
+                    <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+                      Server-side only. Not a login token — do not put in Flutter
+                      or <Text code>PUBLIC_*</Text>.
+                    </Paragraph>
+                    <Space.Compact style={{ width: "100%" }}>
+                      <Input.Password
+                        readOnly
+                        value={projectSecretKey}
+                        visibilityToggle
+                        aria-label="Project secret key"
+                      />
+                      <CopyToClipboard
+                        text={projectSecretKey}
+                        onCopy={() => message.success("Secret key copied")}
+                      >
+                        <Button
+                          className="cursor-pointer"
+                          icon={<Copy size={14} strokeWidth={1.75} />}
+                          aria-label="Copy project secret"
+                        >
+                          Copy
+                        </Button>
+                      </CopyToClipboard>
+                    </Space.Compact>
+                  </div>
+                ) : null}
+              </Space>
+            ),
+          },
+        ]}
+      />
 
-          <Form.Item>
+      <Modal
+        title="Generate API token"
+        open={generateOpen}
+        onCancel={() => setGenerateOpen(false)}
+        footer={null}
+        destroyOnHidden
+      >
+        <Form form={form} layout="vertical" onFinish={onFinish}>
+          <Form.Item
+            name="name"
+            label="Name"
+            rules={[{ required: true, message: "Name required" }]}
+            extra="e.g. protiva-astro-login, protiva-app-login"
+          >
+            <Input placeholder="protiva-login" autoFocus />
+          </Form.Item>
+          <Form.Item
+            name="role"
+            label="Role"
+            rules={[{ required: true, message: "Role required" }]}
+            extra={
+              <span>
+                Must be non-admin.{" "}
+                <Button
+                  type="link"
+                  size="small"
+                  className="cursor-pointer"
+                  style={{ padding: 0, height: "auto" }}
+                  onClick={() => navigate("/console/settings/roles")}
+                >
+                  Edit roles
+                </Button>
+              </span>
+            }
+          >
+            {rolesLoading ? (
+              <Skeleton.Input active block />
+            ) : (
+              <Select
+                placeholder="Select role"
+                options={roleList.map((role) => {
+                  const admin = Boolean(rolesObj[role]?.is_admin);
+                  return {
+                    value: role,
+                    label: admin ? `${role} (admin — avoid for login)` : role,
+                    disabled: admin,
+                  };
+                })}
+              />
+            )}
+          </Form.Item>
+          <Form.Item
+            name="duration"
+            label="Expires"
+            extra="Empty = never expires (prefer a date for login keys)"
+          >
+            <DatePicker
+              className="console-date-full"
+              format="YYYY-MM-DD"
+              placeholder="YYYY-MM-DD"
+              disabledDate={(current) =>
+                Boolean(current && current < dayjs().endOf("day"))
+              }
+            />
+          </Form.Item>
+          <Space>
+            <Button onClick={() => setGenerateOpen(false)}>Cancel</Button>
             <Button
               type="primary"
               htmlType="submit"
               loading={generateLoading}
-              icon={<PlusOutlined />}
+              className="cursor-pointer"
+              icon={<Plus size={16} strokeWidth={1.75} />}
             >
-              Generate Token
+              Generate
             </Button>
-          </Form.Item>
+          </Space>
         </Form>
-      </Card>
+      </Modal>
 
-      {/* Project Secret Key */}
-      {!tokenDataLoading && projectSecretKey && (
-        <Card
-          title={
-            <Space>
-              <KeyOutlined />
-              Project Secret Key
-            </Space>
-          }
-          style={{ marginBottom: "24px" }}
-        >
-          <Alert
-            message="Project Secret Key"
-            description={
-              <div>
-                <Paragraph>
-                  This is your project's unique secret key. Keep it secure and
-                  never expose it in client-side code.
-                </Paragraph>
-                <CopyToClipboard
-                  text={projectSecretKey}
-                  onCopy={() =>
-                    message.success("Secret key copied to clipboard!")
-                  }
-                >
-                  <Button icon={<CopyOutlined />} type="primary" ghost>
-                    Copy Secret Key
-                  </Button>
-                </CopyToClipboard>
-              </div>
-            }
-            type="info"
-            style={{ marginBottom: "16px" }}
-          />
-          <Text
-            code
-            style={{
-              backgroundColor: "#f5f5f5",
-              padding: "8px 12px",
-              borderRadius: "4px",
-              display: "block",
-              fontSize: "12px",
-            }}
+      <Modal
+        title="Copy your API token"
+        open={Boolean(revealedToken)}
+        onCancel={() => setRevealedToken(null)}
+        footer={
+          <Button
+            type="primary"
+            className="cursor-pointer"
+            onClick={() => setRevealedToken(null)}
           >
-            {projectSecretKey}
-          </Text>
-        </Card>
-      )}
-
-      {/* API Endpoints */}
-      <Card
-        title={
-          <Space>
-            <ApiOutlined />
-            API Endpoints
-          </Space>
+            OK
+          </Button>
         }
-        style={{ marginBottom: "24px" }}
+        destroyOnHidden
       >
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={12}>
-            <div style={{ marginBottom: "16px" }}>
-              <Text strong>GraphQL API Endpoint:</Text>
-              <Text
-                code
-                style={{
-                  backgroundColor: "#f5f5f5",
-                  padding: "4px 8px",
-                  borderRadius: "4px",
-                  display: "block",
-                  marginTop: "4px",
-                  fontSize: "12px",
-                }}
-              >
-                {graphqlEndpoint}
-              </Text>
-            </div>
-          </Col>
-          <Col xs={24} lg={12}>
-            <div style={{ marginBottom: "16px" }}>
-              <Text strong>REST API Endpoint:</Text>
-              <Text
-                code
-                style={{
-                  backgroundColor: "#f5f5f5",
-                  padding: "4px 8px",
-                  borderRadius: "4px",
-                  display: "block",
-                  marginTop: "4px",
-                  fontSize: "12px",
-                }}
-              >
-                {restEndpoint}
-              </Text>
-            </div>
-          </Col>
-        </Row>
         <Alert
-          message="Authentication"
-          description="Use Bearer token authentication: Authorization: Bearer <your-token>"
-          type="info"
+          type="warning"
           showIcon
+          icon={<CircleAlert size={16} strokeWidth={1.75} />}
+          className="console-mb-md"
+          message="You won't see this again"
+          description="Store this token securely. The list only shows a prefix after you close this dialog."
         />
-      </Card>
-
-      {/* Available Tokens */}
-      <Card
-        title={
-          <Space>
-            <KeyOutlined />
-            Available API Tokens ({projectTokenList.length})
-          </Space>
-        }
-      >
-        {tokenDataLoading ? (
-          <Skeleton active />
-        ) : (
-          <Table
-            columns={columns}
-            dataSource={projectTokenList}
-            rowKey="token"
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} of ${total} tokens`,
-            }}
-            locale={{
-              emptyText:
-                "No API tokens found. Generate your first token above.",
-            }}
+        <Space.Compact style={{ width: "100%" }}>
+          <Input.Password
+            readOnly
+            value={revealedToken ?? ""}
+            visibilityToggle
+            aria-label="Generated API token"
           />
-        )}
-      </Card>
+          <CopyToClipboard
+            text={revealedToken ?? ""}
+            onCopy={() => message.success("Token copied")}
+          >
+            <Button
+              className="cursor-pointer"
+              icon={<Copy size={14} strokeWidth={1.75} />}
+              aria-label="Copy API token"
+            >
+              Copy
+            </Button>
+          </CopyToClipboard>
+        </Space.Compact>
+      </Modal>
     </div>
   );
 };

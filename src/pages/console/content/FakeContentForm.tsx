@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { CirclePlay, Square } from "lucide-react";
 import {
   Form,
   Button,
@@ -6,13 +7,13 @@ import {
   Space,
   message,
   Typography,
-  Card,
   Alert,
   Divider,
   List,
   Tag,
 } from "antd";
-import { PlayCircleOutlined, StopOutlined } from "@ant-design/icons";
+import ConsoleCard from "../../../components/console/ConsoleCard";
+import "../../../components/console/ConsoleShell.css";
 
 const { Title, Text } = Typography;
 
@@ -181,7 +182,6 @@ const FakeContentForm: React.FC<FakeContentFormProps> = ({
 
     setLoading(true);
     try {
-      // Simulate API call delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       const fakeRecords = generateFakeData(values.count);
@@ -202,10 +202,10 @@ const FakeContentForm: React.FC<FakeContentFormProps> = ({
   };
 
   return (
-    <div style={{ padding: "16px" }}>
-      <Card>
-        <div style={{ marginBottom: "24px" }}>
-          <Title level={4} style={{ margin: 0 }}>
+    <div className="console-pad-md">
+      <ConsoleCard>
+        <div className="console-mb-lg">
+          <Title level={4} className="console-title-flush">
             Generate Fake Data for {modelName}
           </Title>
           <Text type="secondary">
@@ -218,7 +218,7 @@ const FakeContentForm: React.FC<FakeContentFormProps> = ({
           description={`This tool will generate realistic fake data for your ${modelName} model. The data is randomly generated and can be used for testing purposes.`}
           type="info"
           showIcon
-          style={{ marginBottom: "24px" }}
+          className="console-mb-lg"
         />
 
         <Form
@@ -241,7 +241,7 @@ const FakeContentForm: React.FC<FakeContentFormProps> = ({
             ]}
           >
             <InputNumber
-              style={{ width: "200px" }}
+              className="console-w-input-sm"
               placeholder="Enter count"
               min={1}
               max={100}
@@ -249,13 +249,13 @@ const FakeContentForm: React.FC<FakeContentFormProps> = ({
             />
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: 0 }}>
+          <Form.Item className="console-mb-0">
             <Space>
               <Button
                 type="primary"
                 htmlType="submit"
                 loading={loading}
-                icon={<PlayCircleOutlined />}
+                icon={<CirclePlay size={16} strokeWidth={1.75} />}
               >
                 Generate Fake Data
               </Button>
@@ -265,7 +265,7 @@ const FakeContentForm: React.FC<FakeContentFormProps> = ({
                   htmlType="button"
                   onClick={handleClear}
                   disabled={loading}
-                  icon={<StopOutlined />}
+                  icon={<Square size={16} strokeWidth={1.75} />}
                 >
                   Clear Data
                 </Button>
@@ -278,7 +278,7 @@ const FakeContentForm: React.FC<FakeContentFormProps> = ({
           <>
             <Divider />
 
-            <div style={{ marginBottom: "16px" }}>
+            <div className="console-mb-md">
               <Title level={5}>
                 Generated Records ({generatedData.length})
               </Title>
@@ -286,20 +286,14 @@ const FakeContentForm: React.FC<FakeContentFormProps> = ({
             </div>
 
             <List
-              dataSource={generatedData.slice(0, 5)} // Show only first 5 records
+              dataSource={generatedData.slice(0, 5)}
               renderItem={(item, index) => (
                 <List.Item>
-                  <div style={{ width: "100%" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                      }}
-                    >
+                  <div className="console-w-full">
+                    <div className="console-flex-between-start">
                       <div>
                         <Text strong>Record #{index + 1}</Text>
-                        <div style={{ marginTop: "8px" }}>
+                        <div className="console-mt-xs">
                           {Object.entries(item)
                             .filter(
                               ([key]) =>
@@ -309,13 +303,13 @@ const FakeContentForm: React.FC<FakeContentFormProps> = ({
                             )
                             .slice(0, 3)
                             .map(([key, value]) => (
-                              <Tag key={key} style={{ marginBottom: "4px" }}>
+                              <Tag key={key} className="console-mb-xs">
                                 {key}: {String(value)}
                               </Tag>
                             ))}
                         </div>
                       </div>
-                      <Text type="secondary" style={{ fontSize: "12px" }}>
+                      <Text type="secondary" className="console-text-xs">
                         ID: {String(item.id)}
                       </Text>
                     </div>
@@ -325,13 +319,13 @@ const FakeContentForm: React.FC<FakeContentFormProps> = ({
             />
 
             {generatedData.length > 5 && (
-              <Text type="secondary" style={{ fontStyle: "italic" }}>
+              <Text type="secondary" className="console-font-italic">
                 ... and {generatedData.length - 5} more records
               </Text>
             )}
           </>
         )}
-      </Card>
+      </ConsoleCard>
     </div>
   );
 };

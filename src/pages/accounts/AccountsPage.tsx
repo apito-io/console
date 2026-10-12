@@ -1,9 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { Button, Form, Input, Typography, Card, message, Skeleton } from "antd";
-import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import React, { useEffect } from "react";
+import { Button, Form, Input, Typography, message, Skeleton } from "antd";
 import { useAuth } from "../../contexts/AuthContext";
-import { httpService } from "../../services/httpService";
-import { USER_PROFILE, CHANGE_PASSWORD } from "../../constants/api";
+import { isSuperAdminFromToken } from "../../utils/superAdmin";
+import { Lock, User, ShieldCheck } from "lucide-react";
+import {
+  useUserProfileQuery,
+  useUpdateProfileMutation,
+  useChangePasswordMutation,
+} from "./queries";
+import {
+  ConsoleCard,
+  ConsoleCardTitle,
+} from "../../components/console";
+import "../../components/console/ConsoleShell.css";
 
 const { Text } = Typography;
 
@@ -25,209 +34,178 @@ const AccountsPage: React.FC = () => {
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
 
-  const [profileData, setProfileData] = useState<UserProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [profileUpdateLoading, setProfileUpdateLoading] = useState(false);
-  const [passwordUpdateLoading, setPasswordUpdateLoading] = useState(false);
+  const profileQuery = useUserProfileQuery();
+  const updateProfileM = useUpdateProfileMutation();
+  const changePasswordM = useChangePasswordMutation();
 
   const tokenData = decodeTokenData();
 
-  // Fetch user profile data
-  const fetchProfileData = async () => {
-    try {
-      setProfileLoading(true);
-      const response = await httpService.get(USER_PROFILE);
-      const userData = response.data?.body || {};
-      setProfileData(userData);
-      profileForm.setFieldsValue(userData);
-    } catch (error) {
-      message.error("Failed to fetch profile data");
-    } finally {
-      setProfileLoading(false);
+  useEffect(() => {
+    if (profileQuery.data) {
+      profileForm.setFieldsValue(profileQuery.data);
     }
-  };
+  }, [profileQuery.data, profileForm]);
 
-  // Update user profile
   const updateProfile = async (values: UserProfile) => {
-    try {
-      setProfileUpdateLoading(true);
-      const response = await httpService.post(USER_PROFILE, values);
-      message.success(response.data?.message || "Profile updated successfully");
-      setProfileData(response.data?.body || values);
-    } catch (error) {
-      message.error("Failed to update profile");
-    } finally {
-      setProfileUpdateLoading(false);
-    }
+    await updateProfileM.mutateAsync(values as unknown as Record<string, unknown>);
   };
 
-  // Change password
   const changePassword = async (values: PasswordChange) => {
-    try {
-      setPasswordUpdateLoading(true);
-      const response = await httpService.post(CHANGE_PASSWORD, {
-        old_password: values.old_password,
-        new_password: values.new_password,
-      });
-      message.success(
-        response.data?.message || "Password changed successfully"
-      );
-      passwordForm.resetFields();
-    } catch (error) {
-      message.error("Failed to change password");
-    } finally {
-      setPasswordUpdateLoading(false);
-    }
+    await changePasswordM.mutateAsync({
+      old_password: values.old_password,
+      new_password: values.new_password,
+    });
+    passwordForm.resetFields();
   };
 
   useEffect(() => {
-    fetchProfileData();
-  }, []);
+    if (profileQuery.isError) {
+      message.error("Failed to fetch profile data");
+    }
+  }, [profileQuery.isError]);
+
+  const profileLoading = profileQuery.isPending || profileQuery.isLoading;
 
   return (
-    <div style={{ padding: "0px 24px", margin: "0 auto" }}>
-      {/* Profile Settings */}
-      <Card
-        title={
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <UserOutlined />
-            Profile Information
-          </div>
-        }
-        style={{ marginTop: "24px" }}
-        extra={
-          <Button
-            type="primary"
-            onClick={() => profileForm.submit()}
-            loading={profileUpdateLoading}
-          >
-            Update Profile
-          </Button>
-        }
-      >
-        {profileLoading ? (
-          <Skeleton active paragraph={{ rows: 3 }} />
-        ) : (
-          <Form
-            form={profileForm}
-            layout="vertical"
-            onFinish={updateProfile}
-            initialValues={profileData || {}}
-          >
+    <div className="console-page">
+      <div className="console-stack">
+        <ConsoleCard
+          title={
+            <ConsoleCardTitle icon={User} label="Profile Information" />
+          }
+          extra={
+            <Button
+              type="primary"
+              onClick={() => profileForm.submit()}
+              loading={updateProfileM.isPending}
+            >
+              Update Profile
+            </Button>
+          }
+        >
+          {profileLoading ? (
+            <Skeleton active paragraph={{ rows: 3 }} />
+          ) : (
+            <Form
+              form={profileForm}
+              layout="vertical"
+              onFinish={updateProfile}
+              initialValues={profileQuery.data || {}}
+            >
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: "Email is required" },
+                  { type: "email", message: "Please enter a valid email" },
+                ]}
+              >
+                <Input disabled placeholder="your@email.com" />
+              </Form.Item>
+
+              <Form.Item
+                name="first_name"
+                label="First Name"
+                rules={[{ required: true, message: "First name is required" }]}
+              >
+                <Input placeholder="Your first name" />
+              </Form.Item>
+
+              <Form.Item name="last_name" label="Last Name">
+                <Input placeholder="Your last name" />
+              </Form.Item>
+
+              {(profileQuery.data as UserProfile | undefined)?.project_limit ? (
+                <Form.Item name="project_limit" label="Project Limit">
+                  <Input
+                    disabled
+                    value={(profileQuery.data as UserProfile).project_limit}
+                  />
+                </Form.Item>
+              ) : null}
+            </Form>
+          )}
+        </ConsoleCard>
+
+        <ConsoleCard
+          title={<ConsoleCardTitle icon={Lock} label="Change Password" />}
+          extra={
+            <Button
+              type="primary"
+              onClick={() => passwordForm.submit()}
+              loading={changePasswordM.isPending}
+            >
+              Change Password
+            </Button>
+          }
+        >
+          <Form form={passwordForm} layout="vertical" onFinish={changePassword}>
             <Form.Item
-              name="email"
-              label="Email"
+              name="old_password"
+              label="Current Password"
               rules={[
-                { required: true, message: "Email is required" },
-                { type: "email", message: "Please enter a valid email" },
+                { required: true, message: "Current password is required" },
               ]}
             >
-              <Input disabled placeholder="your@email.com" />
+              <Input.Password placeholder="Enter current password" />
             </Form.Item>
 
             <Form.Item
-              name="first_name"
-              label="First Name"
-              rules={[{ required: true, message: "First name is required" }]}
+              name="new_password"
+              label="New Password"
+              rules={[
+                { required: true, message: "New password is required" },
+                { min: 6, message: "Password must be at least 6 characters" },
+              ]}
             >
-              <Input placeholder="Your first name" />
+              <Input.Password placeholder="Enter new password" />
             </Form.Item>
 
-            <Form.Item name="last_name" label="Last Name">
-              <Input placeholder="Your last name" />
+            <Form.Item
+              name="confirm"
+              label="Confirm New Password"
+              dependencies={["new_password"]}
+              rules={[
+                { required: true, message: "Please confirm your password" },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue("new_password") === value) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(new Error("Passwords do not match"));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password placeholder="Confirm new password" />
             </Form.Item>
-
-            {profileData?.project_limit && (
-              <Form.Item name="project_limit" label="Project Limit">
-                <Input disabled value={profileData.project_limit} />
-              </Form.Item>
-            )}
           </Form>
-        )}
-      </Card>
+        </ConsoleCard>
 
-      {/* Password Settings */}
-      <Card
-        title={
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <LockOutlined />
-            Change Password
-          </div>
-        }
-        style={{ marginTop: "24px" }}
-        extra={
-          <Button
-            type="primary"
-            onClick={() => passwordForm.submit()}
-            loading={passwordUpdateLoading}
+        {tokenData ? (
+          <ConsoleCard
+            title={
+              <ConsoleCardTitle icon={ShieldCheck} label="Current Session" />
+            }
           >
-            Change Password
-          </Button>
-        }
-      >
-        <Form form={passwordForm} layout="vertical" onFinish={changePassword}>
-          <Form.Item
-            name="old_password"
-            label="Current Password"
-            rules={[
-              { required: true, message: "Current password is required" },
-            ]}
-          >
-            <Input.Password placeholder="Enter current password" />
-          </Form.Item>
-
-          <Form.Item
-            name="new_password"
-            label="New Password"
-            rules={[
-              { required: true, message: "New password is required" },
-              { min: 6, message: "Password must be at least 6 characters" },
-            ]}
-          >
-            <Input.Password placeholder="Enter new password" />
-          </Form.Item>
-
-          <Form.Item
-            name="confirm"
-            label="Confirm New Password"
-            dependencies={["new_password"]}
-            rules={[
-              { required: true, message: "Please confirm your password" },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue("new_password") === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error("Passwords do not match"));
-                },
-              }),
-            ]}
-          >
-            <Input.Password placeholder="Confirm new password" />
-          </Form.Item>
-        </Form>
-      </Card>
-
-      {/* User Info Display */}
-      {tokenData && (
-        <Card title="Current Session" style={{ marginTop: "24px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <Text>
-              <strong>Email:</strong> {tokenData.email}
-            </Text>
-            <Text>
-              <strong>Project Role:</strong> {tokenData.project_role}
-            </Text>
-            <Text>
-              <strong>Current Project:</strong> {tokenData.project_id}
-            </Text>
-            <Text>
-              <strong>Is Super Admin:</strong>{" "}
-              {tokenData.is_super_admin === "true" ? "Yes" : "No"}
-            </Text>
-          </div>
-        </Card>
-      )}
+            <div className="console-stack console-stack--md">
+              <Text>
+                <strong>Email:</strong> {tokenData.email}
+              </Text>
+              <Text>
+                <strong>Project Role:</strong> {tokenData.project_role}
+              </Text>
+              <Text>
+                <strong>Current Project:</strong> {tokenData.project_id}
+              </Text>
+              <Text>
+                <strong>Is Super Admin:</strong>{" "}
+                {isSuperAdminFromToken(tokenData) ? "Yes" : "No"}
+              </Text>
+            </div>
+          </ConsoleCard>
+        ) : null}
+      </div>
     </div>
   );
 };

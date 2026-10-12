@@ -1,10 +1,6 @@
 import React from "react";
 import { Typography, Descriptions, Tag, Space, Card } from "antd";
-import {
-  FileTextOutlined,
-  DatabaseOutlined,
-  LinkOutlined,
-} from "@ant-design/icons";
+import { Database, FileText, Link } from "lucide-react";
 
 const { Text, Title } = Typography;
 
@@ -121,10 +117,10 @@ const ExpandedRowContent: React.FC<ExpandedRowContentProps> = ({
 
   const getFieldIcon = (key: string) => {
     if (key.includes("address") || key.includes("location"))
-      return <LinkOutlined />;
+      return <Link size={16} strokeWidth={1.75} />;
     if (key.includes("settings") || key.includes("config"))
-      return <DatabaseOutlined />;
-    return <FileTextOutlined />;
+      return <Database size={16} strokeWidth={1.75} />;
+    return <FileText size={16} strokeWidth={1.75} />;
   };
 
   if (complexFields.length === 0) {

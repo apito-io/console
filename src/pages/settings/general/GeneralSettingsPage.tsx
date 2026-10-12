@@ -3,7 +3,7 @@ import {
   Button,
   Form,
   Input,
-  Card,
+  InputNumber,
   message,
   Skeleton,
   Select,
@@ -13,17 +13,21 @@ import {
   Modal,
   Typography,
 } from "antd";
-import { SettingOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import { useTour } from "../../../contexts/TourContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { CirclePlay, Clock, Puzzle, Settings } from "lucide-react";
 import {
   useGetSettingsQuery,
+  useGetProjectPluginsQuery,
   useUpdateSettingsMutation,
-  useGetOnlyModelsInfoQuery,
-} from "../../../generated/graphql";
+} from "../../../generated_gql/tanstack-query";
+import { ConsoleCard, ConsoleCardTitle } from "../../../components/console";
+import { useNavigate } from "../../../router/navigation";
 
 const { Option } = Select;
 const { confirm } = Modal;
 const { Text } = Typography;
+const MIN_IDLE_TENANT_RETENTION_DAYS = 90;
 
 // Sample locale data - you might want to move this to a constants file
 const localsData = {
@@ -45,40 +49,40 @@ const GeneralSettingsPage: React.FC = () => {
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { checkProjectStatus } = useTour();
+  const { decodeTokenData } = useAuth();
+  const navigate = useNavigate();
+  const isSaaSProject = decodeTokenData()?.project_type === 1;
+  const iconWatch = Form.useWatch("project_icon", form);
+
+  const { data: pluginData } = useGetProjectPluginsQuery({ limit: 100, page: 1 });
+  const enabledExtensionCount = (pluginData?.getProjectPlugins ?? []).filter(
+    (plugin) => plugin?.enable,
+  ).length;
 
   // Fetch current project settings
   const {
     data: settingsData,
-    loading: settingsLoading,
+    isLoading: settingsLoading,
     refetch,
-  } = useGetSettingsQuery({
-    errorPolicy: "all",
-  });
+  } = useGetSettingsQuery();
 
-  // Fetch models for tenant model selection
-  const { data: modelsData, loading: modelsLoading } =
-    useGetOnlyModelsInfoQuery({
-      errorPolicy: "all",
-    });
-
-  // Update settings mutation
-  const [updateSettings] = useUpdateSettingsMutation({
-    onCompleted: () => {
+  const { mutateAsync: updateSettings } = useUpdateSettingsMutation({
+    onSuccess: () => {
       message.success("Project settings updated successfully");
       setIsSubmitting(false);
-      refetch();
+      void refetch();
     },
     onError: (error) => {
-      message.error(`Failed to update settings: ${error.message}`);
+      message.error(
+        `Failed to update settings: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
       setIsSubmitting(false);
     },
   });
 
   const project = settingsData?.currentProject;
-  const models =
-    modelsData?.projectModelsInfo?.filter(
-      (model) => model && !model.system_generated
-    ) || [];
 
   // Derive initial form values from project
   const initialValues = useMemo(() => {
@@ -87,7 +91,7 @@ const GeneralSettingsPage: React.FC = () => {
       id: project.id,
       name: project.name,
       description: project.description,
-      tenant_model_name: project.tenant_model_name,
+      project_icon: (project as { project_icon?: string | null }).project_icon || "",
       settings: {
         locals: project.settings?.locals || [],
         default_locale: project.settings?.default_locale,
@@ -96,6 +100,11 @@ const GeneralSettingsPage: React.FC = () => {
         system_graphql_hooks: project.settings?.system_graphql_hooks || false,
         default_storage_plugin: project.settings?.default_storage_plugin,
         default_function_plugin: project.settings?.default_function_plugin,
+        idle_tenant_retention_days:
+          project.settings?.idle_tenant_retention_days ??
+          MIN_IDLE_TENANT_RETENTION_DAYS,
+        auto_soft_delete_idle_tenants:
+          project.settings?.auto_soft_delete_idle_tenants ?? false,
       },
     };
   }, [project]);
@@ -112,12 +121,10 @@ const GeneralSettingsPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       await updateSettings({
-        variables: {
-          name: values.name,
-          description: values.description,
-          tenant_model_name: values.tenant_model_name,
-          settings: values.settings,
-        },
+        name: values.name,
+        description: values.description,
+        project_icon: values.project_icon?.trim() || "",
+        settings: values.settings,
       });
     } catch (error) {
       console.error("Update error:", error);
@@ -138,9 +145,11 @@ const GeneralSettingsPage: React.FC = () => {
         localStorage.removeItem("tour-dismissed");
         localStorage.removeItem("tour-completed");
         localStorage.removeItem("tour-waiting-for-model");
+        localStorage.removeItem("tour-waiting-for-tenant");
         localStorage.removeItem("tour-waiting-for-fields");
         localStorage.removeItem("tour-waiting-for-content");
         localStorage.removeItem("tour-waiting-for-query");
+        localStorage.removeItem("tour-skip-tenant-step");
         localStorage.removeItem("project-has-fields");
         localStorage.removeItem("project-has-content");
         localStorage.removeItem("project-has-run-query");
@@ -163,21 +172,14 @@ const GeneralSettingsPage: React.FC = () => {
   const localsOptions = Object.entries(localsData);
 
   if (settingsLoading) {
-    return (
-      <div style={{ padding: "24px", maxWidth: "1000px", margin: "0 auto" }}>
-        <Skeleton active paragraph={{ rows: 8 }} />
-      </div>
-    );
+    return <Skeleton active paragraph={{ rows: 8 }} />;
   }
 
   return (
     <div>
-      <Card
+      <ConsoleCard
         title={
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <SettingOutlined />
-            Project Information
-          </div>
+          <ConsoleCardTitle icon={Settings} label="Project Information" />
         }
         extra={
           <Button
@@ -229,6 +231,28 @@ const GeneralSettingsPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
+                name="project_icon"
+                label="Project icon URL"
+                tooltip="Used on tenant invoice / receipt PDFs"
+                extra={
+                  iconWatch ? (
+                    <img
+                      src={iconWatch}
+                      alt="Project icon preview"
+                      style={{
+                        marginTop: 8,
+                        maxHeight: 64,
+                        maxWidth: 160,
+                        objectFit: "contain",
+                      }}
+                    />
+                  ) : null
+                }
+              >
+                <Input placeholder="https://…/logo.png" />
+              </Form.Item>
+
+              <Form.Item
                 name={["settings", "locals"]}
                 label="Content Languages"
                 tooltip="Select the languages your content will support"
@@ -272,26 +296,6 @@ const GeneralSettingsPage: React.FC = () => {
 
             <Col span={12}>
               <Form.Item
-                name="tenant_model_name"
-                label="Tenant Model"
-                tooltip="Select a model to use for multi-tenancy"
-              >
-                <Select
-                  placeholder="Select a model"
-                  loading={modelsLoading}
-                  allowClear
-                  showSearch
-                  optionFilterProp="children"
-                >
-                  {models.map((model) => (
-                    <Option key={model?.name} value={model?.name}>
-                      {model?.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-
-              <Form.Item
                 name={["settings", "default_storage_plugin"]}
                 label="Default Storage Plugin"
                 tooltip="Default plugin for file storage"
@@ -326,30 +330,81 @@ const GeneralSettingsPage: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
-        </Form>
-      </Card>
 
-      {/* Tour Reset Card */}
-      <Card
-        title={
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <PlayCircleOutlined />
-            Quick Start Journey
-          </div>
-        }
-        style={{ marginTop: "24px" }}
+          {isSaaSProject ? (
+            <>
+              <div className="console-mt-lg console-mb-md">
+                <ConsoleCardTitle icon={Clock} label="Idle tenant cleanup" />
+              </div>
+              <Row gutter={24}>
+                <Col span={12}>
+                  <Form.Item
+                    name={["settings", "idle_tenant_retention_days"]}
+                    label="Idle retention (days)"
+                    tooltip="Tenants with no login within this window appear on the Idle Tenants tab"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Retention days is required",
+                      },
+                      {
+                        type: "number",
+                        min: MIN_IDLE_TENANT_RETENTION_DAYS,
+                        message: `Minimum ${MIN_IDLE_TENANT_RETENTION_DAYS} days`,
+                      },
+                    ]}
+                  >
+                    <InputNumber
+                      min={MIN_IDLE_TENANT_RETENTION_DAYS}
+                      style={{ width: "100%" }}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name={["settings", "auto_soft_delete_idle_tenants"]}
+                    label="Auto soft-delete idle free tenants"
+                    tooltip="Daily job soft-deletes free-tier idle tenants. Paid plans are excluded. Never hard-deletes."
+                    valuePropName="checked"
+                  >
+                    <Switch />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Text type="secondary">
+                The Idle Tenants tab uses this retention window. Auto
+                soft-delete only marks catalog rows as deleted — it never
+                hard-deletes. Paid plans are excluded from automatic
+                soft-delete.
+              </Text>
+            </>
+          ) : null}
+        </Form>
+      </ConsoleCard>
+
+      <ConsoleCard
+        className="console-card-spaced-top"
+        title={<ConsoleCardTitle icon={Puzzle} label="Extensions" />}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div className="console-row-between">
+          <Text>
+            Extensions: {enabledExtensionCount} enabled
+          </Text>
+          <Button onClick={() => navigate("/console/settings/plugins")}>
+            Manage plugins
+          </Button>
+        </div>
+      </ConsoleCard>
+
+      <ConsoleCard
+        className="console-card-spaced-top"
+        title={
+          <ConsoleCardTitle icon={CirclePlay} label="Quick Start Journey" />
+        }
+      >
+        <div className="console-row-between">
           <div>
-            <div style={{ fontWeight: 500, marginBottom: "4px" }}>
-              Restart Onboarding Tour
-            </div>
+            <div className="console-text-medium">Restart Onboarding Tour</div>
             <Text type="secondary">
               Reset your progress and experience the guided setup journey again.
               This will clear all tour progress and start fresh.
@@ -358,14 +413,14 @@ const GeneralSettingsPage: React.FC = () => {
           <Button
             type="primary"
             danger
-            icon={<PlayCircleOutlined />}
+            icon={<CirclePlay size={16} strokeWidth={1.75} />}
             onClick={handleResetTour}
-            style={{ marginLeft: "16px", flexShrink: 0 }}
+            className="console-row-action"
           >
             Start Again
           </Button>
         </div>
-      </Card>
+      </ConsoleCard>
     </div>
   );
 };

@@ -12,15 +12,16 @@ import {
   Descriptions,
   Tag,
 } from "antd";
-import { EditOutlined, CloudUploadOutlined } from "@ant-design/icons";
 import {
   useGetModelDetailsQuery,
-  useGetSingleDataLazyQuery,
+  useGetSingleDataQuery,
   useCreateModelDataMutation,
   useUpdateSingleDataMutation,
-} from "../../../generated/graphql";
+} from "../../../generated_gql/tanstack-query";
 import DynamicFormGenerator from "../../../components/forms/DynamicFormGenerator";
 import { useTourTracking } from "../../../hooks/useTourTracking";
+import { CloudUpload, Pencil } from "lucide-react";
+import "../../../components/console/ConsoleShell.css";
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -54,75 +55,65 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
   const contentId = contentData?.id;
   const isEdit = formType === "edit" && contentId;
 
-  // Get form generation data (field definitions)
   const {
     data: formGenerationData,
-    loading: formGenerationLoading,
+    isLoading: formGenerationLoading,
     error: formGenerationError,
-  } = useGetModelDetailsQuery({
-    variables: {
-      model_name: modelName,
-    },
-    skip: !modelName,
-    errorPolicy: "all",
-  });
+  } = useGetModelDetailsQuery(
+    { model_name: modelName },
+    { enabled: Boolean(modelName) }
+  );
 
-  // Get existing content data for edit mode
-  const [
-    getFormData,
-    { data: formData, loading: formDataLoading, error: formDataError },
-  ] = useGetSingleDataLazyQuery({
-    errorPolicy: "all",
-  });
-
-  // Create mutation hook
-  const [createData, { loading: createLoading }] = useCreateModelDataMutation({
-    onCompleted: (_data) => {
-      message.success(`New ${modelName} created successfully!`);
-      // Track content creation for tour progress
-      trackContentAdded();
-      if (onContentCreated) {
-        onContentCreated();
-      }
+  const {
+    data: formData,
+    isLoading: formDataLoading,
+    error: formDataError,
+  } = useGetSingleDataQuery(
+    {
+      _id: contentId ?? "",
+      model: modelName,
+      local: activeLocale,
+      revision: false,
+      single_page_data: false,
     },
-    onError: (error) => {
-      message.error(`Failed to create ${modelName}: ${error.message}`);
-    },
-  });
+    { enabled: Boolean(isEdit && contentId && modelName) }
+  );
 
-  // Update mutation hook
-  const [updateData, { loading: updateLoading }] = useUpdateSingleDataMutation({
-    onCompleted: (_data) => {
-      message.success(
-        `${modelName} ${
-          submitType === "draft" ? "saved as draft" : "published"
-        } successfully!`
-      );
-      if (onContentEdited) {
-        onContentEdited();
-      }
-    },
-    onError: (error) => {
-      message.error(`Failed to update ${modelName}: ${error.message}`);
-    },
-  });
+  const { mutateAsync: createData, isPending: createLoading } =
+    useCreateModelDataMutation({
+      onSuccess: () => {
+        message.success(`New ${modelName} created successfully!`);
+        trackContentAdded();
+        onContentCreated?.();
+      },
+      onError: (error) => {
+        message.error(
+          `Failed to create ${modelName}: ${
+            error instanceof Error ? error.message : "Create failed"
+          }`
+        );
+      },
+    });
 
-  // Load existing data when editing
-  useEffect(() => {
-    if (isEdit && contentId) {
-      getFormData({
-        variables: {
-          _id: contentId,
-          model: modelName,
-          local: activeLocale,
-          revision: false,
-          single_page_data: false,
-        },
-      });
-    }
-  }, [isEdit, contentId, modelName, activeLocale, getFormData]);
+  const { mutateAsync: updateData, isPending: updateLoading } =
+    useUpdateSingleDataMutation({
+      onSuccess: () => {
+        message.success(
+          `${modelName} ${
+            submitType === "draft" ? "saved as draft" : "published"
+          } successfully!`
+        );
+        onContentEdited?.();
+      },
+      onError: (error) => {
+        message.error(
+          `Failed to update ${modelName}: ${
+            error instanceof Error ? error.message : "Update failed"
+          }`
+        );
+      },
+    });
 
-  // Set form initial values when data is loaded
   useEffect(() => {
     if (formData?.getSingleData?.data && isEdit) {
       const initialValues = {
@@ -141,35 +132,27 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
     try {
       const { form: newFormData } = await form.validateFields();
 
-      // Clear any previous errors
       setFormErrors([]);
 
       if (isEdit) {
-        // Update existing content
         await updateData({
-          variables: {
-            _id: formData?.getSingleData?._key || contentId || "",
-            model_name: modelName,
-            local: activeLocale,
-            payload: newFormData,
-            status,
-            single_page_data: Boolean(contentData?.single_page_data),
-          },
+          _id: formData?.getSingleData?._key || contentId || "",
+          model_name: modelName,
+          local: activeLocale,
+          payload: newFormData,
+          status,
+          single_page_data: Boolean(contentData?.single_page_data),
         });
       } else {
-        // Create new content
         await createData({
-          variables: {
-            model_name: modelName,
-            local: activeLocale,
-            payload: newFormData,
-            status,
-          },
+          model_name: modelName,
+          local: activeLocale,
+          payload: newFormData,
+          status,
         });
       }
     } catch (error: any) {
       if (error.errorFields) {
-        // Handle form validation errors
         const errors = error.errorFields
           .map((field: any) => field.errors?.join(", ") || "Validation error")
           .filter(Boolean);
@@ -188,31 +171,22 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
     await onUpdate({ status: "draft" });
   };
 
-  // Loading state
   if (formGenerationLoading || (isEdit && formDataLoading)) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "400px",
-        }}
-      >
+      <div className="content-form-loading">
         <Spin size="large" />
       </div>
     );
   }
 
-  // Error state
   if (formGenerationError) {
     return (
       <Alert
         message="Error"
-        description={`Failed to load form structure: ${formGenerationError.message}`}
+        description={`Failed to load form structure: ${formGenerationError instanceof Error ? formGenerationError.message : "Unknown error"}`}
         type="error"
         showIcon
-        style={{ margin: "20px" }}
+        className="console-mx-inset"
       />
     );
   }
@@ -221,15 +195,14 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
     return (
       <Alert
         message="Error"
-        description={`Failed to load content data: ${formDataError.message}`}
+        description={`Failed to load content data: ${formDataError instanceof Error ? formDataError.message : "Unknown error"}`}
         type="error"
         showIcon
-        style={{ margin: "20px" }}
+        className="console-mx-inset"
       />
     );
   }
 
-  // No model info
   if (!modelInfo || !fields.length) {
     return (
       <Alert
@@ -237,14 +210,13 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
         description={`No form fields found for model: ${modelName}`}
         type="warning"
         showIcon
-        style={{ margin: "20px" }}
+        className="console-mx-inset"
       />
     );
   }
 
   const renderFormContent = () => {
     if (locales.length > 1) {
-      // Multi-locale form with tabs
       return (
         <Tabs activeKey={activeLocale} onChange={setActiveLocale} type="card">
           {locales.map((locale: string) => (
@@ -253,22 +225,20 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
                 fields={fields}
                 form={form}
                 disabled={createLoading || updateLoading}
-                //parentPath={[locale]}
               />
             </TabPane>
           ))}
         </Tabs>
       );
-    } else {
-      // Single locale form
-      return (
-        <DynamicFormGenerator
-          fields={fields}
-          form={form}
-          disabled={createLoading || updateLoading}
-        />
-      );
     }
+
+    return (
+      <DynamicFormGenerator
+        fields={fields}
+        form={form}
+        disabled={createLoading || updateLoading}
+      />
+    );
   };
 
   const renderMetadataSidebar = () => {
@@ -284,23 +254,20 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
     const updatedAt = formData?.getSingleData?.meta?.updated_at;
 
     return (
-      <Descriptions size="small" column={1} layout="vertical" bordered>
+      <Descriptions
+        size="small"
+        column={1}
+        layout="vertical"
+        bordered
+        className="content-form-meta"
+      >
         <Descriptions.Item
           label={
-            <div style={{ display: "flex", alignItems: "center" }}>
-              <div
-                style={{
-                  width: "8px",
-                  height: "8px",
-                  borderRadius: "50%",
-                  backgroundColor: "#1890ff",
-                  marginRight: "8px",
-                }}
-              />
+            <div className="content-form-meta-label">
+              <div className="content-form-meta-dot content-form-meta-dot--created" />
               <Text>Created By</Text>
             </div>
           }
-          labelStyle={{ fontWeight: "700" }}
         >
           {createdBy ? (
             <Space size={1} direction="vertical">
@@ -316,20 +283,11 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
 
         <Descriptions.Item
           label={
-            <div style={{ display: "flex", alignItems: "center" }}>
-              <div
-                style={{
-                  width: "8px",
-                  height: "8px",
-                  borderRadius: "50%",
-                  backgroundColor: "#faad14",
-                  marginRight: "8px",
-                }}
-              />
+            <div className="content-form-meta-label">
+              <div className="content-form-meta-dot content-form-meta-dot--edited" />
               <Text>Edited By</Text>
             </div>
           }
-          labelStyle={{ fontWeight: "700" }}
         >
           {editedBy ? (
             <Space size={1} direction="vertical">
@@ -343,36 +301,27 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
           )}
         </Descriptions.Item>
 
-        <Descriptions.Item label="Status" labelStyle={{ fontWeight: "700" }}>
+        <Descriptions.Item label="Status">
           <Tag color={status === "published" ? "green" : "orange"}>
             {status}
           </Tag>
         </Descriptions.Item>
 
-        <Descriptions.Item
-          label="Localization"
-          labelStyle={{ fontWeight: "700" }}
-        >
+        <Descriptions.Item label="Localization">
           {locales.map((locale: string) => (
-            <Tag key={locale} style={{ textTransform: "capitalize" }}>
+            <Tag key={locale} className="console-capitalize">
               {locale}
             </Tag>
           ))}
         </Descriptions.Item>
 
-        <Descriptions.Item
-          label="Content ID"
-          labelStyle={{ fontWeight: "700" }}
-        >
-          <Text code style={{ fontSize: "12px" }}>
+        <Descriptions.Item label="Content ID">
+          <Text code className="console-text-xs">
             {contentKey || contentId || "-"}
           </Text>
         </Descriptions.Item>
 
-        <Descriptions.Item
-          label="Revision History"
-          labelStyle={{ fontWeight: "700" }}
-        >
+        <Descriptions.Item label="Revision History">
           <Text type="secondary">No Revision History Found</Text>
         </Descriptions.Item>
       </Descriptions>
@@ -380,41 +329,31 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
   };
 
   return (
-    <Layout style={{ minHeight: "100%", backgroundColor: "white" }}>
-      <Content style={{ padding: "24px" }}>
-        {/* Header */}
-        <div style={{ marginBottom: "16px" }}>
-          {/* Form Errors */}
+    <Layout className="content-form-layout">
+      <Content className="content-form-layout__main">
+        <div className="console-mb-md">
           {formErrors.length > 0 && (
-            <div style={{ marginBottom: "16px" }}>
+            <div className="console-mb-md">
               {formErrors.map((error, index) => (
                 <Alert
                   key={index}
                   message={error}
                   type="error"
                   showIcon
-                  style={{ marginBottom: "8px" }}
+                  className="console-mb-xs"
                 />
               ))}
             </div>
           )}
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "right",
-              marginBottom: "10px",
-              width: "100%",
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="content-form-toolbar">
             <Space>
               <Button
                 onClick={() => {
                   setSubmitType("draft");
                   handleSaveDraft();
                 }}
-                icon={<EditOutlined />}
+                icon={<Pencil size={16} strokeWidth={1.75} />}
                 loading={
                   submitType === "draft" && (createLoading || updateLoading)
                 }
@@ -430,7 +369,7 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
                   setSubmitType("publish");
                   handleSubmit();
                 }}
-                icon={<CloudUploadOutlined />}
+                icon={<CloudUpload size={16} strokeWidth={1.75} />}
                 loading={
                   submitType === "publish" && (createLoading || updateLoading)
                 }
@@ -444,7 +383,6 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
           </div>
         </div>
 
-        {/* Form */}
         <Form
           form={form}
           layout="vertical"
@@ -456,18 +394,11 @@ const EditAndCreateContentForm: React.FC<EditAndCreateContentFormProps> = ({
             },
           }}
         >
-          <div style={{ marginTop: "5px" }}>{renderFormContent()}</div>
+          <div className="console-mt-xs">{renderFormContent()}</div>
         </Form>
       </Content>
 
-      {/* Metadata Sidebar */}
-      <Sider
-        style={{
-          marginLeft: "25px",
-          backgroundColor: "white",
-        }}
-        width="25%"
-      >
+      <Sider className="content-form-layout__sider" width="25%">
         {renderMetadataSidebar()}
       </Sider>
     </Layout>

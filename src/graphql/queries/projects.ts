@@ -1,14 +1,4 @@
-import { gql } from '@apollo/client';
-
-export const GET_TENANTS = gql`
-  query getTenants {
-    getTenants {
-      name
-      logo
-      id
-    }
-  }
-`;
+import { gql } from 'graphql-tag';
 
 export const GET_CURRENT_PROJECT = gql`
   query getCurrentProject {
@@ -47,9 +37,12 @@ export const GET_CURRENT_PROJECT_SECRETS = gql`
       project_secret_key
       tokens {
         name
-        token
         role
         expire
+        created_at
+        token_id
+        token_prefix
+        token_fingerprint
       }
     }
   }
@@ -59,14 +52,12 @@ export const GET_PROJECT_DRIVER_INFO = gql`
   query getProjectDriverInfo($id: String = "") {
     getProject(_id: $id) {
       driver {
-        access_key
         database
         engine
         host
         password
         port
         project_id
-        secret_key
         user
       }
     }

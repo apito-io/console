@@ -7,21 +7,14 @@ import {
   Space,
   Empty,
   Drawer,
-  theme,
   Modal,
   Form,
   Input,
   message,
   Alert,
   Select,
-  Switch,
   Card,
 } from "antd";
-import {
-  PlusCircleOutlined,
-  SettingOutlined,
-  GlobalOutlined,
-} from "@ant-design/icons";
 import {
   DndContext,
   KeyboardSensor,
@@ -40,7 +33,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "../../router/navigation";
 import {
   useGetModelDetailsQuery,
   useGetOnlyModelsInfoQuery,
@@ -49,7 +42,7 @@ import {
   useUpdateModelMutation,
   Field_Operation_Type_Enum,
   UpdateModelTypeEnum,
-} from "../../generated/graphql";
+} from "../../generated_gql/tanstack-query";
 import {
   ContentContext,
   type ContentContextType,
@@ -58,28 +51,52 @@ import {
   buildFieldIdentifier,
   buildDuplicateIdentifier,
 } from "../../utils/identifierBuilder";
+import {
+  dedupeFieldsByIdentifier,
+  fieldRowId,
+  fieldIdentifierFromSortableId,
+  nestedSortableId,
+  parentIdentifierFromSortableId,
+  rootSortableId,
+} from "../../utils/modelFields";
 import type { FieldInfo, SubFieldInfo, DrawerParam } from "../../types/model";
 import FieldContainer from "../../components/model/FieldContainer";
 import RelationContainer from "../../components/model/RelationContainer";
+import RelationshipConfigurationDrawer from "../../components/model/RelationshipConfigurationDrawer";
+import SchemaOverlayBadge, {
+  schemaOverlayTextStyle,
+} from "../../components/model/SchemaOverlayBadge";
 import RightSidebar from "../../components/model/RightSidebar";
-import { ApolloError } from "@apollo/client";
+import { useConsoleExtensions } from "../../contexts/ConsoleExtensionsContext";
+import { SortableDragHandleProvider } from "../../contexts/SortableDragHandleContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateModelQueries } from "../../lib/schemaCache";
+import ConsolePageHeader from "../../components/console/ConsolePageHeader";
+import "../../components/console/ConsoleShell.css";
+import { CirclePlus, Settings } from "lucide-react";
 
 const { Text, Title } = Typography;
 
 interface SortableFieldProps {
   field: FieldInfo;
   value: React.ReactNode;
+  sortableId: string;
 }
 
-const SortableField: React.FC<SortableFieldProps> = ({ field, value }) => {
+const SortableField: React.FC<SortableFieldProps> = ({
+  field,
+  value,
+  sortableId,
+}) => {
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: field.identifier || "" });
+  } = useSortable({ id: sortableId });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -88,18 +105,29 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, value }) => {
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      {value}
-    </div>
+    <SortableDragHandleProvider
+      value={{ setActivatorNodeRef, listeners, attributes }}
+    >
+      <div ref={setNodeRef} style={style}>
+        {value}
+      </div>
+    </SortableDragHandleProvider>
   );
 };
 
 const ModelPage: React.FC = () => {
-  const { token } = theme.useToken();
+  const queryClient = useQueryClient();
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const context = useContext(ContentContext) as ContentContextType | null;
+  const { schemaDraftOverlay, onSchemaMutationCompleted } =
+    useConsoleExtensions();
+
+  const refreshSchemaView = async () => {
+    hasLocalChanges.current = false;
+    await onSchemaMutationCompleted?.();
+  };
 
   // Get model name from ContentContext (set by left sidebar selection)
   const [resolvedModelName, setResolvedModelName] = useState<string>("");
@@ -111,6 +139,9 @@ const ModelPage: React.FC = () => {
   const [repeatedFieldIdentifier, setRepeatedFieldIdentifier] = useState("");
   const [isConnectionSettingDrawer, setIsConnectionSettingDrawer] =
     useState(false);
+  const [selectedConnectionIndex, setSelectedConnectionIndex] = useState<
+    number | null
+  >(null);
   const [isRightSidebarVisible, setIsRightSidebarVisible] = useState(false);
   const [selectedFieldForEdit, setSelectedFieldForEdit] =
     useState<FieldInfo | null>(null);
@@ -140,9 +171,9 @@ const ModelPage: React.FC = () => {
   const [duplicateIdentifier, setDuplicateIdentifier] = useState("");
 
   // Field operation mutations
-  const [modelFieldOperation] = useModelFieldOperationMutation();
-  const [rearrangeFieldSerial] = useRearrangeFieldSerialMutation();
-  const [updateModelMutation] = useUpdateModelMutation();
+  const { mutateAsync: modelFieldOperation } = useModelFieldOperationMutation();
+  const { mutateAsync: rearrangeFieldSerial } = useRearrangeFieldSerialMutation();
+  const { mutateAsync: updateModelMutation } = useUpdateModelMutation();
 
   // Local fields state for DnD operations
   const [localFields, setLocalFields] = useState<FieldInfo[]>([]);
@@ -158,16 +189,32 @@ const ModelPage: React.FC = () => {
   const hasLocalChanges = useRef(false);
 
   // Fetch all models to resolve model name on page reload
-  const { data: allModelsData } = useGetOnlyModelsInfoQuery({
-    errorPolicy: "all",
-    fetchPolicy: "cache-and-network",
-  });
+  const { data: allModelsData } = useGetOnlyModelsInfoQuery();
 
   // Resolve correct model name when no context (page reload)
   useEffect(() => {
     if (context?.state?.target) {
       // Use context if available (from sidebar click)
       setResolvedModelName(context.state.target);
+    } else if (params?.model && schemaDraftOverlay?.hasDraft) {
+      const urlModelName = params.model.toLowerCase();
+      const overlayMatch = schemaDraftOverlay.models.find(
+        (model) => model.name.toLowerCase() === urlModelName
+      );
+      if (overlayMatch?.name) {
+        setResolvedModelName(overlayMatch.name);
+      } else if (allModelsData?.projectModelsInfo) {
+        const actualModel = allModelsData.projectModelsInfo.find(
+          (model) => model?.name?.toLowerCase() === urlModelName
+        );
+        if (actualModel?.name) {
+          setResolvedModelName(actualModel.name);
+        } else {
+          setResolvedModelName(params.model);
+        }
+      } else {
+        setResolvedModelName(params.model);
+      }
     } else if (params?.model && allModelsData?.projectModelsInfo) {
       // Resolve from URL parameter (page reload)
       const urlModelName = params.model.toLowerCase();
@@ -177,12 +224,8 @@ const ModelPage: React.FC = () => {
 
       if (actualModel?.name) {
         setResolvedModelName(actualModel.name);
-        console.log("Resolved model name from URL:", {
-          urlModelName,
-          actualModelName: actualModel.name,
-        });
       } else {
-        setResolvedModelName(params.model); // Fallback to URL param
+        setResolvedModelName(params.model);
       }
     } else if (initialModelName) {
       setResolvedModelName(initialModelName);
@@ -192,6 +235,7 @@ const ModelPage: React.FC = () => {
     params?.model,
     allModelsData?.projectModelsInfo,
     initialModelName,
+    schemaDraftOverlay,
   ]);
 
   // Check for type=new query parameter and open create modal
@@ -220,19 +264,40 @@ const ModelPage: React.FC = () => {
     }
   }, [location.search, location.pathname, navigate]);
 
-  // Fetch model generation data using the GraphQL query
-  console.log("resolve model name", resolvedModelName);
+  const overlayModel = schemaDraftOverlay?.getModelOverlay(resolvedModelName);
+  const modelChangeKind =
+    schemaDraftOverlay?.getModelChangeKind(resolvedModelName) ?? "live";
+  const useOverlayDetails = Boolean(
+    schemaDraftOverlay?.hasDraft &&
+      overlayModel &&
+      overlayModel.overlayMeta.kind !== "removed"
+  );
+  const isPublishedModel = Boolean(
+    allModelsData?.projectModelsInfo?.some(
+      (model) =>
+        model?.name?.toLowerCase() === resolvedModelName.toLowerCase()
+    )
+  );
+  const skipLiveModelDetails =
+    !resolvedModelName ||
+    useOverlayDetails ||
+    modelChangeKind === "added" ||
+    !isPublishedModel ||
+    Boolean(
+      schemaDraftOverlay?.enabled &&
+        schemaDraftOverlay?.hasDraft &&
+        schemaDraftOverlay.loading
+    );
+
   const {
     data: currentModelInfo,
-    loading,
+    isLoading: loading,
     error,
-  } = useGetModelDetailsQuery({
-    variables: {
-      model_name: resolvedModelName,
-    },
-    skip: !resolvedModelName,
-    errorPolicy: "all",
-  });
+    refetch: refetchModelDetails,
+  } = useGetModelDetailsQuery(
+    { model_name: resolvedModelName },
+    { enabled: !skipLiveModelDetails }
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -246,13 +311,22 @@ const ModelPage: React.FC = () => {
     })
   );
 
-  const modelInfo = currentModelInfo?.projectModelsInfo?.[0];
-  const fields = (modelInfo?.fields || [])
-    .filter((field): field is NonNullable<typeof field> => field !== null)
-    .map((field) => ({
-      ...field,
-      serial: field.serial ?? 0,
-    })) as FieldInfo[];
+  const modelInfo = useOverlayDetails
+    ? overlayModel
+    : currentModelInfo?.projectModelsInfo?.[0];
+  const modelOverlayKind =
+    overlayModel?.overlayMeta.kind ??
+    schemaDraftOverlay?.getModelChangeKind(resolvedModelName) ??
+    "live";
+  const fields = useMemo(() => {
+    const raw = (modelInfo?.fields || [])
+      .filter((field): field is NonNullable<typeof field> => field !== null)
+      .map((field) => ({
+        ...field,
+        serial: field.serial ?? 0,
+      })) as FieldInfo[];
+    return dedupeFieldsByIdentifier(raw);
+  }, [modelInfo?.fields]);
   const connections = (modelInfo?.connections || [])
     .filter((conn): conn is NonNullable<typeof conn> => conn !== null)
     .map((conn) => ({
@@ -280,7 +354,7 @@ const ModelPage: React.FC = () => {
   const getRootSortableItems = (fieldList: FieldInfo[]): string[] => {
     return fieldList
       .filter((f) => !!f?.identifier)
-      .map((f) => f.identifier as string);
+      .map((f, idx) => rootSortableId(f, idx));
   };
 
   // Handle field operations (configure, rename, duplicate, delete)
@@ -367,39 +441,32 @@ const ModelPage: React.FC = () => {
     setOperationLoading(true);
     try {
       await modelFieldOperation({
-        variables: {
-          type: Field_Operation_Type_Enum.Rename,
-          model_name: resolvedModelName,
-          field_name: operationField.identifier || "",
-          new_name: renameIdentifier, // Use auto-generated identifier
-          parent_field: operationField.parent_field,
-          single_page_model: isSinglePage,
-        },
-        onError: (error: ApolloError) => {
-          console.log(error.message);
-          // Set the error as a form field validation error
-          renameForm.setFields([
-            {
-              name: "fieldLabel",
-              errors: [error.message],
-            },
-          ]);
-        },
-        onCompleted: (_) => {
-          message.success(
-            `Field "${operationField.label}" renamed to "${values.fieldLabel}" successfully`
-          );
-          setIsRenameModalVisible(false);
-          renameForm.resetFields();
-          setRenameIdentifier("");
-          // Refresh the page to update the model data
-          window.location.reload();
-        },
+        type: Field_Operation_Type_Enum.Rename,
+        model_name: resolvedModelName,
+        field_name: operationField.identifier || "",
+        new_name: renameIdentifier,
+        parent_field: operationField.parent_field,
+        single_page_model: isSinglePage,
       });
+      message.success(
+        `Field "${operationField.label}" renamed to "${values.fieldLabel}" successfully`
+      );
+      setIsRenameModalVisible(false);
+      renameForm.resetFields();
+      setRenameIdentifier("");
+      await refreshSchemaView();
+      if (!skipLiveModelDetails) {
+        await refetchModelDetails();
+      }
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to rename field";
-      message.error(errorMessage);
+      renameForm.setFields([
+        {
+          name: "fieldLabel",
+          errors: [errorMessage],
+        },
+      ]);
     } finally {
       setOperationLoading(false);
     }
@@ -412,39 +479,32 @@ const ModelPage: React.FC = () => {
     setOperationLoading(true);
     try {
       await modelFieldOperation({
-        variables: {
-          type: Field_Operation_Type_Enum.Duplicate,
-          model_name: resolvedModelName,
-          field_name: operationField.identifier || "",
-          new_name: duplicateIdentifier, // Use auto-generated identifier
-          parent_field: operationField.parent_field,
-          single_page_model: isSinglePage,
-        },
-        onError: (error: ApolloError) => {
-          console.log(error.message);
-          // Set the error as a form field validation error
-          duplicateForm.setFields([
-            {
-              name: "fieldLabel",
-              errors: [error.message],
-            },
-          ]);
-        },
-        onCompleted: (_) => {
-          message.success(
-            `Field "${operationField.label}" duplicated as "${values.fieldLabel}" successfully`
-          );
-          setIsDuplicateModalVisible(false);
-          duplicateForm.resetFields();
-          setDuplicateIdentifier("");
-          // Refresh the page to update the model data
-          window.location.reload();
-        },
+        type: Field_Operation_Type_Enum.Duplicate,
+        model_name: resolvedModelName,
+        field_name: operationField.identifier || "",
+        new_name: duplicateIdentifier,
+        parent_field: operationField.parent_field,
+        single_page_model: isSinglePage,
       });
+      message.success(
+        `Field "${operationField.label}" duplicated as "${values.fieldLabel}" successfully`
+      );
+      setIsDuplicateModalVisible(false);
+      duplicateForm.resetFields();
+      setDuplicateIdentifier("");
+      await refreshSchemaView();
+      if (!skipLiveModelDetails) {
+        await refetchModelDetails();
+      }
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to duplicate field";
-      message.error(errorMessage);
+      duplicateForm.setFields([
+        {
+          name: "fieldLabel",
+          errors: [errorMessage],
+        },
+      ]);
     } finally {
       setOperationLoading(false);
     }
@@ -457,28 +517,19 @@ const ModelPage: React.FC = () => {
     setOperationLoading(true);
     try {
       await modelFieldOperation({
-        variables: {
-          type: Field_Operation_Type_Enum.Delete,
-          model_name: resolvedModelName,
-          field_name: operationField.identifier || "",
-          parent_field: operationField.parent_field,
-          single_page_model: isSinglePage,
-          is_relation: false, // This is a field, not a relation
-        },
-        onError: (error: ApolloError) => {
-          console.log(error.message);
-          message.error(error.message);
-        },
-        onCompleted: (_) => {
-          message.success(
-            `Field "${operationField.label}" deleted successfully`
-          );
-          setIsDeleteModalVisible(false);
-          deleteForm.resetFields();
-          // Refresh the page to update the model data
-          window.location.reload();
-        },
+        type: Field_Operation_Type_Enum.Delete,
+        model_name: resolvedModelName,
+        field_name: operationField.identifier || "",
+        parent_field: operationField.parent_field,
+        single_page_model: isSinglePage,
       });
+      message.success(`Field "${operationField.label}" deleted successfully`);
+      setIsDeleteModalVisible(false);
+      deleteForm.resetFields();
+      await refreshSchemaView();
+      if (!skipLiveModelDetails) {
+        await refetchModelDetails();
+      }
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to delete field";
@@ -495,55 +546,50 @@ const ModelPage: React.FC = () => {
     setOperationLoading(true);
     try {
       await modelFieldOperation({
-        variables: {
-          type: Field_Operation_Type_Enum.ChangeType,
-          model_name: resolvedModelName,
-          field_name: operationField.identifier || "",
-          parent_field: operationField.parent_field,
-          single_page_model: isSinglePage,
-          is_relation: false, // This is a field, not a relation
-          changed_type: values.newFieldType, // Use the new changed_type parameter
-        },
-        onError: (error: ApolloError) => {
-          console.log(error.message);
-          // Set the error as a form field validation error
-          changeTypeForm.setFields([
-            {
-              name: "newFieldType",
-              errors: [error.message],
-            },
-          ]);
-        },
-        onCompleted: (_) => {
-          message.success(
-            `Field "${operationField.label}" type changed to "${values.newFieldType}" successfully`
-          );
-          setIsChangeTypeModalVisible(false);
-          changeTypeForm.resetFields();
-          // Refresh the page to update the model data
-          window.location.reload();
-        },
+        type: Field_Operation_Type_Enum.ChangeType,
+        model_name: resolvedModelName,
+        field_name: operationField.identifier || "",
+        parent_field: operationField.parent_field,
+        single_page_model: isSinglePage,
+        changed_type: values.newFieldType,
       });
+      message.success(
+        `Field "${operationField.label}" type changed to "${values.newFieldType}" successfully`
+      );
+      setIsChangeTypeModalVisible(false);
+      changeTypeForm.resetFields();
+      await refreshSchemaView();
+      if (!skipLiveModelDetails) {
+        await refetchModelDetails();
+      }
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to change field type";
-      message.error(errorMessage);
+      changeTypeForm.setFields([
+        {
+          name: "newFieldType",
+          errors: [errorMessage],
+        },
+      ]);
     } finally {
       setOperationLoading(false);
     }
   };
 
   // Handle connection/relationship operations
-  const openConnectionDrawer = () => {
+  const openConnectionDrawer = (index: number) => {
+    setSelectedConnectionIndex(index);
     setIsConnectionSettingDrawer(true);
   };
 
   // Recursive function to render field structure with sub-fields
   const renderSingleStructure = (
     field: FieldInfo,
+    parentPath: string[] = [],
     repeatIdentifier?: string
   ): React.ReactNode => {
     const repeatedFieldId = repeatIdentifier || "_root";
+    const fieldPath = [...parentPath, field.identifier || ""].filter(Boolean);
 
     // Prepare nested content for collapsible fields
     let nestedContent = null;
@@ -555,7 +601,9 @@ const ModelPage: React.FC = () => {
           <SortableContext
             items={(field.sub_field_info || [])
               .filter((sf) => !!sf?.identifier)
-              .map((sf) => sf!.identifier as string)}
+              .map((sf, idx) =>
+                nestedSortableId(field.identifier || "", sf!, idx)
+              )}
             strategy={verticalListSortingStrategy}
           >
             {field.sub_field_info?.length &&
@@ -579,23 +627,23 @@ const ModelPage: React.FC = () => {
                     dropIndicator.index === sIdx ? (
                       <div
                         key={`child-indicator-${field.identifier}-${sIdx}`}
-                        style={{
-                          height: 6,
-                          background: token.colorPrimary,
-                          borderRadius: 3,
-                          margin: "6px 4px",
-                          opacity: 0.35,
-                        }}
+                        className="model-drop-indicator"
                       />
                     ) : null;
 
                   return [
                     beforeIndicator,
                     <SortableField
-                      key={subField.identifier}
+                      key={fieldRowId(subFieldWithParent, sIdx)}
+                      sortableId={nestedSortableId(
+                        field.identifier || "",
+                        subFieldWithParent,
+                        sIdx
+                      )}
                       field={subFieldWithParent}
                       value={renderSingleStructure(
                         subFieldWithParent,
+                        fieldPath,
                         currentRepeatedFieldId
                       )}
                     />,
@@ -605,13 +653,7 @@ const ModelPage: React.FC = () => {
                     dropIndicator.index === arr.length ? (
                       <div
                         key={`child-indicator-end-${field.identifier}`}
-                        style={{
-                          height: 6,
-                          background: token.colorPrimary,
-                          borderRadius: 3,
-                          margin: "6px 4px",
-                          opacity: 0.35,
-                        }}
+                        className="model-drop-indicator"
                       />
                     ) : null,
                   ];
@@ -619,13 +661,8 @@ const ModelPage: React.FC = () => {
           </SortableContext>
           <Button
             type="primary"
-            icon={<PlusCircleOutlined />}
-            style={{
-              backgroundColor: "#9f1329",
-              borderColor: "#9f1329",
-              marginTop: "12px",
-              width: "100%",
-            }}
+            icon={<CirclePlus size={16} strokeWidth={1.75} />}
+            className="model-nested-add-btn"
             onClick={() => {
               setRepeatedFieldIdentifier(currentRepeatedFieldId);
               setIsEditingField(false);
@@ -644,17 +681,34 @@ const ModelPage: React.FC = () => {
         field={field}
         openDrawer={openDrawerCallback}
         objectIdentifier={repeatedFieldId}
+        overlayKind={
+          schemaDraftOverlay?.getFieldOverlay(
+            resolvedModelName,
+            field.identifier || "",
+            fieldPath.join(".")
+          ).kind ?? "live"
+        }
+        draftVersionLabel={schemaDraftOverlay?.draftVersionLabel}
+        disableActions={modelOverlayKind === "removed"}
+        overlayPreviousLabel={
+          schemaDraftOverlay?.getFieldOverlay(
+            resolvedModelName,
+            field.identifier || "",
+            fieldPath.join(".")
+          ).previousIdentifier
+        }
       >
         {nestedContent}
       </FieldContainer>
     );
   };
 
-  // Helper function to find field by identifier
+  // Helper function to find field by identifier or sortable id
   const findFieldByIdentifier = (
-    identifier: string,
+    identifierOrSortableId: string,
     fieldList: FieldInfo[]
   ): FieldInfo | null => {
+    const identifier = fieldIdentifierFromSortableId(identifierOrSortableId);
     for (const field of fieldList) {
       if (field.identifier === identifier) return field;
       if (field.sub_field_info) {
@@ -668,9 +722,20 @@ const ModelPage: React.FC = () => {
 
   // Helper function to find parent field
   const findParentField = (
-    identifier: string,
+    identifierOrSortableId: string,
     fieldList: FieldInfo[]
   ): FieldInfo | null => {
+    const parentFromSortable = parentIdentifierFromSortableId(
+      identifierOrSortableId
+    );
+    if (parentFromSortable) {
+      return (
+        fieldList.find((field) => field.identifier === parentFromSortable) ??
+        null
+      );
+    }
+
+    const identifier = fieldIdentifierFromSortableId(identifierOrSortableId);
     for (const field of fieldList) {
       if (field.sub_field_info) {
         for (const subField of field.sub_field_info) {
@@ -679,6 +744,13 @@ const ModelPage: React.FC = () => {
       }
     }
     return null;
+  };
+
+  const resetDragState = () => {
+    setIsDragging(false);
+    isDraggingRef.current = false;
+    setActiveDragId(null);
+    setDropIndicator(null);
   };
 
   const onSortStart = (event?: any) => {
@@ -693,31 +765,22 @@ const ModelPage: React.FC = () => {
     const { active, over } = event;
 
     if (!active.id || !over?.id || active.id === over.id) {
-      setIsDragging(false);
+      resetDragState();
       return;
     }
 
     const activeId = active.id as string;
-    setActiveDragId(null);
     const overId = over.id as string;
-
-    console.log("DnD Event:", { activeId, overId });
+    const sourceList = localFields.length > 0 ? localFields : fields;
 
     // Find the fields
-    const activeField = findFieldByIdentifier(activeId, fields);
-    const overField = findFieldByIdentifier(overId, fields);
-    const activeParent = findParentField(activeId, fields);
-    const overParent = findParentField(overId, fields);
-
-    console.log("Found fields:", {
-      activeField,
-      overField,
-      activeParent,
-      overParent,
-    });
+    const activeField = findFieldByIdentifier(activeId, sourceList);
+    const overField = findFieldByIdentifier(overId, sourceList);
+    const activeParent = findParentField(activeId, sourceList);
+    const overParent = findParentField(overId, sourceList);
 
     if (!activeField || !overField) {
-      console.log("Missing fields, returning");
+      resetDragState();
       return;
     }
 
@@ -761,15 +824,16 @@ const ModelPage: React.FC = () => {
       moveType = "reorder";
     }
 
-    console.log("Move type:", moveType);
-
-    // Allow one-level moves and reordering
     if (!moveType) {
       message.warning(
         "Only one-level moves are allowed (parent ↔ child) or reordering within same level"
       );
+      resetDragState();
       return;
     }
+
+    const activeFieldIdentifier = fieldIdentifierFromSortableId(activeId);
+    const overFieldIdentifier = fieldIdentifierFromSortableId(overId);
 
     try {
       // Create a deep copy of local fields to modify
@@ -791,7 +855,7 @@ const ModelPage: React.FC = () => {
           ).find((f) => f.identifier === overParent.identifier);
           if (parentField?.sub_field_info) {
             const overIndex = parentField.sub_field_info.findIndex(
-              (sf) => sf?.identifier === overId
+              (sf) => sf?.identifier === overFieldIdentifier
             );
             insertionIndex = overIndex;
             newPosition = overIndex;
@@ -809,25 +873,14 @@ const ModelPage: React.FC = () => {
         if (!activeParent && !overParent) {
           // Root level reordering
           const overIndex = updatedFields.findIndex(
-            (f) => f.identifier === overId
+            (f) => f.identifier === overFieldIdentifier
           );
           const activeIndex = updatedFields.findIndex(
-            (f) => f.identifier === activeId
+            (f) => f.identifier === activeFieldIdentifier
           );
 
           insertionIndex = overIndex;
           newPosition = overIndex;
-
-          console.log("Position calculation (root):", {
-            activeIndex,
-            overIndex,
-            insertionIndex,
-            activeId,
-            overId,
-            newPosition,
-            dragDirection:
-              activeIndex < overIndex ? "top-to-bottom" : "bottom-to-top",
-          });
         } else {
           // Child level reordering
           const parentField = updatedFields.find(
@@ -835,25 +888,14 @@ const ModelPage: React.FC = () => {
           );
           if (parentField?.sub_field_info) {
             const overIndex = parentField.sub_field_info.findIndex(
-              (sf) => sf?.identifier === overId
+              (sf) => sf?.identifier === overFieldIdentifier
             );
             const activeIndex = parentField.sub_field_info.findIndex(
-              (sf) => sf?.identifier === activeId
+              (sf) => sf?.identifier === activeFieldIdentifier
             );
 
             insertionIndex = overIndex;
             newPosition = overIndex;
-
-            console.log("Position calculation (child):", {
-              activeIndex,
-              overIndex,
-              insertionIndex,
-              activeId,
-              overId,
-              newPosition,
-              dragDirection:
-                activeIndex < overIndex ? "top-to-bottom" : "bottom-to-top",
-            });
           } else {
             newPosition = 0;
           }
@@ -865,7 +907,7 @@ const ModelPage: React.FC = () => {
 
       // Remove from root level
       const rootIndex = updatedFields.findIndex(
-        (f) => f.identifier === activeId
+        (f) => f.identifier === activeFieldIdentifier
       );
       if (rootIndex !== -1) {
         removedField = updatedFields.splice(rootIndex, 1)[0];
@@ -876,7 +918,7 @@ const ModelPage: React.FC = () => {
         for (const field of updatedFields) {
           if (field.sub_field_info) {
             const subIndex = field.sub_field_info.findIndex(
-              (sf) => sf?.identifier === activeId
+              (sf) => sf?.identifier === activeFieldIdentifier
             );
             if (subIndex !== -1) {
               removedField = field.sub_field_info.splice(subIndex, 1)[0];
@@ -887,7 +929,8 @@ const ModelPage: React.FC = () => {
       }
 
       if (!removedField) {
-        console.error("Could not find field to move");
+        message.error("Could not find field to move");
+        resetDragState();
         return;
       }
 
@@ -1014,70 +1057,54 @@ const ModelPage: React.FC = () => {
       }
 
       const result = await rearrangeFieldSerial({
-        variables: {
-          model_name: resolvedModelName,
-          field_name: draggedFieldName,
-          move_type: apiMoveType,
-          new_position: newPosition,
-          parent_id: parentId,
-        },
+        model_name: resolvedModelName,
+        field_name: draggedFieldName,
+        move_type: apiMoveType,
+        new_position: newPosition,
+        parent_id: parentId,
       });
 
-      // Update the GraphQL cache with the new field order
-      if (result.data?.rearrangeSerialOfField) {
-        // Keep the local changes and don't sync with GraphQL for now
-        // The cache will be updated on next page load or manual refresh
+      if (result.rearrangeSerialOfField) {
+        hasLocalChanges.current = false;
+        await invalidateModelQueries(queryClient, resolvedModelName);
       }
 
       message.success("Field moved successfully");
     } catch (error) {
       console.error("Error moving field:", error);
       message.error("Failed to move field");
+      setLocalFields(fields);
+      hasLocalChanges.current = false;
     } finally {
-      setIsDragging(false);
-      isDraggingRef.current = false;
-      setDropIndicator(null);
+      resetDragState();
     }
   };
 
   // Check if there are no models at all
+  const hasOverlayModels =
+    schemaDraftOverlay?.hasDraft && schemaDraftOverlay.models.length > 0;
   if (
+    !hasOverlayModels &&
     allModelsData?.projectModelsInfo &&
     allModelsData.projectModelsInfo.length === 0
   ) {
     return (
-      <div style={{ padding: "24px", margin: "0 auto" }}>
-        <div style={{ marginBottom: "32px" }}>
-          <Title level={2} style={{ margin: 0, marginBottom: "8px" }}>
+      <div className="console-page-body">
+        <div className="console-mb-xl">
+          <Title level={4} className="console-title-flush console-mb-xs">
             Model
           </Title>
           <Text type="secondary">Design and configure your project schema</Text>
         </div>
 
-        <Card
-          style={{
-            background: token.colorBgContainer,
-            border: `1px solid ${token.colorBorderSecondary}`,
-            borderRadius: "8px",
-            textAlign: "center",
-            padding: "48px 24px",
-          }}
-        >
+        <Card className="console-empty-state-card">
           <Empty
             description={
               <div>
-                <div
-                  style={{
-                    marginBottom: "8px",
-                    fontSize: "16px",
-                    fontWeight: 500,
-                  }}
-                >
+                <div className="console-empty-title">
                   No models found
                 </div>
-                <div
-                  style={{ color: token.colorTextSecondary, fontSize: "14px" }}
-                >
+                <div className="console-empty-desc">
                   Create your first model by clicking "+ Add Model" button on
                   the left sidebar
                 </div>
@@ -1087,7 +1114,7 @@ const ModelPage: React.FC = () => {
           >
             {/*  <Button
               type="primary"
-              icon={<PlusCircleOutlined />}
+              icon={<CirclePlus size={16} strokeWidth={1.75} />}
               size="large"
               onClick={() => {
                 // Navigate to project creation or model creation
@@ -1102,9 +1129,13 @@ const ModelPage: React.FC = () => {
     );
   }
 
-  if (loading) {
+  const pageLoading = useOverlayDetails
+    ? schemaDraftOverlay?.loading && !overlayModel
+    : loading;
+
+  if (pageLoading) {
     return (
-      <div style={{ padding: "40px", textAlign: "center" }}>
+      <div className="console-center-pad--lg">
         <div>Loading model details...</div>
       </div>
     );
@@ -1112,78 +1143,55 @@ const ModelPage: React.FC = () => {
 
   if (error) {
     return (
-      <div style={{ padding: "40px", textAlign: "center" }}>
-        <div>Error loading model: {error.message}</div>
+      <div className="console-center-pad--lg">
+        <div>Error loading model: {error instanceof Error ? error.message : "Unknown error"}</div>
       </div>
     );
   }
 
   return (
-    <div style={{ height: "100vh", overflow: "auto" }}>
-      {/* Header */}
-      <div
-        style={{
-          padding: "16px 24px",
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
-          background: token.colorBgContainer,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <Title
-                level={4}
-                style={{
-                  margin: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                {modelInfo?.is_common_model && (
-                  <GlobalOutlined
-                    style={{ color: token.colorPrimary, fontSize: "18px" }}
-                    title="Common Model - Shared across all tenants"
-                  />
-                )}
-                {resolvedModelName
-                  ? resolvedModelName.charAt(0).toUpperCase() +
-                    resolvedModelName.slice(1)
-                  : ""}
-              </Title>
-              <Button
-                type="text"
-                icon={<SettingOutlined />}
-                size="small"
-                onClick={() => {
-                  setIsModelSettingsDrawerVisible(true);
-                  // Initialize form with current model data
-                  modelSettingsForm.setFieldsValue({
-                    is_common_model: modelInfo?.is_common_model || false,
-                  });
-                }}
-                title="Model Settings"
-              />
-            </div>
-            <Text type="secondary">
-              {isSinglePage ? "Single Record Model" : "Multi Record Model"}
-            </Text>
-          </div>
-        </div>
-      </div>
+    <div className="console-scroll-fill">
+      <ConsolePageHeader
+        title={
+          <>
+            {overlayModel?.overlayMeta.previousName ? (
+              <>
+                <Text delete type="secondary">
+                  {overlayModel.overlayMeta.previousName.charAt(0).toUpperCase() +
+                    overlayModel.overlayMeta.previousName.slice(1)}
+                </Text>
+                {" → "}
+              </>
+            ) : null}
+            {resolvedModelName
+              ? resolvedModelName.charAt(0).toUpperCase() +
+                resolvedModelName.slice(1)
+              : ""}
+            <SchemaOverlayBadge
+              kind={modelOverlayKind}
+              draftVersionLabel={schemaDraftOverlay?.draftVersionLabel}
+            />
+          </>
+        }
+        titleStyle={schemaOverlayTextStyle(modelOverlayKind)}
+        badge={isSinglePage ? "Single Record" : "Multi Record"}
+        description="Design and configure the schema for this model."
+        actions={
+          <Button
+            type="text"
+            icon={<Settings size={16} strokeWidth={1.75} />}
+            onClick={() => setIsModelSettingsDrawerVisible(true)}
+            title="Model Settings"
+          />
+        }
+      />
 
       {/* Main Content */}
-      <div style={{ padding: "16px" }}>
+      <div className="console-page-body">
         <Row gutter={[24, 24]}>
           {/* Left Column - Schema Fields */}
           <Col span={connections.length > 0 ? 12 : 24}>
-            <div style={{ marginBottom: "24px" }}>
+            <div className="console-mb-lg">
               <Space direction="vertical">
                 <Text strong>Schema</Text>
                 <Text type="secondary">
@@ -1207,6 +1215,8 @@ const ModelPage: React.FC = () => {
 
                   const activeId = active.id as string;
                   const overId = over.id as string;
+                  const overFieldIdentifier =
+                    fieldIdentifierFromSortableId(overId);
                   const sourceList =
                     localFields.length > 0 ? localFields : fields;
 
@@ -1223,7 +1233,7 @@ const ModelPage: React.FC = () => {
 
                   if (activeParent && !overParent && !overIsContainer) {
                     const overIndex = sourceList.findIndex(
-                      (f) => f.identifier === overId
+                      (f) => f.identifier === overFieldIdentifier
                     );
                     parentId = null;
                     index = overIndex >= 0 ? overIndex : sourceList.length;
@@ -1242,7 +1252,7 @@ const ModelPage: React.FC = () => {
                       );
                       const overIdx =
                         target?.sub_field_info?.findIndex(
-                          (sf) => sf?.identifier === overId
+                          (sf) => sf?.identifier === overFieldIdentifier
                         ) ?? -1;
                       index =
                         overIdx >= 0
@@ -1261,7 +1271,7 @@ const ModelPage: React.FC = () => {
                     } else {
                       const overIdx =
                         target?.sub_field_info?.findIndex(
-                          (sf) => sf?.identifier === overId
+                          (sf) => sf?.identifier === overFieldIdentifier
                         ) ?? -1;
                       index =
                         overIdx >= 0
@@ -1270,7 +1280,7 @@ const ModelPage: React.FC = () => {
                     }
                   } else {
                     const overIndex = sourceList.findIndex(
-                      (f) => f.identifier === overId
+                      (f) => f.identifier === overFieldIdentifier
                     );
                     parentId = null;
                     index = overIndex >= 0 ? overIndex : sourceList.length;
@@ -1297,23 +1307,19 @@ const ModelPage: React.FC = () => {
                         dropIndicator.index === idx ? (
                           <div
                             key={`root-indicator-${idx}`}
-                            style={{
-                              height: 6,
-                              background: token.colorPrimary,
-                              borderRadius: 3,
-                              margin: "6px 4px",
-                              opacity: 0.35,
-                            }}
+                            className="model-drop-indicator"
                           />
                         ) : null;
 
                       return [
                         beforeIndicator,
                         <SortableField
-                          key={field.identifier}
+                          key={fieldRowId(field as FieldInfo, idx)}
+                          sortableId={rootSortableId(field as FieldInfo, idx)}
                           field={field as FieldInfo}
                           value={renderSingleStructure(
                             field as FieldInfo,
+                            [],
                             repeatedFieldIdentifier
                           )}
                         />,
@@ -1323,13 +1329,7 @@ const ModelPage: React.FC = () => {
                         dropIndicator.index === arr.length ? (
                           <div
                             key={`root-indicator-end`}
-                            style={{
-                              height: 6,
-                              background: token.colorPrimary,
-                              borderRadius: 3,
-                              margin: "6px 4px",
-                              opacity: 0.35,
-                            }}
+                            className="model-drop-indicator"
                           />
                         ) : null,
                       ];
@@ -1346,16 +1346,7 @@ const ModelPage: React.FC = () => {
                     );
                     if (!dragged) return null;
                     return (
-                      <div
-                        style={{
-                          padding: "8px 12px",
-                          background: "#fff",
-                          border: "1px solid rgba(0,0,0,0.08)",
-                          borderRadius: 8,
-                          boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
-                          fontSize: 14,
-                        }}
-                      >
+                      <div className="model-drag-overlay">
                         {dragged.label || dragged.identifier}
                       </div>
                     );
@@ -1366,14 +1357,14 @@ const ModelPage: React.FC = () => {
               <Empty
                 description="Your model looks empty! Please define your model with some fields."
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ marginTop: "40px" }}
+                className="console-mt-xl"
               />
             )}
 
             <Button
               type="primary"
-              icon={<PlusCircleOutlined />}
-              style={{ marginTop: 24 }}
+              icon={<CirclePlus size={16} strokeWidth={1.75} />}
+              className="console-mt-lg"
               data-tour="add-fields-button"
               onClick={() => {
                 setRepeatedFieldIdentifier("");
@@ -1389,7 +1380,7 @@ const ModelPage: React.FC = () => {
           {/* Right Column - Relationships */}
           {connections.length > 0 && (
             <Col span={12}>
-              <div style={{ marginBottom: "24px" }}>
+              <div className="console-mb-lg">
                 <Space direction="vertical">
                   <Text strong>Relationship</Text>
                   <Text type="secondary">Relations between models</Text>
@@ -1403,6 +1394,14 @@ const ModelPage: React.FC = () => {
                   index={i}
                   onOpneDrawer={openConnectionDrawer}
                   modelName={resolvedModelName}
+                  overlayKind={
+                    schemaDraftOverlay?.getConnectionOverlay(
+                      resolvedModelName,
+                      connection
+                    ).kind ?? "live"
+                  }
+                  draftVersionLabel={schemaDraftOverlay?.draftVersionLabel}
+                  onMutationCompleted={refreshSchemaView}
                 />
               ))}
             </Col>
@@ -1418,6 +1417,13 @@ const ModelPage: React.FC = () => {
           setIsEditingField(false);
           setSelectedFieldForEdit(null);
           setRepeatedFieldIdentifier("");
+        }}
+        onFieldCreated={async () => {
+          hasLocalChanges.current = false;
+          await refreshSchemaView();
+          if (!skipLiveModelDetails) {
+            await refetchModelDetails();
+          }
         }}
         repeatedFieldIdentifier={repeatedFieldIdentifier}
         selectedField={selectedFieldForEdit}
@@ -1452,7 +1458,7 @@ const ModelPage: React.FC = () => {
             description="Renaming a field will update all references to this field. This action will affect existing field content and cannot be undone."
             type="warning"
             showIcon
-            style={{ marginBottom: "16px" }}
+            className="console-mb-md"
           />
 
           <Form.Item
@@ -1471,7 +1477,7 @@ const ModelPage: React.FC = () => {
               value={renameIdentifier}
               disabled
               placeholder="Auto Generated & Used by API"
-              style={{ color: "rgba(0, 0, 0, 0.45)" }}
+              className="console-text-disabled"
             />
           </Form.Item>
         </Form>
@@ -1516,7 +1522,7 @@ const ModelPage: React.FC = () => {
               value={duplicateIdentifier}
               disabled
               placeholder="Auto Generated & Used by API"
-              style={{ color: "rgba(0, 0, 0, 0.45)" }}
+              className="console-text-disabled"
             />
           </Form.Item> */}
         </Form>
@@ -1546,9 +1552,7 @@ const ModelPage: React.FC = () => {
             Are you sure you want to delete the field{" "}
             <strong>"{operationField?.label}"</strong>?
           </p>
-          <p
-            style={{ color: "#ff4d4f", fontSize: "14px", marginBottom: "16px" }}
-          >
+          <p className="console-text-danger">
             This action cannot be undone and will permanently delete this field.
           </p>
 
@@ -1594,7 +1598,7 @@ const ModelPage: React.FC = () => {
             description="Changing the field type will remove all previous data for this field and will reset the Field Validation Settings and index. This action cannot be undone."
             type="warning"
             showIcon
-            style={{ marginBottom: "16px" }}
+            className="console-mb-md"
           />
 
           <Form.Item
@@ -1617,20 +1621,20 @@ const ModelPage: React.FC = () => {
         </Form>
       </Modal>
 
-      {/* Connection Setting Drawer */}
-      <Drawer
-        title={`Configure Relationship`}
-        width={340}
+      <RelationshipConfigurationDrawer
         open={isConnectionSettingDrawer}
+        modelName={resolvedModelName}
+        connection={
+          selectedConnectionIndex == null
+            ? null
+            : connections[selectedConnectionIndex] ?? null
+        }
         onClose={() => {
           setIsConnectionSettingDrawer(false);
+          setSelectedConnectionIndex(null);
         }}
-        destroyOnClose
-      >
-        <div>
-          <Text>Relationship configuration drawer content will go here</Text>
-        </div>
-      </Drawer>
+        onStaged={refreshSchemaView}
+      />
 
       {/* Model Settings Drawer */}
       <Drawer
@@ -1647,32 +1651,26 @@ const ModelPage: React.FC = () => {
         <Form
           form={modelSettingsForm}
           layout="vertical"
-          onFinish={async (values) => {
+          onFinish={async () => {
             setModelUpdateLoading(true);
             try {
               await updateModelMutation({
-                variables: {
-                  type: UpdateModelTypeEnum.Update,
-                  model_name: resolvedModelName,
-                  is_common_model: values.is_common_model,
-                },
-                onCompleted: () => {
-                  message.success("Model settings updated successfully");
-                  setIsModelSettingsDrawerVisible(false);
-                  modelSettingsForm.resetFields();
-                  // Refresh the page to update the model data
-                  window.location.reload();
-                },
-                onError: (error) => {
-                  message.error(`Failed to update model: ${error.message}`);
-                },
+                type: UpdateModelTypeEnum.Update,
+                model_name: resolvedModelName,
               });
+              message.success("Model settings updated successfully");
+              setIsModelSettingsDrawerVisible(false);
+              modelSettingsForm.resetFields();
+              await refreshSchemaView();
+              if (!skipLiveModelDetails) {
+                await refetchModelDetails();
+              }
             } catch (error: unknown) {
               const errorMessage =
                 error instanceof Error
                   ? error.message
                   : "Failed to update model";
-              message.error(errorMessage);
+              message.error(`Failed to update model: ${errorMessage}`);
             } finally {
               setModelUpdateLoading(false);
             }
@@ -1683,23 +1681,17 @@ const ModelPage: React.FC = () => {
               value={modelInfo?.name || ""}
               disabled
               placeholder="Model name"
-              style={{ color: "rgba(0, 0, 0, 0.85)" }}
+              className="console-text-disabled"
             />
-            <div
-              style={{
-                fontSize: "12px",
-                color: "rgba(0, 0, 0, 0.45)",
-                marginTop: "4px",
-              }}
-            >
+            <div className="console-help-text">
               Use the rename model option to change the model name
             </div>
           </Form.Item>
 
           <Form.Item label="Single Page">
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div className="console-inline-row">
               <Text>{modelInfo?.single_page ? "Yes" : "No"}</Text>
-              <Text type="secondary" style={{ fontSize: "12px" }}>
+              <Text type="secondary" className="console-text-xs">
                 (Fixed, non-toggleable)
               </Text>
             </div>
@@ -1710,28 +1702,20 @@ const ModelPage: React.FC = () => {
               value={modelInfo?.single_page_uuid || "N/A"}
               disabled
               placeholder="Auto-generated UUID"
-              style={{ color: "rgba(0, 0, 0, 0.45)" }}
+              className="console-text-disabled"
             />
           </Form.Item>
 
           <Form.Item label="System Generated">
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div className="console-inline-row">
               <Text>{modelInfo?.system_generated ? "Yes" : "No"}</Text>
-              <Text type="secondary" style={{ fontSize: "12px" }}>
+              <Text type="secondary" className="console-text-xs">
                 (Non-editable)
               </Text>
             </div>
           </Form.Item>
 
-          <Form.Item
-            name="is_common_model"
-            label="Common Model"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-
-          <div style={{ marginTop: "24px", textAlign: "right" }}>
+          <div className="console-form-footer">
             <Space>
               <Button
                 onClick={() => {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { Fragment, useState } from "react";
 import {
   Form,
   Input,
@@ -14,14 +14,14 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-import {
-  PlusOutlined,
-  MinusCircleOutlined,
-  LockOutlined,
-  UnlockOutlined,
-} from "@ant-design/icons";
 import type { FormInstance } from "antd/es/form";
 import dayjs from "dayjs";
+import localeData from "dayjs/plugin/localeData";
+import weekday from "dayjs/plugin/weekday";
+
+// rc-picker (Ant Design DatePicker) calls dayjs#weekday(); extend once at module load.
+dayjs.extend(weekday);
+dayjs.extend(localeData);
 import {
   getFieldTypeColor,
   generateIcon,
@@ -29,6 +29,9 @@ import {
 import ReactDraft from "./ReactDraft";
 import { usePluginManager } from "../../plugins/PluginManager";
 import type { LoadedPlugin } from "../../plugins/types";
+import { CircleMinus, Lock, Plus, Unlock } from "lucide-react";
+import { resolveListFieldSubType } from "../../utils/resolveListFieldSubType";
+import { Field_Sub_Type_Enum } from "../../generated_gql/tanstack-query";
 
 const { Text } = Typography;
 
@@ -41,6 +44,8 @@ interface FieldDefinition {
   field_sub_type?: string;
   description?: string;
   system_generated: boolean;
+  plugin_id?: string;
+  plugin_field_type?: string;
   sub_field_info?: FieldDefinition[];
   validation?: {
     as_title?: boolean;
@@ -96,6 +101,11 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
       return parsed.isValid() ? parsed : null;
     }
 
+    if (value instanceof Date) {
+      const parsed = dayjs(value);
+      return parsed.isValid() ? parsed : null;
+    }
+
     return null;
   };
 
@@ -125,6 +135,53 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
 
     // Fallback to empty string
     return "";
+  };
+
+  // Media values are stored as `{ url }` (or gallery arrays); Input needs a string.
+  const normalizeMediaUrl = (value: unknown): string => {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (Array.isArray(value)) {
+      const first = value[0];
+      return normalizeMediaUrl(first);
+    }
+    if (typeof value === "object") {
+      const obj = value as Record<string, unknown>;
+      if (typeof obj.url === "string") return obj.url;
+      if (typeof obj.src === "string") return obj.src;
+    }
+    return "";
+  };
+
+  const mediaValueFromUrlInput = (
+    eventOrString: unknown,
+    previous: unknown,
+  ): unknown => {
+    const url =
+      typeof eventOrString === "string"
+        ? eventOrString
+        : eventOrString &&
+            typeof eventOrString === "object" &&
+            "target" in eventOrString &&
+            (eventOrString as { target?: { value?: string } }).target?.value != null
+          ? String(
+              (eventOrString as { target: { value?: string } }).target.value ??
+                "",
+            )
+          : "";
+    // Gallery fields keep array shape; single media stays `{ url }`.
+    if (Array.isArray(previous)) {
+      if (!url.trim()) return [];
+      const first =
+        previous[0] && typeof previous[0] === "object"
+          ? { ...(previous[0] as object), url }
+          : { url };
+      return [first];
+    }
+    if (previous && typeof previous === "object" && !Array.isArray(previous)) {
+      return { ...(previous as object), url };
+    }
+    return { url };
   };
 
   const renderFieldLabel = (field: FieldDefinition) => {
@@ -265,7 +322,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
                   type="text"
                   size="small"
                   icon={
-                    isHiddenEditable ? <LockOutlined /> : <UnlockOutlined />
+                    isHiddenEditable ? <Lock size={16} strokeWidth={1.75} /> : <Unlock size={16} strokeWidth={1.75} />
                   }
                   onClick={() => toggleHiddenFieldEdit(field.identifier)}
                   disabled={disabled}
@@ -334,6 +391,69 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
         {field.validation?.required && <Text type="danger">*</Text>}
       </Space>
     );
+
+    const pluginFields = pluginAPI.getPluginFields();
+    const pluginField =
+      pluginFields.find(
+        (pf) =>
+          (field.plugin_field_type && pf.type === field.plugin_field_type) ||
+          pf.type === fieldType,
+      ) ??
+      pluginFields.find(
+        (pf) =>
+          Boolean(field.plugin_id) &&
+          pf.pluginId === field.plugin_id &&
+          pf.storageType === fieldType,
+      );
+
+    if (pluginField) {
+      const allPlugins = Array.from(pluginState.plugins.values());
+      const ownerPlugin = allPlugins.find((plugin: LoadedPlugin) =>
+        plugin.config.fields?.some((f) => f.type === pluginField.type),
+      );
+      if (ownerPlugin && ownerPlugin.loaded && !ownerPlugin.config.blockedReason) {
+        const FormComponent = pluginAPI.getPluginComponent(
+          ownerPlugin.config.name,
+          "forms",
+          pluginField.formComponent,
+        ) as React.ComponentType<{
+          disabled?: boolean;
+          field?: unknown;
+          pluginField?: unknown;
+          placeholder?: string;
+        }> | undefined;
+        if (FormComponent) {
+          return (
+            <Form.Item
+              name={fieldPath}
+              label={renderFieldLabelWithIcon()}
+              tooltip={field.description}
+              rules={getValidationRules(field)}
+            >
+              <FormComponent
+                disabled={isFieldDisabled}
+                field={field}
+                pluginField={pluginField}
+                placeholder={field.validation?.placeholder}
+              />
+            </Form.Item>
+          );
+        }
+      }
+      return (
+        <Form.Item
+          name={fieldPath}
+          label={renderFieldLabelWithIcon()}
+          tooltip={field.description}
+          rules={getValidationRules(field)}
+        >
+          <Input
+            disabled={isFieldDisabled}
+            placeholder={`${pluginField.label} unavailable — activate ${pluginField.pluginId || "the plugin"}`}
+          />
+        </Form.Item>
+      );
+    }
 
     switch (fieldType) {
       case "text":
@@ -455,7 +575,12 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
 
       case "list": {
         const listElements = field.validation?.fixed_list_elements || [];
-        const isMultiChoice = field.validation?.is_multi_choice;
+        const listSub = resolveListFieldSubType({
+          field_type: "list",
+          field_sub_type: field.field_sub_type,
+          validation: field.validation,
+        });
+        const isMultiChoice = listSub === Field_Sub_Type_Enum.MultiSelect;
 
         if (listElements.length > 0) {
           if (isMultiChoice) {
@@ -530,7 +655,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
                         />
                       </Form.Item>
                       {!isFieldDisabled && (
-                        <MinusCircleOutlined onClick={() => remove(name)} />
+                        <CircleMinus size={16} strokeWidth={1.75} onClick={() => remove(name)} />
                       )}
                     </div>
                   ))}
@@ -547,7 +672,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
                           cursor: "pointer",
                         }}
                       >
-                        <PlusOutlined /> Add Item
+                        <Plus size={16} strokeWidth={1.75} /> Add Item
                       </div>
                     </Form.Item>
                   )}
@@ -617,7 +742,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
                     extra={
                       !isFieldDisabled &&
                       fields.length >= 1 && (
-                        <MinusCircleOutlined
+                        <CircleMinus size={16} strokeWidth={1.75}
                           onClick={() => remove(fieldItem.name)}
                           style={{ color: "#ff4d4f" }}
                         />
@@ -645,7 +770,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
                     disabled={isFieldDisabled}
                     style={{ width: "100%" }}
                   >
-                    <PlusOutlined /> Add {field.label || field.identifier}
+                    <Plus size={16} strokeWidth={1.75} /> Add {field.label || field.identifier}
                   </Button>
                 </Form.Item>
               </div>
@@ -655,18 +780,26 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
       }
 
       case "media":
-        // TODO: Implement media uploader component
+        // Full uploader is still TODO; URL input must not render `{url}` as [object Object].
         return (
           <Form.Item
             name={fieldPath}
             label={renderFieldLabelWithIcon()}
             tooltip={field.description}
             rules={getValidationRules(field)}
+            getValueProps={(value) => ({ value: normalizeMediaUrl(value) })}
+            getValueFromEvent={(eventOrString) =>
+              mediaValueFromUrlInput(
+                eventOrString,
+                form.getFieldValue(fieldPath),
+              )
+            }
           >
             <Input
               disabled={isFieldDisabled}
-              placeholder="Media upload will be implemented"
+              placeholder="https://… or media URL"
               addonBefore="📁"
+              allowClear
             />
           </Form.Item>
         );
@@ -688,47 +821,7 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
           </Form.Item>
         );
 
-      default: {
-        // Check if this is a plugin field type
-        const pluginFields = pluginAPI.getPluginFields();
-        const pluginField = pluginFields.find((pf) => pf.type === fieldType);
-
-        if (pluginField) {
-          // Find which plugin owns this field
-          const allPlugins = Array.from(pluginState.plugins.values());
-          const ownerPlugin = allPlugins.find((plugin: LoadedPlugin) =>
-            plugin.config.fields?.some((f: any) => f.type === fieldType)
-          );
-
-          if (ownerPlugin && ownerPlugin.loaded) {
-            // Get the form component for this field
-            const FormComponent = pluginAPI.getPluginComponent(
-              ownerPlugin.config.name,
-              "forms",
-              pluginField.formComponent
-            ) as React.ComponentType<any>;
-
-            if (FormComponent) {
-              return (
-                <Form.Item
-                  name={fieldPath}
-                  label={renderFieldLabelWithIcon()}
-                  tooltip={field.description}
-                  rules={getValidationRules(field)}
-                >
-                  <FormComponent
-                    disabled={isFieldDisabled}
-                    field={field}
-                    pluginField={pluginField}
-                    placeholder={field.validation?.placeholder}
-                  />
-                </Form.Item>
-              );
-            }
-          }
-        }
-
-        // Fallback to default input for unknown field types
+      default:
         return (
           <Form.Item
             name={fieldPath}
@@ -742,7 +835,6 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
             />
           </Form.Item>
         );
-      }
     }
   };
 
@@ -750,7 +842,9 @@ const DynamicFormGenerator: React.FC<DynamicFormGeneratorProps> = ({
     <>
       {[...fields]
         .sort((a, b) => a.serial - b.serial)
-        .map((field) => renderField(field))}
+        .map((field) => (
+          <Fragment key={field.identifier}>{renderField(field)}</Fragment>
+        ))}
     </>
   );
 };

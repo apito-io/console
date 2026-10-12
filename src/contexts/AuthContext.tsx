@@ -1,17 +1,13 @@
 import React, { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "../router/navigation";
 import { useCookies } from "react-cookie";
 import { jwtDecode } from "jwt-decode";
-import { httpService, deleteAllCookies } from "../services/httpService";
-import {
-  LOGIN_URL,
-  LOGOUT_URL,
-  REGISTER_URL,
-  EMAIL_VERIFY,
-  FORGET_PASSWORD,
-  VERIFY_PASSWORD,
-} from "../constants/api";
+import { deleteAllCookies } from "../services/cookieUtils";
+import { queryClient } from "../lib/queryClient";
+import { redirectAfterAuth } from "../utils/authRedirect";
+import * as authApi from "../api/authApi";
+import { getConsoleDomain } from "../utils/env";
 import type {
   LoginFormData,
   RegistrationFormData,
@@ -71,8 +67,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
     setLoading(true);
     try {
-      await httpService.post(REGISTER_URL, signupData);
+      await authApi.postRegister(data);
       window.localStorage.setItem("verifyEmail", signupData.email);
+      if (typeof window !== "undefined" && window.posthog) {
+        window.posthog.capture("signup_completed", {
+          auth_method: "password",
+          product: "app",
+        });
+      }
       setLoading(false);
       navigate("/verify");
       return undefined;
@@ -90,16 +92,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const identifyFromToken = () => {
+    try {
+      const tokenData = decodeTokenData();
+      const userId = tokenData?.sub || tokenData?.account;
+      if (userId && typeof window !== "undefined" && window.posthog) {
+        window.posthog.identify(String(userId), {
+          product: "app",
+          domain: getConsoleDomain(),
+          cross_product_user: true,
+        });
+      }
+    } catch {
+      /* ignore analytics failures */
+    }
+  };
+
   const handleSigninAPI = async (
     data: LoginFormData
   ): Promise<string | undefined> => {
     setLoading(true);
     try {
-      const response = await httpService.post(LOGIN_URL, data);
+      const response = await authApi.postLogin(data);
       if (Number(response.status) === 200) {
         setLoading(false);
-        navigate("/");
-        window.location.reload();
+        identifyFromToken();
+        if (typeof window !== "undefined" && window.posthog) {
+          window.posthog.capture("user_auth", {
+            auth_method: "password",
+            success: true,
+            product: "app",
+          });
+        }
+        redirectAfterAuth(navigateFrom);
         return undefined;
       }
       // If response status is not 200, treat as error
@@ -136,13 +161,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const handleLogoutAPI = async (): Promise<void> => {
     try {
-      await httpService.post(LOGOUT_URL, {});
+      await authApi.postLogout();
     } catch (error) {
       console.log("Logout error:", error);
     }
+    try {
+      if (typeof window !== "undefined" && window.posthog) {
+        window.posthog.reset();
+      }
+    } catch {
+      /* ignore */
+    }
     await deleteAllCookies();
+    queryClient.clear();
     setLoading(false);
-    navigate("/login");
+    navigate("/auth/login");
   };
 
   const handleEmailVerifyAPI = async (
@@ -150,11 +183,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   ): Promise<string | undefined> => {
     setLoading(true);
     try {
-      const response = await httpService.post(EMAIL_VERIFY, data);
+      const response = await authApi.postEmailVerify(data);
       if (Number(response.status) === 200) {
         setLoading(false);
-        navigate("/");
-        window.location.reload();
+        redirectAfterAuth(navigateFrom);
         return undefined;
       }
     } catch (err: unknown) {
@@ -176,7 +208,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   ): Promise<string | undefined> => {
     setLoading(true);
     try {
-      const response = await httpService.post(FORGET_PASSWORD, data);
+      const response = await authApi.postForgotPassword(data);
       if (Number(response.status) === 200) {
         setLoading(false);
         navigate("/change-password");
@@ -201,10 +233,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   ): Promise<string | undefined> => {
     setLoading(true);
     try {
-      const response = await httpService.post(VERIFY_PASSWORD, data);
+      const response = await authApi.postVerifyPassword(data);
       if (Number(response.status) === 200) {
         setLoading(false);
-        navigate("/login");
+        navigate("/auth/login");
         return undefined;
       }
     } catch (err: unknown) {
@@ -223,7 +255,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const handleLogout = async (): Promise<void> => {
     await handleLogoutAPI();
-    navigate("/login");
+    navigate("/auth/login");
   };
 
   const value: AuthContextType = {

@@ -1,5 +1,4 @@
-// first colum's function list
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
 
 export const LIST_AVAILABLE_FUNCTIONS = gql`
   query listAvailableFunctions($function_id: String!) {
@@ -17,6 +16,10 @@ export const GET_ALL_FUNCTION_INFO = gql`
       graphql_schema_type
       created_at
       updated_at
+      trigger_type
+      source
+      active_revision_id
+      capabilities
       function_connected
       function_provider_id
       request {
@@ -40,4 +43,35 @@ export const GET_ALL_FUNCTION_INFO = gql`
       rest_api_secret_url_key
     }
   }
-`; 
+`;
+
+export const LIST_FUNCTION_REVISIONS = gql`
+  query listFunctionRevisions($name: String!, $limit: Int) {
+    listFunctionRevisions(name: $name, limit: $limit) {
+      id
+      name
+      revision
+      source
+      artifact_key
+      artifact_hash
+      created_by
+      created_at
+      capabilities
+    }
+  }
+`;
+
+export const LIST_FUNCTION_DEPLOYMENTS = gql`
+  query listFunctionDeployments($name: String!, $limit: Int) {
+    listFunctionDeployments(name: $name, limit: $limit) {
+      id
+      name
+      revision_id
+      status
+      deployed_by
+      rollback_of
+      created_at
+      environment
+    }
+  }
+`;

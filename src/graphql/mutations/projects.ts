@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
 
 export const UPDATE_PROJECT = gql`
   mutation updateProject(
@@ -28,8 +28,6 @@ export const UPDATE_PROJECT = gql`
         database
         host
         port
-        firebase_project_credential_json
-        firebase_project_id
         password
         user
       }

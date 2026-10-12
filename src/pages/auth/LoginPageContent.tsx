@@ -8,23 +8,32 @@ import {
   Modal,
   Alert,
 } from "antd";
-import {
-  EyeInvisibleOutlined,
-  EyeTwoTone,
-  MailOutlined,
-  InfoCircleOutlined,
-} from "@ant-design/icons";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { Link as RouterLink } from "../../router/navigation";
 import { useAuth } from "../../contexts/AuthContext";
 import { httpService } from "../../services/httpService";
 import { FORGET_PASSWORD } from "../../constants/api";
-import type { LoginFormData } from "../../types/auth";
+import { assetUrl } from "../../utils/url";
+import {
+  isSignupDisabled,
+  isEmailSignupDisabled,
+  isEmailLoginHidden,
+  getLogoPath,
+  getProductName,
+} from "../../utils/env";
+import { Eye, EyeOff, Info, Mail } from "lucide-react";
+import "../../components/console/ConsoleShell.css";
 
 const { Title, Text, Link } = Typography;
 
 interface LoginPageContentProps {
   extraSection?: ReactNode;
+}
+
+interface LoginFormValues {
+  email: string;
+  secret: string;
 }
 
 const LoginPageContent = ({ extraSection }: LoginPageContentProps) => {
@@ -35,11 +44,17 @@ const LoginPageContent = ({ extraSection }: LoginPageContentProps) => {
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const { handleSigninAPI, loading } = useAuth();
+  const signupDisabled = isSignupDisabled();
+  const emailSignupDisabled = isEmailSignupDisabled();
+  const emailLoginHidden = isEmailLoginHidden();
 
-  const handleSubmit = async (values: LoginFormData) => {
+  const handleSubmit = async (values: LoginFormValues) => {
     setLoginError(null);
     try {
-      const errorMessage = await handleSigninAPI(values);
+      const errorMessage = await handleSigninAPI({
+        email: values.email,
+        secret: values.secret,
+      });
       if (errorMessage) {
         setLoginError(errorMessage);
       }
@@ -86,37 +101,20 @@ const LoginPageContent = ({ extraSection }: LoginPageContentProps) => {
 
   return (
     <>
-      <div
-        style={{ width: "100%", maxWidth: "380px", padding: "40px 32px" }}
-      >
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+      <div className="login-form-shell">
+        <div className="login-form-header">
           <img
-            src="/logo.svg"
-            alt="Apito Logo"
-            style={{ width: 48, height: 48, marginBottom: 20 }}
+            src={assetUrl(getLogoPath())}
+            alt={`${getProductName()} Logo`}
+            className="login-logo"
           />
-          <Title
-            level={1}
-            style={{
-              margin: 0,
-              fontSize: "32px",
-              fontWeight: 700,
-              color: "#1a1a1a",
-              letterSpacing: "-0.5px",
-            }}
-          >
+          <Title level={1} className="login-title">
             Welcome Back!
           </Title>
-          <Text
-            style={{
-              display: "block",
-              marginTop: "8px",
-              color: "#6b7280",
-              fontSize: "16px",
-              fontWeight: 400,
-            }}
-          >
-            Let's get you signed in securely.
+          <Text className="login-subtitle">
+            {emailLoginHidden
+              ? "Continue with Google or GitHub."
+              : "Let's get you signed in securely."}
           </Text>
         </div>
 
@@ -127,15 +125,11 @@ const LoginPageContent = ({ extraSection }: LoginPageContentProps) => {
             showIcon
             closable
             onClose={() => setLoginError(null)}
-            style={{
-              marginBottom: "24px",
-              borderRadius: "8px",
-              border: "1px solid #fecaca",
-              backgroundColor: "#fef2f2",
-            }}
+            className="login-alert-error"
           />
         )}
 
+        {!emailLoginHidden && (
         <Form
           form={form}
           onFinish={handleSubmit}
@@ -144,177 +138,96 @@ const LoginPageContent = ({ extraSection }: LoginPageContentProps) => {
         >
           <Form.Item
             name="email"
-            label={
-              <Text
-                style={{
-                  color: "#374151",
-                  fontWeight: 500,
-                  fontSize: "14px",
-                }}
-              >
-                Email
-              </Text>
-            }
+            label={<Text className="login-label">Email</Text>}
             rules={[
               { required: true, message: "Please input your email!" },
               { type: "email", message: "Please enter a valid email!" },
             ]}
-            style={{ marginBottom: "20px" }}
+            className="console-mb-md"
           >
             <Input
               placeholder="Enter Your Email Address"
               size="large"
               onChange={() => setLoginError(null)}
-              style={{
-                height: "44px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                background: "#ffffff",
-                fontSize: "16px",
-                fontWeight: 400,
-                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-              }}
+              className="login-input-lg"
             />
           </Form.Item>
 
           <Form.Item
             name="secret"
-            label={
-              <Text
-                style={{
-                  color: "#374151",
-                  fontWeight: 500,
-                  fontSize: "14px",
-                }}
-              >
-                Password
-              </Text>
-            }
+            label={<Text className="login-label">Password</Text>}
             rules={[
               { required: true, message: "Please input your password!" },
             ]}
-            style={{ marginBottom: "12px" }}
+            className="console-mb-sm"
           >
             <Input.Password
               placeholder="Your Password"
               size="large"
               onChange={() => setLoginError(null)}
+              className="login-input-lg"
               iconRender={(visible) =>
                 visible ? (
-                  <EyeTwoTone twoToneColor="#6b7280" />
+                  <Eye
+                    size={16}
+                    strokeWidth={1.75}
+                    className="login-icon-muted"
+                  />
                 ) : (
-                  <EyeInvisibleOutlined style={{ color: "#6b7280" }} />
+                  <EyeOff
+                    size={16}
+                    strokeWidth={1.75}
+                    className="login-icon-muted"
+                  />
                 )
               }
-              style={{
-                height: "44px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                background: "#ffffff",
-                fontSize: "16px",
-                fontWeight: 400,
-                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-              }}
             />
           </Form.Item>
 
-          <div style={{ textAlign: "right", marginBottom: "24px" }}>
-            <Link
-              onClick={showForgotPasswordModal}
-              style={{
-                color: "#3b82f6",
-                fontSize: "14px",
-                fontWeight: 500,
-                cursor: "pointer",
-                textDecoration: "none",
-              }}
-            >
+          <div className="login-forgot-row">
+            <Link onClick={showForgotPasswordModal} className="login-link">
               Forgot Your Password?
             </Link>
           </div>
 
-          <Form.Item style={{ marginBottom: "24px" }}>
+          <Form.Item className="login-submit-item">
             <Button
               type="primary"
               htmlType="submit"
               loading={loading}
               size="large"
-              style={{
-                width: "100%",
-                height: "44px",
-                borderRadius: "8px",
-                fontSize: "16px",
-                fontWeight: 600,
-                border: "none",
-                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-              }}
+              className="login-submit-btn console-btn-primary"
             >
               Log in with Email
             </Button>
           </Form.Item>
         </Form>
+        )}
 
         {extraSection}
 
-        <div style={{ textAlign: "center", marginTop: "32px" }}>
-          <Text
-            style={{
-              color: "#9ca3af",
-              fontSize: "13px",
-              lineHeight: "1.6",
-            }}
-          >
-            Don't Have an Account?{" "}
-            <Link
-              href="/auth/signup"
-              style={{
-                color: "#3b82f6",
-                textDecoration: "none",
-                fontWeight: 500,
-              }}
-            >
-              Sign Up
-            </Link>
-          </Text>
-          <br />
-          <Text
-            style={{
-              color: "#9ca3af",
-              fontSize: "12px",
-              lineHeight: "1.5",
-              marginTop: "16px",
-              display: "block",
-            }}
-          >
+        <div className="login-footer">
+          {!emailSignupDisabled && (
+            <Text className="login-footer-text">
+              Don't Have an Account?{" "}
+              <RouterLink to="/auth/signup" className="login-footer-link">
+                Sign Up
+              </RouterLink>
+            </Text>
+          )}
+          <Text className="login-footer-legal">
             By continuing, you agree to our{" "}
-            <Link
-              href="https://apito.io/terms-of-service"
-              style={{
-                color: "#6b7280",
-                textDecoration: "underline",
-              }}
-            >
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link
-              href="https://apito.io/privacy-policy"
-              style={{
-                color: "#6b7280",
-                textDecoration: "underline",
-              }}
-            >
-              Privacy Policy
-            </Link>
-            .
+            <Link href="https://apito.io/terms-of-service">Terms of Service</Link>{" "}
+            and <Link href="https://apito.io/privacy-policy">Privacy Policy</Link>.
           </Text>
         </div>
       </div>
 
+      {!emailLoginHidden && (
       <Modal
         title={
-          <div style={{ textAlign: "center" }}>
-            <Title level={3} style={{ margin: 0, color: "#000000" }}>
+          <div className="login-modal-title">
+            <Title level={3} className="login-modal-title-text">
               Recover Legacy Password
             </Title>
           </div>
@@ -325,47 +238,32 @@ const LoginPageContent = ({ extraSection }: LoginPageContentProps) => {
         width={500}
         centered
         destroyOnClose
+        className="login-recover-modal"
       >
-        <div style={{ padding: "16px 0" }}>
-          <div
-            style={{
-              background: "#f6f8fa",
-              padding: "16px",
-              borderRadius: "8px",
-              marginBottom: "24px",
-              border: "1px solid #e1e4e8",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "12px",
-              }}
-            >
-              <InfoCircleOutlined
-                style={{
-                  color: "#0366d6",
-                  fontSize: "16px",
-                  marginTop: "2px",
-                }}
+        <div className="login-modal-body">
+          <div className="login-modal-info">
+            <div className="console-inline-row">
+              <Info
+                size={16}
+                strokeWidth={1.75}
+                className="login-modal-info-icon"
               />
               <div>
-                <Text strong style={{ color: "#24292e", fontSize: "14px" }}>
+                <Text strong className="login-label">
                   Important Note for Legacy Users
                 </Text>
                 <br />
-                <Text
-                  style={{
-                    color: "#586069",
-                    fontSize: "13px",
-                    lineHeight: "1.5",
-                  }}
-                >
+                <Text className="console-text-muted-block">
                   This password recovery is only for legacy users (the old
-                  order). If your legacy email is associated with Google or
-                  GitHub, you don't need to recover your password. You can close
-                  this window and continue with Google or GitHub signup.
+                  order).
+                  {!signupDisabled && (
+                    <>
+                      {" "}
+                      If your legacy email is associated with Google or
+                      GitHub, you don't need to recover your password. You can
+                      close this window and continue with Google or GitHub.
+                    </>
+                  )}
                 </Text>
               </div>
             </div>
@@ -379,9 +277,7 @@ const LoginPageContent = ({ extraSection }: LoginPageContentProps) => {
             <Form.Item
               name="email"
               label={
-                <Text style={{ color: "#000000", fontWeight: 500 }}>
-                  Legacy Email Address
-                </Text>
+                <Text className="login-modal-label">Legacy Email Address</Text>
               }
               rules={[
                 {
@@ -392,33 +288,25 @@ const LoginPageContent = ({ extraSection }: LoginPageContentProps) => {
               ]}
             >
               <Input
-                prefix={<MailOutlined style={{ color: "#d32f2f" }} />}
+                prefix={
+                  <Mail
+                    size={16}
+                    strokeWidth={1.75}
+                    className="login-modal-prefix-icon"
+                  />
+                }
                 placeholder="Enter your legacy email address"
                 size="large"
-                style={{
-                  height: "48px",
-                  border: "1px solid #e0e0e0",
-                  borderRadius: "0",
-                  background: "#ffffff",
-                }}
+                className="login-modal-input-lg"
               />
             </Form.Item>
 
-            <Form.Item style={{ marginBottom: "0" }}>
-              <Space
-                style={{ width: "100%", justifyContent: "space-between" }}
-              >
+            <Form.Item className="console-form-item-flush">
+              <Space className="login-modal-actions">
                 <Button
                   onClick={handleForgotPasswordCancel}
                   size="large"
-                  style={{
-                    height: "48px",
-                    borderRadius: "0",
-                    fontSize: "15px",
-                    fontWeight: 500,
-                    border: "1px solid #d9d9d9",
-                    color: "#666666",
-                  }}
+                  className="login-modal-btn"
                 >
                   Cancel
                 </Button>
@@ -427,15 +315,7 @@ const LoginPageContent = ({ extraSection }: LoginPageContentProps) => {
                   htmlType="submit"
                   loading={forgotPasswordLoading}
                   size="large"
-                  style={{
-                    height: "48px",
-                    borderRadius: "0",
-                    fontSize: "15px",
-                    fontWeight: 600,
-                    background: "#000000",
-                    borderColor: "#000000",
-                    border: "none",
-                  }}
+                  className="login-modal-btn-primary console-btn-primary"
                 >
                   Send Recovery Email
                 </Button>
@@ -444,6 +324,7 @@ const LoginPageContent = ({ extraSection }: LoginPageContentProps) => {
           </Form>
         </div>
       </Modal>
+      )}
     </>
   );
 };

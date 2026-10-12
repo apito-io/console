@@ -1,8 +1,8 @@
 import React, { Suspense } from "react";
 import type { ErrorInfo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "../router/navigation";
 import { usePluginManager } from "./PluginManager";
-import type { PluginRoute } from "./types";
+import type { LoadedPlugin, PluginRoute } from "./types";
 import { Spin, Result, Alert } from "antd";
 
 // Error Boundary for individual plugin components
@@ -83,8 +83,19 @@ const PluginNotFound: React.FC<{ pluginName: string }> = ({ pluginName }) => (
 );
 
 // Plugin Router Component
+function pluginSplatToRoute(splat?: string): string {
+  if (!splat || splat === "/") return "/";
+  return splat.startsWith("/") ? splat : `/${splat}`;
+}
+
 export const PluginRouter: React.FC = () => {
-  const { pluginName, "*": route } = useParams();
+  const params = useParams<{
+    pluginName?: string;
+    _splat?: string;
+    "*": string;
+  }>();
+  const pluginName = params.pluginName;
+  const route = pluginSplatToRoute(params._splat ?? params["*"]);
   const [{ plugins, loading, error }] = usePluginManager();
 
   // Show loading state
@@ -129,160 +140,65 @@ export const PluginRouter: React.FC = () => {
     return <PluginNotFound pluginName={pluginName} />;
   }
 
-  // Find matching route
   const currentRoute = route || "/";
   const matchingRoute = plugin.config.routes?.find((r: PluginRoute) => {
     if (r.path === "/") return currentRoute === "/";
     return currentRoute.startsWith(r.path);
   });
 
-  if (!matchingRoute) {
+  const ComponentToRender = resolvePluginPage(plugin, matchingRoute?.component);
+
+  if (ComponentToRender && !plugin.config.blockedReason) {
+    return (
+      <PluginComponentErrorBoundary pluginName={pluginName}>
+        <Suspense fallback={<PluginLoadingFallback pluginName={pluginName} />}>
+          <div className="plugin-container" data-plugin={pluginName}>
+            <ComponentToRender />
+          </div>
+        </Suspense>
+      </PluginComponentErrorBoundary>
+    );
+  }
+
+  if (!matchingRoute || plugin.config.declarative || plugin.config.blockedReason) {
     return (
       <Result
-        status="404"
-        title="Route Not Found"
-        subTitle={`The route "${currentRoute}" was not found in the ${pluginName} plugin.`}
+        status={plugin.config.blockedReason ? "warning" : "info"}
+        title={plugin.config.displayName || pluginName}
+        subTitle={
+          plugin.config.blockedReason ||
+          "This plugin has no signed Console bundle. Open Project Settings → Plugins to configure it."
+        }
       />
     );
   }
 
-  // Get the component
-  const ComponentToRender = getPluginComponent(
-    pluginName,
-    matchingRoute.component
-  );
-
-  if (!ComponentToRender) {
-    return (
-      <Result
-        status="error"
-        title="Component Not Found"
-        subTitle={`The component "${matchingRoute.component}" was not found in the ${pluginName} plugin.`}
-      />
-    );
-  }
-
-  // Render the component with error boundary and suspense
   return (
-    <PluginComponentErrorBoundary pluginName={pluginName}>
-      <Suspense fallback={<PluginLoadingFallback pluginName={pluginName} />}>
-        <div className="plugin-container" data-plugin={pluginName}>
-          <ComponentToRender />
-        </div>
-      </Suspense>
-    </PluginComponentErrorBoundary>
+    <Result
+      status="error"
+      title="Component Not Found"
+      subTitle={`The component "${matchingRoute.component}" was not found in the ${pluginName} plugin.`}
+    />
   );
 };
 
-// Safe component retrieval with error handling
-function getPluginComponent(
-  pluginName: string,
-  componentName: string
+function resolvePluginPage(
+  plugin: LoadedPlugin,
+  componentName?: string,
 ): React.ComponentType | null {
-  try {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    // Method 1: Try to get components from the window global set by the plugin
-    const globalComponentsKey = `Plugin_${pluginName}_Components`;
-    const windowWithPlugins = window as unknown as Record<string, unknown>;
-    const globalComponents = windowWithPlugins[globalComponentsKey];
-
-    if (globalComponents && typeof globalComponents === "object") {
-      const componentsObj = globalComponents as Record<string, unknown>;
-      const component = componentsObj[componentName];
-      if (component && typeof component === "function") {
-        console.log(
-          `[PluginRouter] Found component ${componentName} in global ${globalComponentsKey}`
-        );
-        return component as React.ComponentType;
-      }
-    }
-
-    // Method 2: Try to get components from the PluginRegistry
-    const windowWithRegistry = window as unknown as {
-      PluginRegistry?: { getPlugin: (name: string) => unknown };
-    };
-    const pluginRegistry = windowWithRegistry.PluginRegistry;
-    if (pluginRegistry && typeof pluginRegistry.getPlugin === "function") {
-      const plugin = pluginRegistry.getPlugin(pluginName);
-      if (plugin && typeof plugin === "object") {
-        const pluginObj = plugin as {
-          config?: {
-            components?: Record<string, unknown>;
-          };
-        };
-        if (pluginObj.config && pluginObj.config.components) {
-          const component = pluginObj.config.components[componentName];
-          if (component && typeof component === "function") {
-            console.log(
-              `[PluginRouter] Found component ${componentName} in PluginRegistry`
-            );
-            return component as React.ComponentType;
-          }
-        }
-      }
-    }
-
-    // Debug: Show what's actually available
-    console.warn(
-      `[PluginRouter] Component ${componentName} not found in plugin ${pluginName}`
-    );
-    console.log("[PluginRouter] Debug - Available globals:", {
-      [`Plugin_${pluginName}_Components`]:
-        !!windowWithPlugins[`Plugin_${pluginName}_Components`],
-      PluginRegistry: !!windowWithRegistry.PluginRegistry,
-      pluginInRegistry: pluginRegistry
-        ? !!pluginRegistry.getPlugin(pluginName)
-        : false,
-    });
-
-    // Debug: Show what plugin registry contains
-    if (pluginRegistry) {
-      const plugin = pluginRegistry.getPlugin(pluginName);
-      if (plugin && typeof plugin === "object") {
-        const pluginObj = plugin as {
-          config?: {
-            components?: Record<string, unknown>;
-          };
-          components?: Record<string, unknown>;
-        };
-
-        console.log("[PluginRouter] Debug - Plugin in registry:", plugin);
-        console.log("[PluginRouter] Debug - Plugin config:", pluginObj.config);
-        console.log(
-          "[PluginRouter] Debug - Plugin components:",
-          pluginObj.config?.components
-        );
-
-        // Also check if components are directly on the plugin object
-        if (pluginObj.components) {
-          console.log(
-            "[PluginRouter] Debug - Direct plugin components:",
-            pluginObj.components
-          );
-        }
-
-        // List all available properties
-        console.log("[PluginRouter] Debug - Plugin keys:", Object.keys(plugin));
-        if (pluginObj.config) {
-          console.log(
-            "[PluginRouter] Debug - Config keys:",
-            Object.keys(pluginObj.config)
-          );
-        }
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error(
-      `[PluginRouter] Error retrieving component ${componentName} from plugin ${pluginName}:`,
-      error
-    );
-    return null;
+  if (!componentName || componentName === "Page") {
+    const only = Object.values(plugin.config.components?.pages || {});
+    return only.length === 1 ? only[0] : null;
   }
+  const pages = plugin.config.components?.pages;
+  if (pages?.[componentName]) {
+    return pages[componentName];
+  }
+  const forms = plugin.config.components?.forms;
+  if (forms?.[componentName]) {
+    return forms[componentName];
+  }
+  return null;
 }
 
 export default PluginRouter;

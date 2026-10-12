@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useMutation } from '@apollo/client';
 import { message } from 'antd';
+import { useQueryClient } from '@tanstack/react-query';
 import type {
   ModelType,
   ModelField,
@@ -10,43 +10,39 @@ import type {
   ModelFormData
 } from '../types/model';
 import {
-  // GET_ALL_MODELS, // Commented out - not exported from module
-  // GET_SELECTED_MODEL_LIST_DETAILED, // Commented out - unused
-} from '../graphql/queries/models';
-import {
-  CREATE_MODEL,
-  UPDATE_MODEL,
-  UPSERT_FIELD_TO_MODEL,
-  UPDATE_MODEL_RELATION,
-  MODEL_FIELD_OPERATION,
-  UPDATE_FIELD_SERIAL,
-} from '../graphql/mutations/models';
+  useCreateModelMutation,
+  useUpdateModelMutation,
+  useUpsertFieldToModelMutation,
+  useUpdateModelRelationMutation,
+  useModelFieldOperationMutation,
+  useRearrangeFieldSerialMutation,
+  useGetOnlyModelsInfoQuery,
+  Input_Type_Enum,
+  UpdateModelTypeEnum,
+  Field_Operation_Type_Enum,
+} from '../generated_gql/tanstack-query';
+import { invalidateModelQueries } from '../lib/schemaCache';
 
 export interface UseModelReturn {
-  // Data
   models: ModelType[];
   currentModel: ModelType | null;
   loading: boolean;
   error: string | null;
 
-  // Model operations
   createModel: (data: ModelFormData) => Promise<boolean>;
   updateModel: (modelName: string, data: Partial<ModelFormData>) => Promise<boolean>;
   deleteModel: (modelName: string) => Promise<boolean>;
   selectModel: (modelName: string) => void;
 
-  // Field operations
   createField: (modelName: string, data: FieldFormData) => Promise<boolean>;
   updateField: (modelName: string, fieldName: string, data: Partial<FieldFormData>) => Promise<boolean>;
-  deleteField: (modelName: string, fieldName: string, isRelation?: boolean) => Promise<boolean>;
+  deleteField: (modelName: string, fieldName: string) => Promise<boolean>;
   reorderField: (modelName: string, fieldName: string, newSerial: number, oldSerial: number, parentField?: string) => Promise<boolean>;
 
-  // Relationship operations
   createRelation: (data: RelationFormData) => Promise<boolean>;
   updateRelation: (relationId: string, data: Partial<RelationFormData>) => Promise<boolean>;
   deleteRelation: (relationId: string) => Promise<boolean>;
 
-  // Utility functions
   refreshModels: () => Promise<void>;
   getFieldsByModel: (modelName: string) => ModelField[];
   getRelationsByModel: (modelName: string) => ModelConnection[];
@@ -55,36 +51,37 @@ export interface UseModelReturn {
 export const useModel = (): UseModelReturn => {
   const [currentModel, setCurrentModel] = useState<ModelType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  // Queries
   const {
     data: modelsData,
-    loading: modelsLoading,
+    isLoading: modelsLoading,
     error: modelsError,
-    refetch: refetchModels
-  } = {} as any; // useQuery(GET_ALL_MODELS); // Commented out - query not available
+    refetch: refetchModels,
+  } = useGetOnlyModelsInfoQuery();
 
-  // Mutations
-  const [createModelMutation] = useMutation(CREATE_MODEL);
-  const [updateModelMutation] = useMutation(UPDATE_MODEL);
-  const [upsertFieldMutation] = useMutation(UPSERT_FIELD_TO_MODEL);
-  const [updateRelationMutation] = useMutation(UPDATE_MODEL_RELATION);
-  const [_fieldOperationMutation] = useMutation(MODEL_FIELD_OPERATION);
-  const [updateFieldSerialMutation] = useMutation(UPDATE_FIELD_SERIAL);
+  const { mutateAsync: createModelMutation } = useCreateModelMutation();
+  const { mutateAsync: updateModelMutation } = useUpdateModelMutation();
+  const { mutateAsync: upsertFieldMutation } = useUpsertFieldToModelMutation();
+  const { mutateAsync: updateRelationMutation } = useUpdateModelRelationMutation();
+  const { mutateAsync: fieldOperationMutation } = useModelFieldOperationMutation();
+  const { mutateAsync: updateFieldSerialMutation } = useRearrangeFieldSerialMutation();
 
-  // Transform GraphQL data to our types
   const models: ModelType[] = useMemo(() => {
-    return modelsData?.projectModelsInfo?.map((model: any) => ({
-      id: model.name,
-      name: model.name,
-      singlePage: model.single_page,
-      singlePageUuid: model.single_page_uuid,
-      systemGenerated: model.system_generated,
-      hasConnections: model.has_connections,
-      isTenantModel: model.is_tenant_model,
-      isCommonModel: model.is_common_model,
-      enableRevision: model.enable_revision,
-      revisionFilter: model.revision_filter,
+    return modelsData?.projectModelsInfo?.map((model) => ({
+      id: model?.name ?? '',
+      name: model?.name ?? '',
+      singlePage: model?.single_page ?? undefined,
+      singlePageUuid: model?.single_page_uuid ?? undefined,
+      systemGenerated: model?.system_generated ?? undefined,
+      hasConnections: model?.has_connections ?? undefined,
+      enableRevision: model?.enable_revision ?? undefined,
+      revisionFilter: model?.revision_filter
+        ?.filter((item): item is NonNullable<typeof item> => item != null)
+        .map((item) => ({
+          key: item?.key ?? "",
+          value: item?.value ?? "",
+        })),
       fields: [],
       connections: [],
     })) || [];
@@ -92,20 +89,23 @@ export const useModel = (): UseModelReturn => {
 
   const loading = modelsLoading;
 
-  // Model operations
+  const invalidateModels = useCallback(async (modelName?: string) => {
+    await invalidateModelQueries(queryClient, modelName);
+    await refetchModels();
+  }, [queryClient, refetchModels]);
+
   const createModel = useCallback(async (data: ModelFormData): Promise<boolean> => {
     try {
       setError(null);
       const result = await createModelMutation({
-        variables: {
-          name: data.name,
-          single_record: data.singleRecord || false,
-        },
+        name: data.name,
+        single_record: data.singleRecord || false,
+        is_common_model: data.isCommonModel || false,
       });
 
-      if (result.data?.addModelToProject) {
+      if (result.addModelToProject) {
         message.success(`Model "${data.name}" created successfully`);
-        await refetchModels();
+        await invalidateModels(data.name);
         return true;
       }
       return false;
@@ -115,22 +115,20 @@ export const useModel = (): UseModelReturn => {
       message.error(errorMessage);
       return false;
     }
-  }, [createModelMutation, refetchModels]);
+  }, [createModelMutation, invalidateModels]);
 
   const updateModel = useCallback(async (modelName: string, data: Partial<ModelFormData>): Promise<boolean> => {
     try {
       setError(null);
       const result = await updateModelMutation({
-        variables: {
-          model_name: modelName,
-          type: 'RENAME',
-          new_name: data.name,
-        },
+        model_name: modelName,
+        type: UpdateModelTypeEnum.Rename,
+        new_name: data.name,
       });
 
-      if (result.data?.updateModel) {
+      if (result.updateModel) {
         message.success(`Model "${modelName}" updated successfully`);
-        await refetchModels();
+        await invalidateModels(data.name ?? modelName);
         return true;
       }
       return false;
@@ -140,21 +138,19 @@ export const useModel = (): UseModelReturn => {
       message.error(errorMessage);
       return false;
     }
-  }, [updateModelMutation, refetchModels]);
+  }, [updateModelMutation, invalidateModels]);
 
   const deleteModel = useCallback(async (modelName: string): Promise<boolean> => {
     try {
       setError(null);
       const result = await updateModelMutation({
-        variables: {
-          model_name: modelName,
-          type: 'DELETE',
-        },
+        model_name: modelName,
+        type: UpdateModelTypeEnum.Delete,
       });
 
-      if (result.data?.updateModel) {
+      if (result.updateModel) {
         message.success(`Model "${modelName}" deleted successfully`);
-        await refetchModels();
+        await invalidateModels();
         return true;
       }
       return false;
@@ -164,33 +160,30 @@ export const useModel = (): UseModelReturn => {
       message.error(errorMessage);
       return false;
     }
-  }, [updateModelMutation, refetchModels]);
+  }, [updateModelMutation, invalidateModels]);
 
   const selectModel = useCallback((modelName: string) => {
     const model = models.find(m => m.name === modelName);
     setCurrentModel(model || null);
   }, [models]);
 
-  // Field operations
   const createField = useCallback(async (modelName: string, data: FieldFormData): Promise<boolean> => {
     try {
       setError(null);
       const result = await upsertFieldMutation({
-        variables: {
-          model_name: modelName,
-          field_label: data.label,
-          field_type: data.fieldType.toUpperCase(),
-          field_sub_type: data.subType?.toUpperCase(),
-          input_type: data.inputType,
-          field_description: data.description,
-          validation: data.validation,
-          parent_field: data.parent_field,
-        },
+        model_name: modelName,
+        field_label: data.label,
+        field_type: data.fieldType.toUpperCase() as never,
+        field_sub_type: data.subType?.toUpperCase() as never,
+        input_type: data.inputType as unknown as Input_Type_Enum,
+        field_description: data.description,
+        validation: data.validation,
+        parent_field: data.parent_field,
       });
 
-      if (result.data?.upsertFieldToModel) {
+      if (result.upsertFieldToModel) {
         message.success(`Field "${data.label}" created successfully`);
-        await refetchModels();
+        await invalidateModels(modelName);
         return true;
       }
       return false;
@@ -200,25 +193,23 @@ export const useModel = (): UseModelReturn => {
       message.error(errorMessage);
       return false;
     }
-  }, [upsertFieldMutation, refetchModels]);
+  }, [upsertFieldMutation, invalidateModels]);
 
   const updateField = useCallback(async (modelName: string, fieldName: string, data: Partial<FieldFormData>): Promise<boolean> => {
     try {
       setError(null);
       const result = await upsertFieldMutation({
-        variables: {
-          model_name: modelName,
-          field_label: data.label || fieldName,
-          field_description: data.description,
-          is_update: true,
-          validation: data.validation,
-          parent_field: data.parent_field,
-        },
+        model_name: modelName,
+        field_label: data.label || fieldName,
+        field_description: data.description,
+        is_update: true,
+        validation: data.validation,
+        parent_field: data.parent_field,
       });
 
-      if (result.data?.upsertFieldToModel) {
+      if (result.upsertFieldToModel) {
         message.success(`Field "${fieldName}" updated successfully`);
-        await refetchModels();
+        await invalidateModels(modelName);
         return true;
       }
       return false;
@@ -228,23 +219,20 @@ export const useModel = (): UseModelReturn => {
       message.error(errorMessage);
       return false;
     }
-  }, [upsertFieldMutation, refetchModels]);
+  }, [upsertFieldMutation, invalidateModels]);
 
-  const deleteField = useCallback(async (modelName: string, fieldName: string, isRelation = false): Promise<boolean> => {
+  const deleteField = useCallback(async (modelName: string, fieldName: string): Promise<boolean> => {
     try {
       setError(null);
-      const result = await _fieldOperationMutation({
-        variables: {
-          model_name: modelName,
-          field_name: fieldName,
-          operation: 'DELETE',
-          is_relation: isRelation,
-        },
+      const result = await fieldOperationMutation({
+        type: Field_Operation_Type_Enum.Delete,
+        model_name: modelName,
+        field_name: fieldName,
       });
 
-      if (result.data?.modelFieldOperation) {
+      if (result.modelFieldOperation) {
         message.success(`Field "${fieldName}" deleted successfully`);
-        await refetchModels();
+        await invalidateModels(modelName);
         return true;
       }
       return false;
@@ -254,7 +242,7 @@ export const useModel = (): UseModelReturn => {
       message.error(errorMessage);
       return false;
     }
-  }, [_fieldOperationMutation, refetchModels]);
+  }, [fieldOperationMutation, invalidateModels]);
 
   const reorderField = useCallback(async (
     modelName: string,
@@ -266,18 +254,16 @@ export const useModel = (): UseModelReturn => {
     try {
       setError(null);
       const result = await updateFieldSerialMutation({
-        variables: {
-          model_name: modelName,
-          field_name: fieldName,
-          new_serial: newSerial,
-          old_serial: oldSerial,
-          parent_field: parentField,
-        },
+        model_name: modelName,
+        field_name: fieldName,
+        new_position: newSerial,
+        move_type: "reorder",
+        parent_id: parentField || undefined,
       });
 
-      if (result.data?.rearrangeSerialOfField) {
+      if (result.rearrangeSerialOfField) {
         message.success('Field order updated successfully');
-        await refetchModels();
+        await invalidateModels(modelName);
         return true;
       }
       return false;
@@ -287,25 +273,22 @@ export const useModel = (): UseModelReturn => {
       message.error(errorMessage);
       return false;
     }
-  }, [updateFieldSerialMutation, refetchModels]);
+  }, [updateFieldSerialMutation, invalidateModels]);
 
-  // Relationship operations
   const createRelation = useCallback(async (data: RelationFormData): Promise<boolean> => {
     try {
       setError(null);
       const result = await updateRelationMutation({
-        variables: {
-          from: data.fromModel,
-          to: data.toModel,
-          forward_connection_type: data.forwardConnectionType.toUpperCase(),
-          reverse_connection_type: data.reverseConnectionType.toUpperCase(),
-          known_as: data.knownAs,
-        },
+        from: data.fromModel,
+        to: data.toModel,
+        forward_connection_type: data.forwardConnectionType.toUpperCase() as never,
+        reverse_connection_type: data.reverseConnectionType.toUpperCase() as never,
+        known_as: data.knownAs,
       });
 
-      if (result.data?.upsertConnectionToModel) {
+      if (result.upsertConnectionToModel) {
         message.success('Relationship created successfully');
-        await refetchModels();
+        await invalidateModels(data.fromModel);
         return true;
       }
       return false;
@@ -315,21 +298,16 @@ export const useModel = (): UseModelReturn => {
       message.error(errorMessage);
       return false;
     }
-  }, [updateRelationMutation, refetchModels]);
+  }, [updateRelationMutation, invalidateModels]);
 
   const updateRelation = useCallback(async (_relationId: string, _data: Partial<RelationFormData>): Promise<boolean> => {
-    // Implementation for updating relations
-    // This would require additional API endpoints
     return false;
   }, []);
 
   const deleteRelation = useCallback(async (_relationId: string): Promise<boolean> => {
-    // Implementation for deleting relations
-    // This would require additional API endpoints
     return false;
   }, []);
 
-  // Utility functions
   const refreshModels = useCallback(async () => {
     await refetchModels();
   }, [refetchModels]);
@@ -348,7 +326,7 @@ export const useModel = (): UseModelReturn => {
     models,
     currentModel,
     loading,
-    error: error || (modelsError?.message || null),
+    error: error || (modelsError instanceof Error ? modelsError.message : null),
 
     createModel,
     updateModel,
@@ -368,4 +346,4 @@ export const useModel = (): UseModelReturn => {
     getFieldsByModel,
     getRelationsByModel,
   };
-}; 
+};

@@ -1,6 +1,18 @@
 import axios from 'axios';
 import { message } from 'antd';
 import { ENV } from '../utils/env';
+import { spaUrl } from '../utils/url';
+import { deleteAllCookies } from './cookieUtils';
+
+/** Typed 401/403 passthrough for TanStack Query mutations (console / project-switch paths). */
+export class UnauthorizedError extends Error {
+  readonly status: number;
+  constructor(status: number, messageText?: string) {
+    super(messageText ?? 'Unauthorized');
+    this.name = 'UnauthorizedError';
+    this.status = status;
+  }
+}
 
 const httpService = axios.create({
   withCredentials: true,
@@ -10,45 +22,73 @@ const httpService = axios.create({
   },
 });
 
-// Delete all cookies utility function
-const deleteAllCookies = () => {
-  const cookies = document.cookie.split(';');
-  for (let i = 0; i < cookies.length; i++) {
-    const cookie = cookies[i];
-    const eqPos = cookie.indexOf('=');
-    const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-    document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+/**
+ * Hard reset when the session is invalid (401/403). Used by Apollo errorLink and
+ * can be reused anywhere outside React (AuthProvider) is not available.
+ * Skips calling the logout API to avoid loops if that endpoint also returns 403.
+ */
+export const performAuthFailureRedirect = (): void => {
+  deleteAllCookies();
+  try {
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+  } catch {
+    /* ignore storage errors */
   }
+  // Full reload outside React; honor the SPA's BASE_URL so /admin etc. is preserved.
+  window.location.href = spaUrl('auth/login');
 };
 
 httpService.interceptors.response.use(
   (res) => res,
   (err) => {
-    const currentPath = window.location.pathname;
+    // Compare against router-relative path (strip the SPA base, e.g. /admin) so /admin/console/... still matches /console/.
+    const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
+    const fullPath = window.location.pathname;
+    const currentPath = base && fullPath.startsWith(base) ? fullPath.slice(base.length) || '/' : fullPath;
     const isLoginRequest = err.config?.url?.includes('/auth/v2/login');
     const isLogoutRequest = err.config?.url?.includes('/auth/v2/logout');
+    const isInviteRequest = err.config?.url?.includes('/auth/v2/invite');
 
     if (err?.response?.status === 400) {
-      message.error(err.message);
+      if (!isInviteRequest) {
+        message.error(err.message);
+      }
     } else if (err?.response?.status === 401 || err?.response?.status === 403) {
       // Don't redirect if this is a login request - let the login component handle the error
-      if (isLoginRequest) {
+      if (isLoginRequest || isInviteRequest) {
         // For login requests, just pass the error through without redirecting
         console.warn('Login failed:', err);
       } else if (!currentPath.startsWith('/console/') && !err.config?.url?.includes('project/switch')) {
         // Only redirect to login if we're not in the middle of project switching
         // or if the current path is not already a console route
-        deleteAllCookies();
-        window.location.href = '/login';
+        performAuthFailureRedirect();
       } else {
-        // For console routes or project switching, just pass the error through
-        // without redirecting, let the component handle it
+        // For console routes or project switching, pass a typed error for Query/mutations
         console.warn('Authentication error in console context:', err);
+        const status = err?.response?.status === 403 ? 403 : 401;
+        return Promise.reject(
+          new UnauthorizedError(status, err?.response?.data?.message)
+        );
       }
     } else if (err?.response?.status === 409) {
+      const url = String(err.config?.url ?? "");
+      const msg = String(err?.response?.data?.message ?? err?.response?.data?.code ?? "");
+      const loginConflict =
+        /login.?conflict|another person|another device|credential/i.test(msg) &&
+        !url.includes("/system/plugin") &&
+        !url.includes("project/switch");
+      if (url.includes("project/switch") || url.includes("/system/plugin") || !loginConflict) {
+        return Promise.reject(err);
+      }
       deleteAllCookies();
-      window.location.href =
-        '/login?message=Another person used your credential to login. Please use your own account to login.';
+      try {
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
+      } catch {
+        /* ignore */
+      }
+      window.location.href = `${spaUrl('auth/login')}?message=Another person used your credential to login. Please use your own account to login.`;
     } else if (err?.response?.status === 500) {
       message.error(err?.response?.data?.message);
     }
@@ -56,4 +96,5 @@ httpService.interceptors.response.use(
   }
 );
 
-export { httpService, deleteAllCookies }; 
+export { httpService };
+export { deleteAllCookies } from './cookieUtils';

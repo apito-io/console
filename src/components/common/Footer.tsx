@@ -1,9 +1,11 @@
 import { theme, Layout } from "antd";
+import { getProductName, isSqliteBuilderProduct } from "../../utils/env";
 
 const { Footer: AntFooter } = Layout;
 
 const Footer = () => {
   const { token } = theme.useToken();
+  const year = new Date().getFullYear();
 
   return (
     <AntFooter
@@ -17,10 +19,19 @@ const Footer = () => {
       }}
     >
       <div>
-        Apito Console V4 ©2024. Built with React, TypeScript, and Ant Design.
+        {isSqliteBuilderProduct() ? (
+          <>
+            {getProductName()} ©{year}.{" "}
+            <a href="https://apito.io" target="_blank" rel="noopener noreferrer">
+              Powered by Apito
+            </a>
+          </>
+        ) : (
+          <>Apito Console V4 ©{year}. Built with React, TypeScript, and Ant Design.</>
+        )}
       </div>
     </AntFooter>
   );
 };
 
-export default Footer; 
+export default Footer;

@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { ErrorInfo } from "react";
 import type { PluginRegistryState, PluginManagerAPI } from "./types";
 import pluginRegistry from "./PluginRegistry";
+import { prefetchPluginRegistryScan } from "./queries";
+import { useAuth } from "../contexts/AuthContext";
+import { installPluginSDK, setPluginSDKProjectIdReader } from "./sdk";
 
 // Error Boundary for Plugin System
 class PluginErrorBoundary extends React.Component<
@@ -76,7 +80,7 @@ export const usePluginManager = (): [PluginRegistryState, PluginManagerAPI] => {
         }> = [];
 
         plugins.forEach((plugin) => {
-          if (plugin.config.routes) {
+          if (plugin.loaded && plugin.config.routes && !plugin.config.declarative && !plugin.config.blockedReason) {
             plugin.config.routes.forEach((route) => {
               routes.push({
                 ...route,
@@ -99,13 +103,15 @@ export const usePluginManager = (): [PluginRegistryState, PluginManagerAPI] => {
       try {
         const plugins = Array.from(pluginRegistry.getState().plugins.values());
         return plugins
-          .filter((plugin) => plugin.config.menu)
+          .filter((plugin) => plugin.loaded && plugin.config.menu && !plugin.config.blockedReason)
           .map((plugin) => ({
             label: plugin.config.menu!.label,
             path:
               plugin.config.menu!.path ||
               `/console/plugin/${plugin.config.name}`,
             icon: plugin.config.menu!.icon,
+            pluginName: plugin.config.name,
+            placement: plugin.config.menu!.placement,
           }));
       } catch (error) {
         console.error("Failed to get plugin menu items:", error);
@@ -117,7 +123,7 @@ export const usePluginManager = (): [PluginRegistryState, PluginManagerAPI] => {
       try {
         const plugins = Array.from(pluginRegistry.getState().plugins.values());
         return plugins
-          .filter((plugin) => plugin.config.settings?.menu)
+          .filter((plugin) => plugin.loaded && plugin.config.settings?.menu && !plugin.config.blockedReason)
           .map((plugin) => ({
             label: plugin.config.settings!.menu!.label,
             path:
@@ -148,8 +154,13 @@ export const usePluginManager = (): [PluginRegistryState, PluginManagerAPI] => {
         }> = [];
 
         plugins.forEach((plugin) => {
-          if (plugin.config.fields && plugin.loaded) {
-            fields.push(...plugin.config.fields);
+          if (plugin.config.fields && plugin.loaded && !plugin.config.blockedReason) {
+            fields.push(
+              ...plugin.config.fields.map((field) => ({
+                ...field,
+                pluginId: field.pluginId || plugin.config.name,
+              })),
+            );
           }
         });
 
@@ -162,7 +173,7 @@ export const usePluginManager = (): [PluginRegistryState, PluginManagerAPI] => {
 
     getPluginComponent(
       pluginName: string,
-      componentType: "menu" | "settings" | "fields" | "forms",
+      componentType: "pages" | "menu" | "settings" | "fields" | "forms",
       componentName: string
     ) {
       try {
@@ -192,19 +203,22 @@ export const PluginManagerProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [, api] = usePluginManager();
+  const queryClient = useQueryClient();
+  const { decodeTokenData } = useAuth();
+  const projectId = decodeTokenData()?.project_id ?? "";
 
   useEffect(() => {
-    // Wait for React to be available before initializing plugins
+    installPluginSDK();
+    setPluginSDKProjectIdReader(() => decodeTokenData()?.project_id ?? "");
+  }, [decodeTokenData]);
+
+  useEffect(() => {
     const waitForReact = (): Promise<void> => {
       return new Promise((resolve) => {
         const checkReact = () => {
           if (typeof window !== "undefined" && window.React) {
-            console.log(
-              "[Plugin System] React is available, proceeding with plugin discovery"
-            );
             resolve();
           } else {
-            console.log("[Plugin System] Waiting for React to be available...");
             setTimeout(checkReact, 100);
           }
         };
@@ -212,14 +226,12 @@ export const PluginManagerProvider: React.FC<{ children: React.ReactNode }> = ({
       });
     };
 
-    // Initialize plugin scanning on mount with error handling
     const initializePlugins = async () => {
       try {
-        // Wait for React to be ready first
+        installPluginSDK();
         await waitForReact();
-        console.log("[Plugin System] Starting plugin discovery...");
-        await pluginRegistry.scanForPlugins();
-        console.log("[Plugin System] Plugin discovery completed");
+        pluginRegistry.reset();
+        await prefetchPluginRegistryScan(queryClient, projectId);
       } catch (error) {
         console.warn(
           "[Plugin System] Plugin initialization failed, continuing without plugins:",
@@ -228,8 +240,8 @@ export const PluginManagerProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     };
 
-    initializePlugins();
-  }, []);
+    void initializePlugins();
+  }, [queryClient, projectId]);
 
   // Make API available globally for plugins
   useEffect(() => {

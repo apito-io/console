@@ -29,6 +29,8 @@ export interface SubFieldInfo {
   parent_field?: string;
   validation?: FieldValidation;
   sub_field_info?: SubFieldInfo[];
+  plugin_id?: string;
+  plugin_field_type?: string;
 }
 
 export interface FieldInfo {
@@ -43,6 +45,8 @@ export interface FieldInfo {
   parent_field?: string;
   validation?: FieldValidation;
   sub_field_info?: SubFieldInfo[];
+  plugin_id?: string;
+  plugin_field_type?: string;
   id?: string; // For drag and drop functionality
 }
 
@@ -129,7 +133,6 @@ export interface ModelType {
   singlePageUuid?: string;
   systemGenerated?: boolean;
   hasConnections?: boolean;
-  isTenantModel?: boolean;
   enableRevision?: boolean;
   revisionFilter?: {
     key: string;
@@ -230,6 +233,7 @@ export interface ModelFormData {
   name: string;
   description?: string;
   singleRecord?: boolean;
+  isCommonModel?: boolean;
 }
 
 export interface FieldFormData {

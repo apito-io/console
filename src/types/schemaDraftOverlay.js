@@ -1,0 +1,15 @@
+export const EMPTY_SCHEMA_DRAFT_OVERLAY = {
+    enabled: false,
+    hasDraft: false,
+    loading: false,
+    activeVersion: 0,
+    targetVersion: 0,
+    pendingOperations: 0,
+    draftVersionLabel: "",
+    models: [],
+    getModelOverlay: () => null,
+    getModelChangeKind: () => "live",
+    getFieldOverlay: () => ({ kind: "live" }),
+    getConnectionOverlay: () => ({ kind: "live" }),
+    refresh: async () => { },
+};

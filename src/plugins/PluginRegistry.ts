@@ -1,364 +1,336 @@
-import type { PluginConfig, LoadedPlugin, PluginRegistryState } from './types'
+import type { PluginConfig, LoadedPlugin, PluginRegistryState } from "./types";
+import type { PluginContributions } from "./contributions";
+import { primaryNavPlacement } from "./contributions";
+import { getRestUrl } from "../constants/api";
+
+export const PLUGIN_MANIFEST_PATH = "/system/plugin/manifest";
+
+export interface EnginePluginManifestEntry {
+  id: string;
+  version?: string;
+  title?: string;
+  capabilities?: string[];
+  activated?: boolean;
+  official?: boolean;
+  signed?: boolean;
+  publisher?: string;
+  bundle_url?: string;
+  bundle_sha256?: string;
+  extension_points?: string[];
+  blocked_reason?: string;
+  contributions?: PluginContributions;
+}
+
+interface EnginePluginManifestResponse {
+  success?: boolean;
+  plugins?: EnginePluginManifestEntry[];
+}
+
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 class PluginRegistry {
   private state: PluginRegistryState = {
     plugins: new Map(),
     loading: false,
-    error: null
-  }
+    error: null,
+  };
 
-  private loadingPlugins: Set<string> = new Set()
-  private listeners: Array<(state: PluginRegistryState) => void> = []
+  private loadingPlugins: Set<string> = new Set();
+  private loadedBundles: Set<string> = new Set();
+  private listeners: Array<(state: PluginRegistryState) => void> = [];
 
-  // Subscribe to state changes
   subscribe(listener: (state: PluginRegistryState) => void) {
-    this.listeners.push(listener)
+    this.listeners.push(listener);
     return () => {
-      const index = this.listeners.indexOf(listener)
+      const index = this.listeners.indexOf(listener);
       if (index > -1) {
-        this.listeners.splice(index, 1)
+        this.listeners.splice(index, 1);
       }
-    }
+    };
   }
 
-  // Notify listeners of state changes
   private notify() {
-    this.listeners.forEach(listener => listener(this.getState()))
+    this.listeners.forEach((listener) => listener(this.getState()));
   }
 
-  // Get current state
   getState(): PluginRegistryState {
     return {
       ...this.state,
-      plugins: new Map(this.state.plugins)
-    }
+      plugins: new Map(this.state.plugins),
+    };
   }
 
-  // Load plugin configuration
-  async loadPluginConfig(pluginPath: string): Promise<PluginConfig | null> {
-    try {
-      const response = await fetch(`${pluginPath}/config.json`)
-      if (!response.ok) {
-        throw new Error(`Failed to fetch config.json: ${response.statusText}`)
-      }
-      return await response.json()
-    } catch (error) {
-      console.error(`Failed to load plugin config from ${pluginPath}:`, error)
-      return null
-    }
+  reset() {
+    this.state.plugins = new Map();
+    this.state.error = null;
+    this.loadedBundles = new Set();
+    this.notify();
   }
 
-  // Load plugin script
-  async loadPluginScript(pluginPath: string): Promise<void> {
-    // Wait for CDN dependencies to be ready
-    await this.waitForCDN()
-
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script')
-      script.src = `${pluginPath}/index.js`
-      script.async = true
-
-      script.onload = () => {
-        console.log(`Plugin script loaded: ${pluginPath}`)
-        resolve()
-      }
-
-      script.onerror = () => {
-        const error = new Error(`Failed to load plugin script: ${pluginPath}`)
-        console.error(error)
-        reject(error)
-      }
-
-      document.head.appendChild(script)
-    })
-  }
-
-  // Wait for CDN dependencies to be ready
-  private async waitForCDN(): Promise<void> {
-    return new Promise((resolve) => {
-      if ((window as any).PLUGIN_CDN_READY) {
-        console.log('[Plugin System] CDN already ready')
-        resolve()
-        return
-      }
-
-      console.log('[Plugin System] Waiting for CDN to be ready...')
-      window.addEventListener('plugin-cdn-ready', () => {
-        console.log('[Plugin System] CDN ready event received')
-        resolve()
-      }, { once: true })
-
-      // Fallback timeout after 5 seconds
-      setTimeout(() => {
-        console.warn('[Plugin System] CDN ready timeout, proceeding anyway')
-        resolve()
-      }, 5000)
-    })
-  }
-
-  // Register a plugin
   registerPlugin(config: PluginConfig) {
-    try {
-      console.log(`Registering plugin: ${config.name}`)
-      console.log(`Plugin registration data:`, config)
-      console.log(`Plugin has components:`, !!config.components)
-      if (config.components) {
-        console.log(`Component names:`, Object.keys(config.components))
-      }
-
-      const plugin: LoadedPlugin = {
-        config,
-        loaded: true,
-        loadedAt: new Date()
-      }
-
-      this.state.plugins.set(config.name, plugin)
-      this.notify()
-
-      console.log(`Plugin ${config.name} registered successfully`)
-    } catch (error) {
-      console.error(`Failed to register plugin ${config.name}:`, error)
-      throw error
-    }
-  }
-
-  // Load a plugin from path
-  async loadPlugin(pluginPath: string): Promise<void> {
-    this.state.loading = true
-    this.state.error = null
-    this.notify()
-
-    try {
-      // Load configuration
-      const config = await this.loadPluginConfig(pluginPath)
-      if (!config) {
-        throw new Error('Failed to load plugin configuration')
-      }
-
-      // Check if plugin is already loaded
-      if (this.state.plugins.has(config.name)) {
-        console.warn(`Plugin ${config.name} is already loaded`)
-        return
-      }
-
-      // Load script
-      await this.loadPluginScript(pluginPath)
-
-      // Plugin should have registered itself during script execution
-      // If not, mark as error
-      if (!this.state.plugins.has(config.name)) {
-        const plugin: LoadedPlugin = {
-          config,
-          loaded: false,
-          error: 'Plugin did not register itself after loading'
+    const existing = this.state.plugins.get(config.name);
+    const merged: PluginConfig = existing
+      ? {
+          ...existing.config,
+          ...config,
+          routes: config.routes?.length ? config.routes : existing.config.routes,
+          components: {
+            menu: {
+              ...existing.config.components?.menu,
+              ...config.components?.menu,
+            },
+            pages: {
+              ...existing.config.components?.pages,
+              ...config.components?.pages,
+            },
+            settings: {
+              ...existing.config.components?.settings,
+              ...config.components?.settings,
+            },
+            fields: {
+              ...existing.config.components?.fields,
+              ...config.components?.fields,
+            },
+            forms: {
+              ...existing.config.components?.forms,
+              ...config.components?.forms,
+            },
+          },
+          fields: config.fields?.length ? config.fields : existing.config.fields,
+          contributions: config.contributions ?? existing.config.contributions,
+          menu: config.menu ?? existing.config.menu,
         }
-        this.state.plugins.set(config.name, plugin)
-      }
-
-    } catch (error) {
-      this.state.error = error instanceof Error ? error.message : 'Unknown error'
-      console.error('Failed to load plugin:', error)
-    } finally {
-      this.state.loading = false
-      this.notify()
-    }
+      : config;
+    const plugin: LoadedPlugin = {
+      config: merged,
+      loaded: !merged.blockedReason,
+      error: merged.blockedReason,
+      loadedAt: new Date(),
+    };
+    this.state.plugins.set(merged.name, plugin);
+    this.notify();
   }
 
-  // Unload a plugin
+  async loadPlugin(_pluginPath: string): Promise<void> {
+    await this.scanForPlugins();
+  }
+
   unloadPlugin(pluginName: string) {
-    this.state.plugins.delete(pluginName)
-    this.notify()
+    this.state.plugins.delete(pluginName);
+    this.notify();
   }
 
-  // Get plugin by name
   getPlugin(pluginName: string): LoadedPlugin | undefined {
-    return this.state.plugins.get(pluginName)
+    return this.state.plugins.get(pluginName);
   }
 
-  // Get all plugins
   getAllPlugins(): LoadedPlugin[] {
-    return Array.from(this.state.plugins.values())
+    return Array.from(this.state.plugins.values());
   }
 
-  // Get loaded plugins only
   getLoadedPlugins(): LoadedPlugin[] {
-    return this.getAllPlugins().filter(plugin => plugin.loaded)
+    return this.getAllPlugins().filter((plugin) => plugin.loaded);
   }
 
-  // Scan for plugins in public/plugins directory
   async scanForPlugins(): Promise<void> {
+    this.state.loading = true;
+    this.state.error = null;
+    this.notify();
     try {
-      // In a real implementation, this would scan the plugins directory
-      // For now, we'll just check for known plugins
-      const knownPlugins = [
-        '/plugins/media-plugin'
-      ]
-
-      for (const pluginPath of knownPlugins) {
-        try {
-          await this.loadPlugin(pluginPath)
-        } catch (error) {
-          console.warn(`Failed to load plugin from ${pluginPath}:`, error)
-        }
-      }
+      await this.loadFromEngineManifest();
     } catch (error) {
-      console.error('Failed to scan for plugins:', error)
-    }
-  }
-
-  // Discover and load plugins with timeout and error handling
-  async discoverPlugins(): Promise<LoadedPlugin[]> {
-    try {
-      console.log('[PluginRegistry] Starting plugin discovery...');
-
-      // Get list of available plugins with timeout
-      const pluginDirs = await this.getAvailablePluginsWithTimeout();
-      console.log(`[PluginRegistry] Found ${pluginDirs.length} plugin directories`);
-
-      // Load plugins in parallel with individual error handling
-      const loadPromises = pluginDirs.map(pluginName =>
-        this.loadPluginSafely(pluginName)
-      );
-
-      const results = await Promise.allSettled(loadPromises);
-
-      // Filter successful loads
-      const loadedPlugins: LoadedPlugin[] = [];
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled' && result.value) {
-          loadedPlugins.push(result.value);
-        } else {
-          console.warn(`[PluginRegistry] Failed to load plugin ${pluginDirs[index]}:`,
-            result.status === 'rejected' ? result.reason : 'Unknown error');
-        }
-      });
-
-      console.log(`[PluginRegistry] Successfully loaded ${loadedPlugins.length}/${pluginDirs.length} plugins`);
-      return loadedPlugins;
-
-    } catch (error) {
-      console.error('[PluginRegistry] Plugin discovery failed:', error);
-      return []; // Return empty array instead of throwing
-    }
-  }
-
-  private async getAvailablePluginsWithTimeout(): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Plugin directory scan timeout'));
-      }, 2000);
-
-      this.getAvailablePlugins()
-        .then(dirs => {
-          clearTimeout(timeout);
-          resolve(dirs);
-        })
-        .catch(err => {
-          clearTimeout(timeout);
-          reject(err);
-        });
-    });
-  }
-
-  private async getAvailablePlugins(): Promise<string[]> {
-    try {
-      // Try to scan /plugins directory
-      const response = await fetch('/plugins/', {
-        method: 'GET',
-        headers: { 'Accept': 'text/html' }
-      });
-
-      if (!response.ok) {
-        console.warn('[PluginRegistry] No plugins directory found or accessible');
-        return [];
-      }
-
-      const html = await response.text();
-      const pluginDirs = this.parsePluginDirectories(html);
-      return pluginDirs.filter(dir => dir && !dir.startsWith('.'));
-    } catch (error) {
-      console.warn('[PluginRegistry] Failed to scan plugin directories:', error);
-      return [];
-    }
-  }
-
-  private parsePluginDirectories(html: string): string[] {
-    try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const links = doc.querySelectorAll('a[href]');
-
-      return Array.from(links)
-        .map(link => {
-          const href = link.getAttribute('href');
-          return href?.endsWith('/') ? href.slice(0, -1) : href;
-        })
-        .filter((href): href is string =>
-          href !== null &&
-          href !== '..' &&
-          href !== '.' &&
-          !href.startsWith('/') &&
-          !href.includes('.')
-        );
-    } catch (error) {
-      console.warn('[PluginRegistry] Failed to parse plugin directories:', error);
-      return [];
-    }
-  }
-
-  private async loadPluginSafely(pluginName: string): Promise<LoadedPlugin | null> {
-    if (this.loadingPlugins.has(pluginName)) {
-      console.log(`[PluginRegistry] Plugin ${pluginName} is already loading`);
-      return null;
-    }
-
-    this.loadingPlugins.add(pluginName);
-
-    try {
-      console.log(`[PluginRegistry] Loading plugin: ${pluginName}`);
-
-      // Load with timeout
-      await Promise.race([
-        this.loadPlugin(`/plugins/${pluginName}`),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Plugin ${pluginName} load timeout`)), 3000)
-        )
-      ]);
-
-      // Get the loaded plugin from the registry
-      const plugin = this.state.plugins.get(pluginName);
-      if (plugin) {
-        console.log(`[PluginRegistry] Successfully loaded plugin: ${pluginName}`);
-        this.notify(); // Notify listeners of state change
-        return plugin;
-      }
-
-      return null;
-    } catch (error) {
-      console.error(`[PluginRegistry] Failed to load plugin ${pluginName}:`, error);
-      return null;
+      this.state.error =
+        error instanceof Error ? error.message : "Plugin manifest failed";
     } finally {
-      this.loadingPlugins.delete(pluginName);
+      this.state.loading = false;
+      this.notify();
+    }
+  }
+
+  async discoverPlugins(): Promise<LoadedPlugin[]> {
+    await this.scanForPlugins();
+    return this.getLoadedPlugins();
+  }
+
+  private async loadFromEngineManifest(): Promise<void> {
+    const response = await fetch(getRestUrl(PLUGIN_MANIFEST_PATH), {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        "X-Use-Cookies": "true",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`Plugin manifest HTTP ${response.status}`);
+    }
+    const body = (await response.json()) as EnginePluginManifestResponse;
+    const entries = body.plugins ?? [];
+    this.state.plugins = new Map();
+    for (const entry of entries) {
+      await this.ingestManifestEntry(entry);
+    }
+  }
+
+  private async ingestManifestEntry(
+    entry: EnginePluginManifestEntry,
+  ): Promise<void> {
+    if (!entry.id) {
+      return;
+    }
+    const declarative = !entry.official || !entry.signed || !entry.bundle_url;
+    const blockedReason =
+      entry.blocked_reason ||
+      (!entry.activated &&
+      (entry.extension_points || []).some(
+        (c) =>
+          c.startsWith("project.") ||
+          c.startsWith("console.") ||
+          c === "content.fields",
+      )
+        ? "plugin is not activated for this project"
+        : undefined);
+
+    const contributions = entry.contributions;
+    const nav = primaryNavPlacement(contributions);
+    const config: PluginConfig = {
+      name: entry.id,
+      version: entry.version || "0.0.0",
+      displayName: entry.title || entry.id,
+      description: entry.publisher
+        ? `Publisher: ${entry.publisher}`
+        : undefined,
+      author: entry.publisher,
+      routes: (contributions?.ui?.routes || []).map((route) => ({
+        path: route.path || "/",
+        component: "Page",
+        title: route.title,
+      })),
+      capabilities: entry.capabilities || [],
+      official: Boolean(entry.official),
+      signed: Boolean(entry.signed),
+      declarative,
+      blockedReason,
+      contributions,
+    };
+
+    if (
+      entry.activated &&
+      !blockedReason &&
+      ((entry.capabilities || []).includes("console.routes") ||
+        contributions?.ui?.ui_available)
+    ) {
+      config.menu = {
+        label: nav?.label || entry.title || entry.id,
+        path: nav?.path || `/console/plugin/${entry.id}`,
+        icon: nav?.icon,
+        placement: nav,
+      };
+    }
+
+    if (entry.activated && !blockedReason) {
+      config.fields = (contributions?.fields || []).map((field) => ({
+        type: field.id,
+        label: field.label,
+        icon: field.icon,
+        formComponent: field.form_component || "",
+        displayComponent: field.display_component,
+        pluginId: entry.id,
+        storageType: field.storage_type,
+      }));
+    }
+
+    const settings = contributions?.ui?.settings?.[0];
+    if (entry.activated && !blockedReason && settings) {
+      config.settings = {
+        label: settings.label || entry.title || entry.id,
+        section: "plugins",
+        menu: {
+          label: settings.label || entry.title || entry.id,
+          path: settings.path || `/console/settings/plugins/${entry.id}`,
+        },
+      };
+    }
+
+    if (
+      entry.official &&
+      entry.signed &&
+      entry.activated &&
+      entry.bundle_url &&
+      entry.bundle_sha256 &&
+      !entry.blocked_reason
+    ) {
+      try {
+        await this.loadSignedBundle(entry.id, entry.bundle_url, entry.bundle_sha256);
+        const fromBundle = this.state.plugins.get(entry.id);
+        this.registerPlugin({
+          ...config,
+          declarative: false,
+          routes: fromBundle?.config.routes?.length
+            ? fromBundle.config.routes
+            : config.routes,
+          components: fromBundle?.config.components,
+          fields: fromBundle?.config.fields?.length
+            ? fromBundle.config.fields
+            : config.fields,
+        });
+        return;
+      } catch (error) {
+        config.blockedReason =
+          error instanceof Error ? error.message : "signed bundle failed";
+        config.declarative = true;
+      }
+    }
+
+    this.registerPlugin(config);
+  }
+
+  private async loadSignedBundle(
+    pluginId: string,
+    bundleUrl: string,
+    sha256hex: string,
+  ): Promise<void> {
+    if (this.loadingPlugins.has(pluginId) || this.loadedBundles.has(pluginId)) {
+      return;
+    }
+    this.loadingPlugins.add(pluginId);
+    try {
+      const url = /^https?:\/\//i.test(bundleUrl)
+        ? bundleUrl
+        : getRestUrl(bundleUrl);
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) {
+        throw new Error(`bundle HTTP ${res.status}`);
+      }
+      const buf = await res.arrayBuffer();
+      const digest = await crypto.subtle.digest("SHA-256", buf);
+      const got = toHex(digest);
+      if (got !== sha256hex.toLowerCase()) {
+        throw new Error("bundle checksum mismatch");
+      }
+      const blob = new Blob([buf], { type: "text/javascript" });
+      const src = URL.createObjectURL(blob);
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () =>
+          reject(new Error(`Failed to execute signed bundle for ${pluginId}`));
+        document.head.appendChild(script);
+      });
+      this.loadedBundles.add(pluginId);
+    } finally {
+      this.loadingPlugins.delete(pluginId);
     }
   }
 }
 
-// Global instance
-const pluginRegistry = new PluginRegistry()
+const pluginRegistry = new PluginRegistry();
 
-// Make registry available globally for plugins to register themselves
-declare global {
-  interface Window {
-    PluginRegistry: PluginRegistry
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.PluginRegistry = pluginRegistry
-  console.log('[PluginRegistry] Global PluginRegistry exposed on window')
-  console.log('[PluginRegistry] Registry methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(pluginRegistry)))
-}
-
-// Export singleton instance  
-export { PluginRegistry }
-export default pluginRegistry 
+export { PluginRegistry };
+export default pluginRegistry;

@@ -1,4 +1,4 @@
-// import { gql } from '@apollo/client';
+// import { gql } from 'graphql-tag';
 
 // // for second column's data
 // export const GET_SELECTED_MODEL_LIST = gql`

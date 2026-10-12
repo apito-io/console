@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
 
 // first column's model list
 export const GET_ONLY_MODELS_INFO = gql`
@@ -9,13 +9,20 @@ export const GET_ONLY_MODELS_INFO = gql`
       single_page_uuid
       system_generated
       has_connections
-      is_tenant_model
-      is_common_model
       enable_revision
       revision_filter {
         key
         value
       }
+    }
+  }
+`;
+
+export const MODEL_DOCUMENT_COUNTS = gql`
+  query modelDocumentCounts($models: [String!]) {
+    modelDocumentCounts(models: $models) {
+      model
+      count
     }
   }
 `;
@@ -29,8 +36,6 @@ export const GET_MODEL_DETAILS = gql`
       single_page_uuid
       system_generated
       has_connections
-      is_tenant_model
-      is_common_model
       enable_revision
       revision_filter {
         key
@@ -45,6 +50,8 @@ export const GET_MODEL_DETAILS = gql`
         field_sub_type
         description
         system_generated
+        plugin_id
+        plugin_field_type
         sub_field_info {
           description
           field_type

@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
 
 export const UPDATE_SETTING_GENERAL = gql`
   mutation updateSettingGeneral($name: String, $description: String) {
@@ -11,37 +11,25 @@ export const UPDATE_SETTING_GENERAL = gql`
   }
 `;
 
-export const UPDATE_SETTING_TEAMS = gql`
-  mutation updateSettingTeams(
-    $add_team_member: AddTeamMemberPayload
-    $remove_team_member: RemoveTeamMemberPayload
-  ) {
-    updateProject(add_team_member: $add_team_member, remove_team_member: $remove_team_member) {
-      _key
-      id
-    }
-  }
-`;
-
 export const UPDATE_SETTINGS = gql`
   mutation updateSettings(
     $name: String
     $description: String
+    $project_icon: String
     $settings: UpdateSettingsPayload
-    $tenant_model_name: String
   ) {
     updateProject(
       name: $name
       description: $description
+      project_icon: $project_icon
       settings: $settings
-      tenant_model_name: $tenant_model_name
     ) {
       _key
       id
       name
       description
+      project_icon
       project_secret_key
-      tenant_model_name
       settings {
         locals
         system_graphql_hooks
@@ -49,6 +37,8 @@ export const UPDATE_SETTINGS = gql`
         default_storage_plugin
         default_function_plugin
         default_locale
+        idle_tenant_retention_days
+        auto_soft_delete_idle_tenants
       }
     }
   }

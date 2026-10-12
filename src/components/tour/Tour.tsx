@@ -1,177 +1,172 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Tour as AntdTour } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "../../router/navigation";
 import { useTour } from "../../contexts/TourContext";
-import { TOUR_STEPS } from "../../constants/tourSteps";
+import { useOnboardingTourExtensions } from "../../contexts/OnboardingTourExtensionsContext";
+
+function resolveTourTarget(selector: string): HTMLElement | null {
+  for (const part of selector.split(",").map((s) => s.trim()).filter(Boolean)) {
+    const el = document.querySelector(part);
+    if (el instanceof HTMLElement) {
+      return el;
+    }
+  }
+  return null;
+}
+
+function routeForStep(stepId: string | undefined): string | null {
+  switch (stepId) {
+    case "create-tenant":
+      return "/console/tenants";
+    case "create-model":
+      return "/console/model";
+    case "add-fields":
+      return "/console/model";
+    case "add-content":
+      return "/console/content";
+    case "run-query":
+      return "/console/graphql";
+    default:
+      return null;
+  }
+}
 
 const Tour: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const onboardingExt = useOnboardingTourExtensions();
   const {
     isTourModalVisible,
     tourProgress,
+    tourSteps,
     endTour,
     closeTourModal,
-    skipStep,
+    skipTour,
   } = useTour();
+
+  const currentStep = tourSteps[tourProgress.currentStep];
+
+  // Bring the user onto the page that owns the current step target (new shell layout).
+  useEffect(() => {
+    if (!isTourModalVisible || !currentStep) {
+      return;
+    }
+    const dest = routeForStep(currentStep.id);
+    if (!dest) {
+      return;
+    }
+    if (!location.pathname.startsWith(dest)) {
+      navigate(dest);
+    }
+  }, [
+    isTourModalVisible,
+    currentStep?.id,
+    location.pathname,
+    navigate,
+  ]);
 
   const handleClose = () => {
     endTour();
   };
 
   const handleAction = () => {
-    const currentTourStep = TOUR_STEPS[tourProgress.currentStep];
+    const currentTourStep = tourSteps[tourProgress.currentStep];
 
     switch (currentTourStep?.id) {
-      case "create-model": {
-        // Close the tour first to avoid background overlap
+      case "create-tenant": {
         endTour();
+        if (onboardingExt.onStepAction) {
+          onboardingExt.onStepAction("create-tenant");
+        } else {
+          navigate("/console/tenants");
+          window.setTimeout(() => {
+            const opener = resolveTourTarget(
+              '[data-tour="create-tenant-entry"]'
+            );
+            opener?.click();
+          }, 300);
+        }
+        localStorage.setItem("tour-waiting-for-tenant", "true");
+        break;
+      }
 
-        // Try to trigger the Add Model button click
-        const addModelButton = document.querySelector(
+      case "create-model": {
+        endTour();
+        const addModelButton = resolveTourTarget(
           '[data-tour="add-model-button"]'
         );
-
         if (addModelButton) {
-          (addModelButton as HTMLButtonElement).click();
+          addModelButton.click();
         } else {
-          // Fallback: navigate to model page with type=new
           navigate("/console/model?type=new");
         }
-
-        // Mark that we're waiting for model creation
         localStorage.setItem("tour-waiting-for-model", "true");
-        // Don't advance tour - let the model creation success trigger advancement
         break;
       }
 
       case "add-fields": {
-        // Close the tour first to avoid background overlap
         endTour();
-
-        // Navigate to model page and trigger field addition
         navigate("/console/model");
-        setTimeout(() => {
-          const addFieldsButton = document.querySelector(
+        window.setTimeout(() => {
+          const addFieldsButton = resolveTourTarget(
             '[data-tour="add-fields-button"]'
           );
-          if (addFieldsButton) {
-            (addFieldsButton as HTMLButtonElement).click();
-          }
-        }, 500);
-
-        // Mark that we're waiting for field creation
+          addFieldsButton?.click();
+        }, 400);
         localStorage.setItem("tour-waiting-for-fields", "true");
-        // Don't advance tour - let the field creation success trigger advancement
         break;
       }
 
       case "add-content": {
-        // Close the tour first to avoid background overlap
         endTour();
-
-        // Navigate to content page and trigger content creation
         navigate("/console/content");
-        setTimeout(() => {
-          const createContentButton = document.querySelector(
+        window.setTimeout(() => {
+          const createContentButton = resolveTourTarget(
             '[data-tour="create-content-button"]'
           );
-          if (createContentButton) {
-            (createContentButton as HTMLButtonElement).click();
-          }
-        }, 500);
-
-        // Mark that we're waiting for content creation
+          createContentButton?.click();
+        }, 400);
         localStorage.setItem("tour-waiting-for-content", "true");
-        // Don't advance tour - let the content creation success trigger advancement
         break;
       }
 
       case "run-query": {
-        // Close the tour modal but keep tour active for tracking
         closeTourModal();
-
-        // Navigate to API page - let user write and execute their own query
-        navigate("/console/api");
-
-        // Mark that we're waiting for query execution
+        navigate("/console/graphql");
         localStorage.setItem("tour-waiting-for-query", "true");
-        // Don't advance tour - let the query execution trigger completion
         break;
       }
 
       default:
-        // Fallback behavior
         endTour();
     }
   };
 
-  // Convert our tour steps to Ant Design Tour format
-  const antdTourSteps = TOUR_STEPS.map((step, index) => ({
+  const antdTourSteps = tourSteps.map((step) => ({
     title: step.title,
     description: (
       <>
         {step.description}
-        <div
-          style={{
-            marginTop: "16px",
-            display: "flex",
-            gap: "8px",
-            justifyContent: "flex-end",
-          }}
-        >
-          {index > 0 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (tourProgress.currentStep > 0) {
-                  // Handle previous step
-                }
-              }}
-              style={{
-                padding: "4px 15px",
-                borderRadius: "6px",
-                border: "1px solid #d9d9d9",
-                background: "#fff",
-                cursor: "pointer",
-                fontSize: "14px",
-              }}
-            >
-              Previous
-            </button>
-          )}
+        <div className="console-tour-actions">
           {step.skipButtonProps && (
             <button
+              type="button"
+              className="console-tour-btn console-tour-btn--ghost"
               onClick={(e) => {
                 e.stopPropagation();
-                skipStep();
-              }}
-              style={{
-                padding: "4px 15px",
-                borderRadius: "6px",
-                border: "1px solid #d9d9d9",
-                background: "#fff",
-                cursor: "pointer",
-                fontSize: "14px",
-                color: "#666",
+                // Skip dismisses the whole guide until Setup is clicked in the header.
+                skipTour();
               }}
             >
               {step.skipButtonProps.children || "Skip"}
             </button>
           )}
           <button
+            type="button"
+            className="console-tour-btn console-tour-btn--primary"
             onClick={(e) => {
               e.stopPropagation();
               handleAction();
-            }}
-            style={{
-              padding: "4px 15px",
-              borderRadius: "6px",
-              border: "none",
-              background: "#1677ff",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: 500,
             }}
           >
             {step.nextButtonProps?.children || "Next"}
@@ -179,18 +174,15 @@ const Tour: React.FC = () => {
         </div>
       </>
     ),
-    target: () => {
-      const element = document.querySelector(step.target);
-      return element as HTMLElement | null;
-    },
-    placement: step.placement,
+    target: () => resolveTourTarget(step.target),
+    placement: step.placement ?? "right",
     nextButtonProps: {
-      style: { display: "none" }, // Hide default next button
+      style: { display: "none" },
     },
     prevButtonProps: {
-      style: { display: "none" }, // Hide default prev button
+      style: { display: "none" },
     },
-  })) as any; // Type assertion to work around Ant Design type issues
+  }));
 
   return (
     <AntdTour
@@ -199,8 +191,9 @@ const Tour: React.FC = () => {
       steps={antdTourSteps}
       current={tourProgress.currentStep}
       type="primary"
-      arrow={true}
-      placement="bottom"
+      arrow
+      placement="right"
+      gap={{ offset: 4, radius: 8 }}
       mask={{
         style: {
           boxShadow: "inset 0 0 15px #333",

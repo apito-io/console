@@ -1,6 +1,8 @@
 // Plugin types for flexible plugin system
 import React from 'react'
 
+import type { PluginContributions, PluginNavPlacement } from "./contributions"
+
 export interface PluginFieldDefinition {
   type: string
   label: string
@@ -8,8 +10,10 @@ export interface PluginFieldDefinition {
   icon?: string
   category?: string
   properties?: Record<string, unknown>
-  formComponent: string // Component to render in content forms
-  displayComponent?: string // Component to display field values
+  formComponent: string
+  displayComponent?: string
+  pluginId?: string
+  storageType?: string
 }
 
 export interface PluginSettingsConfig {
@@ -21,14 +25,15 @@ export interface PluginSettingsConfig {
     icon?: string
     position?: string
   }
-  component?: string // Settings component name
+  component?: string
 }
 
 export interface PluginComponentRegistry {
-  menu?: Record<string, React.ComponentType> // Menu/route components
-  settings?: Record<string, React.ComponentType> // Settings page components  
-  fields?: Record<string, React.ComponentType> // Model field components
-  forms?: Record<string, React.ComponentType> // Content form components
+  pages?: Record<string, React.ComponentType>
+  menu?: Record<string, React.ComponentType>
+  settings?: Record<string, React.ComponentType>
+  fields?: Record<string, React.ComponentType>
+  forms?: Record<string, React.ComponentType>
 }
 
 export interface PluginConfig {
@@ -42,6 +47,7 @@ export interface PluginConfig {
     path: string
     icon?: string
     position?: string
+    placement?: PluginNavPlacement
   }
   routes: PluginRoute[]
   components?: PluginComponentRegistry
@@ -49,6 +55,12 @@ export interface PluginConfig {
   fields?: PluginFieldDefinition[]
   permissions?: string[]
   dependencies?: Record<string, string>
+  capabilities?: string[]
+  official?: boolean
+  signed?: boolean
+  declarative?: boolean
+  blockedReason?: string
+  contributions?: PluginContributions
 }
 
 export interface PluginRoute {
@@ -82,6 +94,8 @@ export interface PluginManagerAPI {
     label: string
     path: string
     icon?: string
+    pluginName: string
+    placement?: PluginNavPlacement
   }>
   getPluginSettingsItems: () => Array<{
     label: string
@@ -91,5 +105,6 @@ export interface PluginManagerAPI {
     pluginName: string
   }>
   getPluginFields: () => PluginFieldDefinition[]
-  getPluginComponent: (pluginName: string, componentType: 'menu' | 'settings' | 'fields' | 'forms', componentName: string) => React.ComponentType | undefined
-} 
+  getPluginComponent: (pluginName: string, componentType: 'pages' | 'menu' | 'settings' | 'fields' | 'forms', componentName: string) => React.ComponentType | undefined
+}
+ 

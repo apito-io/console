@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
 
 export const UPSERT_FIELD_TO_MODEL = gql`
   mutation upsertFieldToModel(
@@ -12,6 +12,8 @@ export const UPSERT_FIELD_TO_MODEL = gql`
     $validation: module_validation_payload
     $parent_field: String
     $is_update: Boolean
+    $plugin_id: String
+    $plugin_field_type: String
   ) {
     upsertFieldToModel(
       model_name: $model_name
@@ -24,6 +26,8 @@ export const UPSERT_FIELD_TO_MODEL = gql`
       validation: $validation
       parent_field: $parent_field
       is_update: $is_update
+      plugin_id: $plugin_id
+      plugin_field_type: $plugin_field_type
     ) {
       serial
       identifier
@@ -34,7 +38,8 @@ export const UPSERT_FIELD_TO_MODEL = gql`
       description
       parent_field
       system_generated
-      parent_field
+      plugin_id
+      plugin_field_type
       validation {
         required
         locals
@@ -56,16 +61,16 @@ export const UPSERT_FIELD_TO_MODEL = gql`
 `;
 
 export const CREATE_MODEL = gql`
-  mutation createModel($name: String!, $single_record: Boolean) {
-    addModelToProject(name: $name, single_record: $single_record) {
+  mutation createModel($name: String!, $single_record: Boolean, $is_common_model: Boolean) {
+    addModelToProject(name: $name, single_record: $single_record, is_common_model: $is_common_model) {
       name
     }
   }
 `;
 
 export const UPDATE_MODEL = gql`
-  mutation updateModel($type: UpdateModelTypeEnum!, $new_name: String, $model_name: String!, $is_common_model: Boolean) {
-    updateModel(type: $type, new_name: $new_name, model_name: $model_name, is_common_model: $is_common_model) {
+  mutation updateModel($type: UpdateModelTypeEnum!, $new_name: String, $model_name: String!) {
+    updateModel(type: $type, new_name: $new_name, model_name: $model_name) {
       name
     }
   }
@@ -94,6 +99,17 @@ export const UPDATE_MODEL_RELATION = gql`
   }
 `;
 
+export const DELETE_CONNECTION_FROM_MODEL = gql`
+  mutation deleteConnectionFromModel($from: String!, $to: String!, $known_as: String) {
+    deleteConnectionFromModel(from: $from, to: $to, known_as: $known_as) {
+      type
+      relation
+      model
+      known_as
+    }
+  }
+`;
+
 export const MODEL_FIELD_OPERATION = gql`
   mutation modelFieldOperation(
     $type: FIELD_OPERATION_TYPE_ENUM!
@@ -102,7 +118,6 @@ export const MODEL_FIELD_OPERATION = gql`
     $new_name: String
     $parent_field: String
     $single_page_model: Boolean
-    $is_relation: Boolean
     $known_as: String
     $moved_to: String
     $changed_type: String
@@ -114,7 +129,6 @@ export const MODEL_FIELD_OPERATION = gql`
       field_name: $field_name
       parent_field: $parent_field
       single_page_model: $single_page_model
-      is_relation: $is_relation
       known_as: $known_as
       moved_to: $moved_to
       changed_type: $changed_type

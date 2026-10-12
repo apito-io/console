@@ -1,22 +1,24 @@
 import React from "react";
 import { Form, Input, Button } from "antd";
-import { PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
+import { CircleMinus, Plus } from "lucide-react";
 
 interface DynamicTextfieldListProps {
   btnLabel?: string;
   value?: string[];
   onChange?: (value: string[]) => void;
+  namePath?: (string | number)[]; // NEW: allow parent to specify form path
 }
 
-const DynamicTextfieldList: React.FC<DynamicTextfieldListProps> = ({
+  const DynamicTextfieldList: React.FC<DynamicTextfieldListProps> = ({
   btnLabel = "Add Item",
   value = [],
   onChange,
+  namePath,
 }) => {
   return (
     <Form.List
       initialValue={value?.length > 0 ? value : [""]}
-      name="dynamic_list"
+      name={namePath || "dynamic_list"}
     >
       {(fields, { add, remove }, { errors }) => (
         <>
@@ -50,7 +52,7 @@ const DynamicTextfieldList: React.FC<DynamicTextfieldListProps> = ({
                 />
               </Form.Item>
               {fields.length > 1 ? (
-                <MinusCircleOutlined
+                <CircleMinus size={16} strokeWidth={1.75}
                   className="dynamic-delete-button"
                   onClick={() => {
                     remove(field.name);
@@ -72,7 +74,7 @@ const DynamicTextfieldList: React.FC<DynamicTextfieldListProps> = ({
                 onChange?.([...value, ""]);
               }}
               style={{ width: "100%" }}
-              icon={<PlusOutlined />}
+              icon={<Plus size={16} strokeWidth={1.75} />}
             >
               Add {btnLabel}
             </Button>

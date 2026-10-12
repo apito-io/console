@@ -1,6 +1,10 @@
 # Apito Console
 
-Open-source, API-first infrastructure to model data, manage content, enforce access rules, and run at scale. This repository contains the Apito Console (Open Core) — a modern, web-based admin UI for managing your Apito projects.
+**Build locally. Scale when you’re ready.**
+
+Fair Source admin UI for a self-hosted Apito Engine. Model data, manage content, run tenants, draft and publish schema changes, and inspect the project database. Apito Cloud adds managed hosting and collaboration. This UI does not require Cloud to operate a project.
+
+Current releases are **Fair Source — converts to Apache 2.0 after two years** (FSL-1.1-ALv2). They are not OSI open source. See [LICENSING.md](LICENSING.md).
 
 Reference: the overall project vision and tone follow the Apito Engine README. See the engine repository for core concepts and ecosystem context: [apito-io/engine README](https://github.com/apito-io/engine/blob/main/README.md).
 

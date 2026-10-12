@@ -22,23 +22,30 @@ export const NAVIGATION_HEADERS: Record<string, NavigationConfig> = {
         title: "Account Settings",
         subtitle: "Manage your profile and security settings"
     },
+    "teams": {
+        title: "Teams",
+        subtitle: "Invite people and grant them access to selected projects"
+    },
     "plugins": {
         title: "Plugins",
         subtitle: "Manage and configure plugins"
     },
     "support": {
-        title: "Help & Support",
-        subtitle: "Get help and support from the Apito team"
+        title: "Support",
+        subtitle: "Email, Discord, and live chat with the Apito team"
     },
-    "sync": {
-        title: "CLI Tokens",
-        subtitle: "Publish your local projects to the cloud using CLI tokens"
+    "access-token": {
+        title: "Access Tokens",
+        subtitle: "Create scoped, revocable tokens for CLI, SDK, and MCP integrations"
+    },
+    "mcp": {
+        title: "MCP",
+        subtitle: "Connect Cursor and other assistants to this engine"
     },
     "system-api": {
         title: "System API",
         subtitle: "Explore and test the Apito System APIs"
     },
-
 
     // Console pages
     "content": {
@@ -49,9 +56,25 @@ export const NAVIGATION_HEADERS: Record<string, NavigationConfig> = {
         title: "Model",
         subtitle: "Design and configure your project schema"
     },
+    "users": {
+        title: "Users",
+        subtitle: "Manage project app end-users"
+    },
     "api": {
-        title: "API",
-        subtitle: "Explore and test your API endpoints"
+        title: "GraphQL API",
+        subtitle: "Explore and test your GraphQL API"
+    },
+    "graphql": {
+        title: "GraphQL API",
+        subtitle: "Explore and test your GraphQL API"
+    },
+    "rest": {
+        title: "REST API",
+        subtitle: "Explore and test your REST API endpoints"
+    },
+    "storage": {
+        title: "Files",
+        subtitle: "Upload and manage project media and files"
     },
     "console": {
         title: "Console",
@@ -61,9 +84,9 @@ export const NAVIGATION_HEADERS: Record<string, NavigationConfig> = {
     // Settings pages
     "settings": { title: "Settings" },
     "general": { title: "General Settings" },
+    "authentication": { title: "Authentication" },
     "api-secrets": { title: "API Secrets" },
     "roles": { title: "Roles & Permissions" },
-    "teams": { title: "Teams" },
     "webhooks": { title: "Webhooks" },
     "plugins-settings": { title: "Plugin Settings" },
 

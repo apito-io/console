@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Drawer, Typography, Divider } from "antd";
 import {
   fieldTypeOptions,
   type FieldTypeOption,
 } from "../../constants/fieldTypes";
 import type { FieldInfo } from "../../types/model";
+import { Field_Type_Enum, Input_Type_Enum } from "../../generated_gql/tanstack-query";
+import { resolveListFieldSubType } from "../../utils/resolveListFieldSubType";
 import SingleFieldOption from "./SingleFieldOption";
 import FieldConfigurationDrawer from "./FieldConfigurationDrawer";
 import { usePluginManager } from "../../plugins/PluginManager";
@@ -16,6 +18,7 @@ interface RightSidebarProps {
   repeatedFieldIdentifier?: string;
   isVisible: boolean;
   onClose: () => void;
+  onFieldCreated?: () => void;
   selectedField?: FieldInfo | null; // For editing existing fields
   isEditing?: boolean;
   modelName: string; // Add modelName prop
@@ -25,6 +28,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   repeatedFieldIdentifier = "",
   isVisible,
   onClose,
+  onFieldCreated,
   selectedField,
   isEditing = false,
   modelName,
@@ -34,16 +38,27 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
     useState<FieldTypeOption | null>(null);
   const [, pluginAPI] = usePluginManager();
 
+  // Reset inner drawer state when outer sidebar closes
+  useEffect(() => {
+    if (!isVisible) {
+      setIsFieldConfigDrawer(false);
+      setSelectedFieldOption(null);
+    }
+  }, [isVisible]);
+
   // Convert plugin fields to FieldTypeOption format
   const pluginFieldOptions = useMemo(() => {
     const pluginFields = pluginAPI.getPluginFields();
     return pluginFields.map(
       (field): FieldTypeOption => ({
-        example_json: { [field.type]: "example value" },
+        example_json: { [field.type]: "Cloudinary asset" },
         root_json_name: field.type,
-        field_type: "relation" as const, // Using relation as fallback type
+        field_type: (field.storageType as FieldTypeOption["field_type"]) || Field_Type_Enum.Media,
+        input_type: Input_Type_Enum.String,
         label: field.label,
         description: field.description || "",
+        plugin_id: field.pluginId,
+        plugin_field_type: field.type,
       })
     );
   }, [pluginAPI]);
@@ -86,22 +101,39 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   const handleFieldCreated = () => {
     setIsFieldConfigDrawer(false);
     setSelectedFieldOption(null);
+    onFieldCreated?.();
     onClose(); // Close the right sidebar after field creation
   };
 
   // If editing an existing field, show the configuration drawer directly
-  React.useEffect(() => {
+  useEffect(() => {
     if (isEditing && selectedField) {
-      // Convert selected field back to field option format for editing
-      const fieldOption = fieldTypeOptions.find(
-        (option) => option.field_type === selectedField.field_type
-      );
+      const resolvedSubType = resolveListFieldSubType(selectedField);
+      const fieldOption =
+        (selectedField.plugin_field_type
+          ? pluginFieldOptions.find(
+              (option) => option.plugin_field_type === selectedField.plugin_field_type,
+            )
+          : undefined) ??
+        fieldTypeOptions.find(
+          (option) =>
+            option.field_type === selectedField.field_type &&
+            (option.field_type !== Field_Type_Enum.List ||
+              option.field_sub_type === resolvedSubType)
+        ) ??
+        fieldTypeOptions.find(
+          (option) => option.field_type === selectedField.field_type
+        );
       if (fieldOption) {
         setSelectedFieldOption(fieldOption);
         setIsFieldConfigDrawer(true);
+      } else {
+        // Clear stale state if field not found (e.g. system relation field)
+        setSelectedFieldOption(null);
+        setIsFieldConfigDrawer(false);
       }
     }
-  }, [isEditing, selectedField]);
+  }, [isEditing, selectedField, pluginFieldOptions]);
 
   return (
     <>
@@ -127,6 +159,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         closable
         onClose={onClose}
         open={isVisible}
+        destroyOnHidden
         className="right-sidebar-drawer"
       >
         <div className="right-sidebar-content">

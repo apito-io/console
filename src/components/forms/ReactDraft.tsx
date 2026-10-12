@@ -7,23 +7,23 @@ import Link from "@tiptap/extension-link";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 import { Button, Space, Tooltip } from "antd";
-import {
-  BoldOutlined,
-  ItalicOutlined,
-  UnderlineOutlined,
-  StrikethroughOutlined,
-  OrderedListOutlined,
-  UnorderedListOutlined,
-  LinkOutlined,
-  AlignLeftOutlined,
-  AlignCenterOutlined,
-  AlignRightOutlined,
-  CodeOutlined,
-  UndoOutlined,
-  RedoOutlined,
-} from "@ant-design/icons";
 import TurndownService from "turndown";
 import { marked } from "marked";
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Bold,
+  Code,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  Redo2,
+  Strikethrough,
+  Underline as UnderlineIcon,
+  Undo2,
+} from "lucide-react";
 
 // Initialize markdown converters
 const turndownService = new TurndownService({
@@ -173,7 +173,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Bold">
               <Button
                 size="small"
-                icon={<BoldOutlined />}
+                icon={<Bold size={16} strokeWidth={1.75} />}
                 type={editor.isActive("bold") ? "primary" : "default"}
                 onClick={() => editor.chain().focus().toggleBold().run()}
               />
@@ -182,7 +182,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Italic">
               <Button
                 size="small"
-                icon={<ItalicOutlined />}
+                icon={<Italic size={16} strokeWidth={1.75} />}
                 type={editor.isActive("italic") ? "primary" : "default"}
                 onClick={() => editor.chain().focus().toggleItalic().run()}
               />
@@ -191,7 +191,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Underline">
               <Button
                 size="small"
-                icon={<UnderlineOutlined />}
+                icon={<UnderlineIcon size={16} strokeWidth={1.75} />}
                 type={editor.isActive("underline") ? "primary" : "default"}
                 onClick={() => editor.chain().focus().toggleUnderline().run()}
               />
@@ -200,7 +200,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Strikethrough">
               <Button
                 size="small"
-                icon={<StrikethroughOutlined />}
+                icon={<Strikethrough size={16} strokeWidth={1.75} />}
                 type={editor.isActive("strike") ? "primary" : "default"}
                 onClick={() => editor.chain().focus().toggleStrike().run()}
               />
@@ -209,7 +209,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Code">
               <Button
                 size="small"
-                icon={<CodeOutlined />}
+                icon={<Code size={16} strokeWidth={1.75} />}
                 type={editor.isActive("code") ? "primary" : "default"}
                 onClick={() => editor.chain().focus().toggleCode().run()}
               />
@@ -227,7 +227,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Bullet List">
               <Button
                 size="small"
-                icon={<UnorderedListOutlined />}
+                icon={<List size={16} strokeWidth={1.75} />}
                 type={editor.isActive("bulletList") ? "primary" : "default"}
                 onClick={() => editor.chain().focus().toggleBulletList().run()}
               />
@@ -236,7 +236,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Numbered List">
               <Button
                 size="small"
-                icon={<OrderedListOutlined />}
+                icon={<ListOrdered size={16} strokeWidth={1.75} />}
                 type={editor.isActive("orderedList") ? "primary" : "default"}
                 onClick={() => editor.chain().focus().toggleOrderedList().run()}
               />
@@ -254,7 +254,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Align Left">
               <Button
                 size="small"
-                icon={<AlignLeftOutlined />}
+                icon={<AlignLeft size={16} strokeWidth={1.75} />}
                 type={
                   editor.isActive({ textAlign: "left" }) ? "primary" : "default"
                 }
@@ -267,7 +267,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Align Center">
               <Button
                 size="small"
-                icon={<AlignCenterOutlined />}
+                icon={<AlignCenter size={16} strokeWidth={1.75} />}
                 type={
                   editor.isActive({ textAlign: "center" })
                     ? "primary"
@@ -282,7 +282,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Align Right">
               <Button
                 size="small"
-                icon={<AlignRightOutlined />}
+                icon={<AlignRight size={16} strokeWidth={1.75} />}
                 type={
                   editor.isActive({ textAlign: "right" })
                     ? "primary"
@@ -306,7 +306,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Add Link">
               <Button
                 size="small"
-                icon={<LinkOutlined />}
+                icon={<Link2 size={16} strokeWidth={1.75} />}
                 type={editor.isActive("link") ? "primary" : "default"}
                 onClick={addLink}
               />
@@ -390,7 +390,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Undo">
               <Button
                 size="small"
-                icon={<UndoOutlined />}
+                icon={<Undo2 size={16} strokeWidth={1.75} />}
                 onClick={() => editor.chain().focus().undo().run()}
                 disabled={!editor.can().undo()}
               />
@@ -399,7 +399,7 @@ const ReactDraft: React.FC<ReactDraftProps> = ({
             <Tooltip title="Redo">
               <Button
                 size="small"
-                icon={<RedoOutlined />}
+                icon={<Redo2 size={16} strokeWidth={1.75} />}
                 onClick={() => editor.chain().focus().redo().run()}
                 disabled={!editor.can().redo()}
               />

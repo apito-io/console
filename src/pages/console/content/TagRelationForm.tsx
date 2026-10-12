@@ -14,22 +14,18 @@ import {
   Divider,
 } from "antd";
 import {
-  LinkOutlined,
-  PlusOutlined,
-  UserOutlined,
-  TagsOutlined,
-  MinusOutlined,
-} from "@ant-design/icons";
-import {
   Relation_Type_Enum,
   useGetModelDetailsQuery,
   useGetMultipleDataQuery,
   useUpdateSingleDataMutation,
-} from "../../../generated/graphql";
+} from "../../../generated_gql/tanstack-query";
 import { capitalize } from "lodash";
 import pluralize from "pluralize";
 
 import TableGenerator from "../../../components/common/TableGenerator";
+import { Link, Minus, Plus, Tags, User } from "lucide-react";
+import "../../../components/console/ConsoleShell.css";
+import "../../../components/console/ConsoleShell.css";
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -68,30 +64,29 @@ const RelationSelectionDrawer: React.FC<RelationSelectionDrawerProps> = ({
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [updateSingleData] = useUpdateSingleDataMutation({
-    onCompleted: () => {
+  const { mutateAsync: updateSingleData } = useUpdateSingleDataMutation({
+    onSuccess: () => {
       message.success("Relations updated successfully!");
       setSelectedRowKeys([]);
       onSuccess();
       onClose();
     },
     onError: (error) => {
-      message.error(`Failed to update relations: ${error.message}`);
+      message.error(
+        `Failed to update relations: ${
+          error instanceof Error ? error.message : "Update failed"
+        }`
+      );
     },
   });
 
-  console.log("connectionData", connectionData);
-  console.log("modelName", modelName);
-  console.log("recordId", recordId);
-
-  // Fetch available records for selection (intersect=true to exclude already connected ones)
   const {
     data: availableData,
-    loading: availableDataLoading,
+    isLoading: availableDataLoading,
     error: availableDataError,
     refetch: refetchAvailable,
-  } = useGetMultipleDataQuery({
-    variables: {
+  } = useGetMultipleDataQuery(
+    {
       model: connectionData?.model || "",
       limit: 100,
       page: 1,
@@ -105,11 +100,10 @@ const RelationSelectionDrawer: React.FC<RelationSelectionDrawerProps> = ({
             connection_type: connectionData.type,
           }
         : undefined,
-      intersect: true, // This will return items that are NOT connected
+      intersect: true,
     },
-    skip: !connectionData || !visible,
-    errorPolicy: "all",
-  });
+    { enabled: Boolean(connectionData && visible) }
+  );
 
   const availableRecords = useMemo(() => {
     if (!availableData?.getModelData?.results) return [];
@@ -143,11 +137,9 @@ const RelationSelectionDrawer: React.FC<RelationSelectionDrawerProps> = ({
       };
 
       await updateSingleData({
-        variables: {
-          _id: recordId,
-          model_name: modelName,
-          connect,
-        },
+        _id: recordId,
+        model_name: modelName,
+        connect,
       });
     } catch (error) {
       console.error("Connect error:", error);
@@ -172,14 +164,14 @@ const RelationSelectionDrawer: React.FC<RelationSelectionDrawerProps> = ({
       destroyOnClose
       mask={true}
       maskClosable={true}
-      style={{ zIndex: 1000 }}
+      className="console-drawer-raised"
       extra={
         <Button type="link" onClick={onClose}>
           {"< Back"}
         </Button>
       }
     >
-      <div style={{ marginBottom: "16px" }}>
+      <div className="console-mb-md">
         <Space>
           <Text strong>Select records to connect:</Text>
           {selectedRowKeys.length > 0 && (
@@ -187,7 +179,7 @@ const RelationSelectionDrawer: React.FC<RelationSelectionDrawerProps> = ({
               <Divider type="vertical" />
               <Button
                 type="primary"
-                icon={<TagsOutlined />}
+                icon={<Tags size={16} strokeWidth={1.75} />}
                 loading={loading}
                 onClick={handleConnect}
               >
@@ -203,13 +195,13 @@ const RelationSelectionDrawer: React.FC<RelationSelectionDrawerProps> = ({
       </div>
 
       {availableDataLoading ? (
-        <div style={{ textAlign: "center", padding: "40px" }}>
+        <div className="console-center-pad--lg">
           <Spin size="large" />
         </div>
       ) : availableDataError ? (
         <Alert
           message="Error"
-          description={`Failed to load available records: ${availableDataError.message}`}
+          description={`Failed to load available records: ${availableDataError instanceof Error ? availableDataError.message : "Unknown error"}`}
           type="error"
           showIcon
           action={
@@ -242,28 +234,29 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [drawerTitle, setDrawerTitle] = useState("");
 
-  const [updateSingleData] = useUpdateSingleDataMutation({
-    onCompleted: () => {
+  const { mutateAsync: updateSingleData } = useUpdateSingleDataMutation({
+    onSuccess: () => {
       message.success("Relations updated successfully!");
       setSelectedRowKeys([]);
-      refetchRelationData();
+      void refetchRelationData();
     },
     onError: (error) => {
-      message.error(`Failed to update relations: ${error.message}`);
+      message.error(
+        `Failed to update relations: ${
+          error instanceof Error ? error.message : "Update failed"
+        }`
+      );
     },
   });
 
-  // Get model details to fetch connections
   const {
     data: modelDetailsData,
-    loading: modelLoading,
+    isLoading: modelLoading,
     error: modelError,
-  } = useGetModelDetailsQuery({
-    variables: {
-      model_name: modelName,
-    },
-    errorPolicy: "all",
-  });
+  } = useGetModelDetailsQuery(
+    { model_name: modelName },
+    { enabled: Boolean(modelName) }
+  );
 
   const modelInfo = modelDetailsData?.projectModelsInfo?.[0];
   const connections: ConnectionData[] = useMemo(() => {
@@ -290,11 +283,11 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
   // Fetch data for the active connection
   const {
     data: relationData,
-    loading: relationLoading,
+    isLoading: relationLoading,
     error: relationError,
     refetch: refetchRelationData,
-  } = useGetMultipleDataQuery({
-    variables: {
+  } = useGetMultipleDataQuery(
+    {
       model: activeTab,
       limit: 50,
       page: 1,
@@ -309,9 +302,8 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
           }
         : undefined,
     },
-    skip: !activeTab || !recordId || !activeConnection,
-    errorPolicy: "all",
-  });
+    { enabled: Boolean(activeTab && recordId && activeConnection) }
+  );
 
   // Transform relation data to table format
   const relationTableData = useMemo(() => {
@@ -355,11 +347,9 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
 
     try {
       await updateSingleData({
-        variables: {
-          _id: recordId,
-          model_name: modelName,
-          disconnect,
-        },
+        _id: recordId,
+        model_name: modelName,
+        disconnect,
       });
     } catch (error) {
       console.error("Disconnect error:", error);
@@ -376,7 +366,7 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
 
   if (modelLoading) {
     return (
-      <div style={{ padding: "24px", textAlign: "center" }}>
+      <div className="console-pad-md console-text-center">
         <Spin size="large" />
       </div>
     );
@@ -386,17 +376,17 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
     return (
       <Alert
         message="Error"
-        description={`Failed to load model details: ${modelError.message}`}
+        description={`Failed to load model details: ${modelError instanceof Error ? modelError.message : "Unknown error"}`}
         type="error"
         showIcon
-        style={{ margin: "20px" }}
+        className="console-pad-md"
       />
     );
   }
 
   if (!connections.length) {
     return (
-      <div style={{ padding: "24px" }}>
+      <div className="console-pad-md">
         <Empty
           description="No relationships found for this model"
           image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -406,28 +396,18 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
   }
 
   return (
-    <div style={{ padding: "16px", position: "relative" }}>
-      {/* Header Information */}
-      <Card size="small" style={{ marginBottom: "16px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+    <div className="console-pad-sm console-relative">
+      <Card size="small" className="relation-header-card">
+        <div className="console-flex-between">
           <div>
-            <Title
-              level={5}
-              style={{ margin: 0, display: "flex", alignItems: "center" }}
-            >
-              <LinkOutlined style={{ marginRight: "8px" }} />
+            <Title level={5} className="relation-header-title">
+              <Link size={16} strokeWidth={1.75} className="console-icon-gap" />
               Relations for {modelName}
             </Title>
             <Text type="secondary">Record ID: {recordId}</Text>
           </div>
           <Space>
-            <Tag icon={<UserOutlined />} color="blue">
+            <Tag icon={<User size={16} strokeWidth={1.75} />} color="blue">
               {connections.length} Connection
               {connections.length !== 1 ? "s" : ""}
             </Tag>
@@ -436,7 +416,7 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
       </Card>
 
       {/* Relations Tabs */}
-      <Card>
+      <Card className="console-surface-card">
         <Tabs
           activeKey={activeTab}
           onChange={(key) => {
@@ -451,7 +431,7 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
                   <Button
                     danger
                     size="small"
-                    icon={<MinusOutlined />}
+                    icon={<Minus size={16} strokeWidth={1.75} />}
                     onClick={handleDisconnectSelected}
                   >
                     {`DISCONNECT SELECTED ${capitalize(
@@ -467,7 +447,7 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
                 <Button
                   type="primary"
                   size="small"
-                  icon={<PlusOutlined />}
+                  icon={<Plus size={16} strokeWidth={1.75} />}
                   onClick={() => handleAddRelation(activeConnection)}
                 >
                   Add {capitalize(activeConnection.model)}
@@ -480,7 +460,7 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
             <TabPane
               tab={
                 <Space>
-                  <span style={{ textTransform: "capitalize" }}>
+                  <span className="console-capitalize">
                     {connection.known_as || connection.model}
                   </span>
                   <Tag color="geekblue">{connection.type}</Tag>
@@ -488,15 +468,15 @@ const TagRelationForm: React.FC<TagRelationFormProps> = ({
               }
               key={connection.model}
             >
-              <div style={{ marginTop: "16px" }}>
+              <div className="console-mt-md">
                 {relationLoading ? (
-                  <div style={{ textAlign: "center", padding: "40px" }}>
+                  <div className="console-center-pad--lg">
                     <Spin size="large" />
                   </div>
                 ) : relationError ? (
                   <Alert
                     message="Error"
-                    description={`Failed to load ${connection.model} data: ${relationError.message}`}
+                    description={`Failed to load ${connection.model} data: ${relationError instanceof Error ? relationError.message : "Unknown error"}`}
                     type="error"
                     showIcon
                     action={

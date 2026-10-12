@@ -1,4 +1,4 @@
-import { Field_Sub_Type_Enum, Field_Type_Enum, Input_Type_Enum } from '../generated/graphql';
+import { Field_Sub_Type_Enum, Field_Type_Enum, Input_Type_Enum } from '../generated_gql/tanstack-query';
 
 export interface FieldTypeOption {
     example_json: unknown;
@@ -8,6 +8,8 @@ export interface FieldTypeOption {
     input_type?: Input_Type_Enum;
     label: string;
     description: string;
+    plugin_id?: string;
+    plugin_field_type?: string;
 }
 
 export const fieldTypeOptions: FieldTypeOption[] = [

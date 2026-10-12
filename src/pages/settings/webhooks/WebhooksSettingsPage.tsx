@@ -1,11 +1,8 @@
 import React, { useState } from "react";
 import {
   Button,
-  Table,
   Typography,
-  Card,
   message,
-  Skeleton,
   Space,
   Drawer,
   Form,
@@ -13,20 +10,18 @@ import {
   Select,
   Switch,
   Popconfirm,
-  Tag,
 } from "antd";
-import {
-  ApiOutlined,
-  PlusOutlined,
-  DeleteOutlined,
-  EditOutlined,
-} from "@ant-design/icons";
+import { Pencil, Plus, Trash2, Webhook } from "lucide-react";
 import {
   useGetSettingsWebhooksQuery,
   // Add other webhook mutations as needed
-} from "../../../generated/graphql";
+} from "../../../generated_gql/tanstack-query";
+import {
+  ConsoleCardTitle,
+  MonoTableCard,
+} from "../../../components/console";
 
-const { Title, Text, Paragraph } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 
 const WebhooksSettingsPage: React.FC = () => {
@@ -34,7 +29,7 @@ const WebhooksSettingsPage: React.FC = () => {
   const [form] = Form.useForm();
 
   // GraphQL queries
-  const { data, loading, refetch } = useGetSettingsWebhooksQuery();
+  const { data, isLoading: loading, refetch } = useGetSettingsWebhooksQuery();
 
   const handleAddWebhook = (_values: any) => {
     // TODO: Implement webhook creation
@@ -72,11 +67,11 @@ const WebhooksSettingsPage: React.FC = () => {
       dataIndex: "events",
       key: "events",
       render: (events: string[]) => (
-        <div>
+        <div className="console-tag-list">
           {events?.map((event, index) => (
-            <Tag key={index} color="blue" style={{ marginBottom: "4px" }}>
+            <span key={index} className="mono-badge">
               {event}
-            </Tag>
+            </span>
           ))}
         </div>
       ),
@@ -86,9 +81,11 @@ const WebhooksSettingsPage: React.FC = () => {
       dataIndex: "active",
       key: "active",
       render: (active: boolean) => (
-        <Tag color={active ? "green" : "red"}>
+        <span
+          className={`mono-badge${active ? " mono-badge--live" : " mono-badge--danger"}`}
+        >
           {active ? "Active" : "Inactive"}
-        </Tag>
+        </span>
       ),
     },
     {
@@ -96,7 +93,7 @@ const WebhooksSettingsPage: React.FC = () => {
       key: "actions",
       render: (_: any, record: any) => (
         <Space>
-          <Button type="text" icon={<EditOutlined />} size="small">
+          <Button type="text" icon={<Pencil size={16} strokeWidth={1.75} />} size="small">
             Edit
           </Button>
           <Popconfirm
@@ -106,7 +103,7 @@ const WebhooksSettingsPage: React.FC = () => {
             okText="Yes"
             cancelText="No"
           >
-            <Button type="text" icon={<DeleteOutlined />} size="small" danger>
+            <Button type="text" icon={<Trash2 size={16} strokeWidth={1.75} />} size="small" danger>
               Delete
             </Button>
           </Popconfirm>
@@ -116,48 +113,42 @@ const WebhooksSettingsPage: React.FC = () => {
   ];
 
   return (
-    <div>
-      {/* Webhooks Table */}
-      <Card
+    <div className="console-page">
+      <MonoTableCard
         title={
-          <Space>
-            <ApiOutlined />
-            Webhooks ({webhooks.length})
-          </Space>
+          <ConsoleCardTitle
+            icon={Webhook}
+            label={`Webhooks (${webhooks.length})`}
+          />
         }
         extra={
           <Button
             type="primary"
-            icon={<PlusOutlined />}
+            icon={<Plus size={16} strokeWidth={1.75} />}
             onClick={() => setIsDrawerOpen(true)}
           >
             Add Webhook
           </Button>
         }
-      >
-        {loading ? (
-          <Skeleton active />
-        ) : (
-          <Table
-            columns={columns}
-            dataSource={webhooks}
-            rowKey="id"
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} of ${total} webhooks`,
-            }}
-            locale={{
-              emptyText:
-                "No webhooks configured. Add your first webhook above.",
-            }}
-          />
-        )}
-      </Card>
+        tableProps={{
+          columns,
+          dataSource: webhooks,
+          rowKey: "id",
+          loading,
+          pagination: {
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} of ${total} webhooks`,
+          },
+          locale: {
+            emptyText:
+              "No webhooks configured. Add your first webhook above.",
+          },
+        }}
+      />
 
-      {/* Add Webhook Drawer */}
       <Drawer
         title="Add Webhook"
         width={440}

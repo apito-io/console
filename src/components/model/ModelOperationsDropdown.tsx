@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import { Dropdown, Button, Modal, Form, Input, message } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
+import { canonicalizeModelName } from "../../utils/apitoNaming";
 import {
-  MoreOutlined,
-  EditOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-} from "@ant-design/icons";
-import { useMutation, useLazyQuery } from "@apollo/client";
-import { UPDATE_MODEL } from "../../graphql/mutations/models";
-import { GET_MODEL_DETAILS } from "../../graphql/queries/models";
+  useUpdateModelMutation,
+  useGetModelDetailsQuery,
+  UpdateModelTypeEnum,
+} from "../../generated_gql/tanstack-query";
 import type { MenuProps } from "antd";
-import { UpdateModelTypeEnum } from "../../generated/graphql";
+import ModelNamePreview from "./ModelNamePreview";
+import { useConsoleExtensions } from "../../contexts/ConsoleExtensionsContext";
+import { invalidateModelQueries } from "../../lib/schemaCache";
+import { Copy, Ellipsis, Pencil, Trash2 } from "lucide-react";
 
 interface ModelOperationsDropdownProps {
   modelName: string;
@@ -42,28 +43,29 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
   const [duplicateForm] = Form.useForm<DuplicateFormData>();
   const [deleteForm] = Form.useForm<DeleteConfirmData>();
 
-  const [updateModelMutation] = useMutation(UPDATE_MODEL);
-
-  const [getModelDetails] = useLazyQuery(GET_MODEL_DETAILS);
+  const queryClient = useQueryClient();
+  const { onSchemaMutationCompleted } = useConsoleExtensions();
+  const { mutateAsync: updateModelMutation } = useUpdateModelMutation();
 
   const handleRename = async (values: RenameFormData) => {
     setLoading(true);
     try {
+      const canonicalNew = canonicalizeModelName(values.newName);
       const result = await updateModelMutation({
-        variables: {
-          model_name: modelName,
-          type: UpdateModelTypeEnum.Rename,
-          new_name: values.newName,
-        },
+        model_name: modelName,
+        type: UpdateModelTypeEnum.Rename,
+        new_name: canonicalNew,
       });
 
-      if (result.data?.updateModel) {
+      if (result.updateModel) {
         message.success(
-          `Model "${modelName}" renamed to "${values.newName}" successfully`
+          `Model "${modelName}" renamed to "${canonicalNew}" successfully`
         );
         setIsRenameModalVisible(false);
         renameForm.resetFields();
+        await invalidateModelQueries(queryClient, canonicalNew);
         onModelUpdated();
+        await onSchemaMutationCompleted?.();
       }
     } catch (error: unknown) {
       const errorMessage =
@@ -78,17 +80,17 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
     setLoading(true);
     try {
       const result = await updateModelMutation({
-        variables: {
-          model_name: modelName,
-          type: UpdateModelTypeEnum.Delete,
-        },
+        model_name: modelName,
+        type: UpdateModelTypeEnum.Delete,
       });
 
-      if (result.data?.updateModel) {
+      if (result.updateModel) {
         message.success(`Model "${modelName}" deleted successfully`);
         setIsDeleteModalVisible(false);
         deleteForm.resetFields();
+        await invalidateModelQueries(queryClient);
         onModelUpdated();
+        await onSchemaMutationCompleted?.();
       }
     } catch (error: unknown) {
       const errorMessage =
@@ -106,8 +108,9 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
   const handleDuplicateSubmit = async (values: DuplicateFormData) => {
     setLoading(true);
     try {
-      const { data: modelDetailsData } = await getModelDetails({
-        variables: { model_name: modelName },
+      const modelDetailsData = await queryClient.fetchQuery({
+        queryKey: useGetModelDetailsQuery.getKey({ model_name: modelName }),
+        queryFn: useGetModelDetailsQuery.fetcher({ model_name: modelName }),
       });
 
       const modelInfo = modelDetailsData?.projectModelsInfo?.[0];
@@ -115,22 +118,22 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
         throw new Error("Could not fetch model details");
       }
 
+      const dupCanonical = canonicalizeModelName(values.duplicateName);
       const result = await updateModelMutation({
-        variables: {
-          model_name: values.sourceModel,
-          single_page_model: modelInfo.single_page || false,
-          new_name: values.duplicateName,
-          type: UpdateModelTypeEnum.Duplicate,
-        },
+        model_name: values.sourceModel,
+        new_name: dupCanonical,
+        type: UpdateModelTypeEnum.Duplicate,
       });
 
-      if (result.data?.updateModel) {
+      if (result.updateModel) {
         message.success(
-          `Model "${modelName}" duplicated as "${values.duplicateName}" successfully`
+          `Model "${modelName}" duplicated as "${dupCanonical}" successfully`
         );
         setIsDuplicateModalVisible(false);
         duplicateForm.resetFields();
+        await invalidateModelQueries(queryClient, dupCanonical);
         onModelUpdated();
+        await onSchemaMutationCompleted?.();
       }
     } catch (error: unknown) {
       const errorMessage =
@@ -149,7 +152,7 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
     {
       key: "rename",
       label: "Rename",
-      icon: <EditOutlined />,
+      icon: <Pencil size={16} strokeWidth={1.75} />,
       onClick: (e) => {
         e.domEvent?.stopPropagation();
         setIsRenameModalVisible(true);
@@ -158,7 +161,7 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
     {
       key: "duplicate",
       label: "Duplicate",
-      icon: <CopyOutlined />,
+      icon: <Copy size={16} strokeWidth={1.75} />,
       onClick: (e) => {
         e.domEvent?.stopPropagation();
         handleDuplicate();
@@ -170,7 +173,7 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
     {
       key: "delete",
       label: "Delete",
-      icon: <DeleteOutlined />,
+      icon: <Trash2 size={16} strokeWidth={1.75} />,
       danger: true,
       onClick: (e) => {
         e.domEvent?.stopPropagation();
@@ -188,7 +191,7 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
       >
         <Button
           type="text"
-          icon={<MoreOutlined />}
+          icon={<Ellipsis size={16} strokeWidth={1.75} />}
           size="small"
           style={{
             border: "none",
@@ -199,7 +202,6 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
         />
       </Dropdown>
 
-      {/* Rename Modal */}
       <Modal
         title={`Rename Model: ${modelName}`}
         open={isRenameModalVisible}
@@ -226,18 +228,32 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
               { min: 2, message: "Model name must be at least 2 characters" },
               { max: 50, message: "Model name must be at most 50 characters" },
               {
-                pattern: /^[a-zA-Z][a-zA-Z0-9_]*$/,
-                message:
-                  "Model name must start with a letter and contain only letters, numbers, and underscores",
+                validator: async (_, value) => {
+                  if (!value || typeof value !== "string") return;
+                  try {
+                    canonicalizeModelName(value);
+                  } catch (e) {
+                    throw new Error(
+                      e instanceof Error ? e.message : "Invalid model name"
+                    );
+                  }
+                },
               },
             ]}
           >
-            <Input placeholder="Enter new model name" autoFocus />
+            <Input placeholder="e.g. food_order or foodOrder" autoFocus />
+          </Form.Item>
+          <Form.Item shouldUpdate noStyle>
+            {() => {
+              const raw = renameForm.getFieldValue("newName") as
+                | string
+                | undefined;
+              return <ModelNamePreview rawName={raw} />;
+            }}
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* Duplicate Model Modal */}
       <Modal
         title={`Duplicate Model: ${modelName}`}
         open={isDuplicateModalVisible}
@@ -274,9 +290,16 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
               { min: 2, message: "Model name must be at least 2 characters" },
               { max: 50, message: "Model name must be at most 50 characters" },
               {
-                pattern: /^[a-zA-Z][a-zA-Z0-9_]*$/,
-                message:
-                  "Model name must start with a letter and contain only letters, numbers, and underscores",
+                validator: async (_, value) => {
+                  if (!value || typeof value !== "string") return;
+                  try {
+                    canonicalizeModelName(value);
+                  } catch (e) {
+                    throw new Error(
+                      e instanceof Error ? e.message : "Invalid model name"
+                    );
+                  }
+                },
               },
             ]}
           >
@@ -285,7 +308,6 @@ const ModelOperationsDropdown: React.FC<ModelOperationsDropdownProps> = ({
         </Form>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
       <Modal
         title="Delete Model"
         open={isDeleteModalVisible}

@@ -1,36 +1,24 @@
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
+
+export const REMOVE_PROJECT_SPECIFIC_PLUGIN = gql`
+  mutation RemoveProjectSpecificPlugin($id: String!) {
+    removeProjectSpecificPlugin(id: $id) {
+      message
+    }
+  }
+`;
 
 export const UPSERT_PLUGIN = gql`
   mutation upsertPluginDetails(
     $id: String!
-    $title: String
-    $icon: String
-    $version: String
-    $description: String
-    $type: PLUGIN_TYPE_ENUM
-    $role: String
-    $exported_variable: String
     $env_vars: [PluginConfigEnvVarsPayload]
     $enable: Boolean
-    $repository_url: String
-    $branch: String
-    $author: String
     $activate_status: PLUGIN_ACTIVATION_TYPE_ENUM
   ) {
     upsertPlugin(
       id: $id
-      title: $title
-      icon: $icon
-      version: $version
-      description: $description
-      type: $type
-      role: $role
-      exported_variable: $exported_variable
       env_vars: $env_vars
       enable: $enable
-      repository_url: $repository_url
-      branch: $branch
-      author: $author
       activate_status: $activate_status
     ) {
       author
@@ -49,7 +37,9 @@ export const UPSERT_PLUGIN = gql`
       repository_url
       role
       title
-      type
+      capabilities
+      official
+      signed
       version
     }
   }

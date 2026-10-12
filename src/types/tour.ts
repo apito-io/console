@@ -34,6 +34,8 @@ export interface TourContextType {
     isTourModalVisible: boolean;
     tourProgress: TourProgress;
     projectStatus: ProjectCompletionStatus;
+    /** Active step definitions (general or extended via OnboardingTourExtensions). */
+    tourSteps: TourStep[];
     startTour: () => void;
     endTour: () => void;
     closeTourModal: () => void;

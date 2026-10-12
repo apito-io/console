@@ -1,16 +1,10 @@
 import React, { useMemo } from "react";
 import { Button, Dropdown, Table, Tag, Popconfirm } from "antd";
-import {
-  MoreOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  CopyOutlined,
-  ExpandAltOutlined,
-  LinkOutlined,
-} from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { MenuProps } from "antd";
+import type { TableProps } from "antd";
 import ExpandedRowContent from "./ExpandedRowContent";
+import { Copy, Ellipsis, Link, Maximize2, Pencil, Trash2 } from "lucide-react";
 import {
   classifyFields,
   formatFieldName,
@@ -31,6 +25,7 @@ interface TableGeneratorProps {
   showRelationButton?: boolean;
   showSelection?: boolean;
   showMetaColumns?: boolean;
+  pagination?: TableProps<Record<string, unknown>>["pagination"];
 }
 
 const TableGenerator: React.FC<TableGeneratorProps> = ({
@@ -45,6 +40,7 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
   showRelationButton = false,
   showSelection = true,
   showMetaColumns = true,
+  pagination,
 }) => {
   // Classify fields into simple and complex types
   const { simpleFields, complexFields } = useMemo(() => {
@@ -131,7 +127,7 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
               <Button
                 type="text"
                 size="small"
-                icon={<LinkOutlined />}
+                icon={<Link size={16} strokeWidth={1.75} />}
                 onClick={(e) => {
                   e.stopPropagation();
                   onRelation(record);
@@ -145,7 +141,7 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
               <Button
                 type="text"
                 size="small"
-                icon={<EditOutlined />}
+                icon={<Pencil size={16} strokeWidth={1.75} />}
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit(record);
@@ -179,7 +175,7 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
                                     gap: "8px",
                                   }}
                                 >
-                                  <CopyOutlined />
+                                  <Copy size={16} strokeWidth={1.75} />
                                   Duplicate
                                 </span>
                               </Popconfirm>
@@ -207,7 +203,7 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
                                     gap: "8px",
                                   }}
                                 >
-                                  <DeleteOutlined />
+                                  <Trash2 size={16} strokeWidth={1.75} />
                                   Delete
                                 </span>
                               </Popconfirm>
@@ -232,7 +228,7 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
               >
                 <Button
                   type="text"
-                  icon={<MoreOutlined />}
+                  icon={<Ellipsis size={16} strokeWidth={1.75} />}
                   onClick={(e) => e.stopPropagation()}
                 />
               </Dropdown>
@@ -281,18 +277,20 @@ const TableGenerator: React.FC<TableGeneratorProps> = ({
             <Button
               type="text"
               size="small"
-              icon={<ExpandAltOutlined rotate={expanded ? 90 : 0} />}
+              icon={<Maximize2 size={16} strokeWidth={1.75} style={{ transform: `rotate(${expanded ? 90 : 0}deg)` }} />}
               onClick={(e) => onExpand(record, e)}
               title={expanded ? "Collapse details" : "Expand details"}
             />
           ) : null,
       }}
-      pagination={{
-        showSizeChanger: true,
-        showQuickJumper: true,
-        showTotal: (total, range) =>
-          `${range[0]}-${range[1]} of ${total} items`,
-      }}
+      pagination={
+        pagination ?? {
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} of ${total} items`,
+        }
+      }
     />
   );
 };

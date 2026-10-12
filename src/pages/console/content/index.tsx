@@ -1,5 +1,6 @@
 import React from "react";
-import { useParams, useOutletContext } from "react-router-dom";
+import { useParams } from "../../../router/navigation";
+import { useConsoleRouteContext } from "../../../contexts/ConsoleRouteContext";
 import Contents from "./Contents";
 
 interface ConsoleContext {
@@ -15,7 +16,7 @@ interface ConsoleContext {
 
 const ContentsContainer: React.FC = () => {
   const params = useParams();
-  const context = useOutletContext<ConsoleContext>();
+  const context = useConsoleRouteContext() as ConsoleContext | null;
 
   const modelName = params.model || context?.selectedModel || "";
 

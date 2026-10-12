@@ -1,19 +1,16 @@
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import { Card, Button, Typography, theme, Tag, Dropdown, message } from "antd";
-import {
-  SettingOutlined,
-  DeleteOutlined,
-  DatabaseOutlined,
-} from "@ant-design/icons";
 import { capitalize } from "lodash";
 import pluralize from "pluralize";
 import type { ConnectionInfo } from "../../types/model";
-import { ContentContext } from "../../contexts/ContentContext";
-import {
-  useModelFieldOperationMutation,
-  Field_Operation_Type_Enum,
-} from "../../generated/graphql";
+import type { SchemaOverlayChangeKind } from "../../types/schemaDraftOverlay";
+import SchemaOverlayBadge, {
+  schemaOverlaySurfaceStyle,
+  schemaOverlayTextStyle,
+} from "./SchemaOverlayBadge";
+import { useDeleteConnectionFromModelMutation } from "../../generated_gql/tanstack-query";
 import DeleteConfirmModal from "../common/DeleteConfirmModal";
+import { Database, Settings, Trash2 } from "lucide-react";
 
 const { Text } = Typography;
 
@@ -21,7 +18,10 @@ interface RelationContainerProps {
   connection: ConnectionInfo;
   index: number;
   onOpneDrawer: (index: number) => void;
-  modelName: string; // Add modelName prop
+  modelName: string;
+  overlayKind?: SchemaOverlayChangeKind;
+  draftVersionLabel?: string;
+  onMutationCompleted?: () => void | Promise<void>;
 }
 
 const RelationContainer: React.FC<RelationContainerProps> = ({
@@ -29,41 +29,38 @@ const RelationContainer: React.FC<RelationContainerProps> = ({
   index,
   onOpneDrawer,
   modelName,
+  overlayKind = "live",
+  draftVersionLabel,
+  onMutationCompleted,
 }) => {
   const { token } = theme.useToken();
-  const context = useContext(ContentContext);
-  const state = context?.state || { target: "" };
 
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isDeleteLoader, setIsDeleteLoader] = useState(false);
 
   const { model, relation, known_as } = connection;
 
-  const [deleteRelationFromModel] = useModelFieldOperationMutation({
-    onError: (error) => {
-      message.error(`Failed to delete relation: ${error.message}`);
-      setIsDeleteLoader(false);
-    },
-    onCompleted: () => {
-      message.success(`${model} Relation Deleted!`);
-      setIsDeleteModalVisible(false);
-      setIsDeleteLoader(false);
-      // Refresh the page to update the model data
-      window.location.reload();
-    },
-  });
+  const { mutateAsync: deleteConnectionFromModel } =
+    useDeleteConnectionFromModelMutation();
 
   const deleteRelation = async () => {
     setIsDeleteLoader(true);
-    await deleteRelationFromModel({
-      variables: {
-        type: Field_Operation_Type_Enum.Delete,
-        model_name: modelName, // Use the prop instead of state.target
-        field_name: model || "",
-        is_relation: true,
-        known_as: known_as || "",
-      },
-    });
+    try {
+      await deleteConnectionFromModel({
+        from: modelName,
+        to: model || "",
+        known_as: known_as || undefined,
+      });
+      message.success(`${model} Relation Deleted!`);
+      setIsDeleteModalVisible(false);
+      await onMutationCompleted?.();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to delete relation";
+      message.error(`Failed to delete relation: ${errorMessage}`);
+    } finally {
+      setIsDeleteLoader(false);
+    }
   };
 
   const getRelationTypeColor = (type?: string) => {
@@ -83,18 +80,24 @@ const RelationContainer: React.FC<RelationContainerProps> = ({
 
   const _replace = (str: string) => str.replace(/_/g, " ");
 
+  const isRemoved = overlayKind === "removed";
+  const surfaceStyle = schemaOverlaySurfaceStyle(overlayKind, token);
+  const textStyle = schemaOverlayTextStyle(overlayKind);
+
   const menuItems = [
     {
       key: "configure",
       label: "Configure",
-      icon: <SettingOutlined />,
+      icon: <Settings size={16} strokeWidth={1.75} />,
+      disabled: isRemoved,
       onClick: () => onOpneDrawer(index),
     },
     {
       key: "delete",
       label: "Delete",
-      icon: <DeleteOutlined />,
+      icon: <Trash2 size={16} strokeWidth={1.75} />,
       danger: true,
+      disabled: isRemoved,
       onClick: () => setIsDeleteModalVisible(true),
     },
   ];
@@ -107,6 +110,7 @@ const RelationContainer: React.FC<RelationContainerProps> = ({
           background: token.colorBgContainer,
           border: `1px solid ${token.colorBorder}`,
           borderRadius: "8px",
+          ...surfaceStyle,
         }}
         bodyStyle={{ padding: "16px" }}
       >
@@ -125,7 +129,7 @@ const RelationContainer: React.FC<RelationContainerProps> = ({
               flex: 1,
             }}
           >
-            <DatabaseOutlined
+            <Database size={16} strokeWidth={1.75}
               style={{ color: token.colorPrimary, fontSize: "18px" }}
             />
             <div style={{ flex: 1 }}>
@@ -137,15 +141,16 @@ const RelationContainer: React.FC<RelationContainerProps> = ({
                   marginBottom: "4px",
                 }}
               >
-                <Text strong style={{ fontSize: "14px" }}>
-                  {known_as ? (
-                    <>
-                      {capitalize(model)} {`-> ${capitalize(known_as)}`}
-                    </>
-                  ) : (
-                    capitalize(model)
-                  )}
+                <Text strong style={{ fontSize: "14px", ...textStyle }}>
+                  {capitalize(model)}
                 </Text>
+                {known_as?.trim() ? (
+                  <Tag color="default">known_as: {known_as}</Tag>
+                ) : null}
+                <SchemaOverlayBadge
+                  kind={overlayKind}
+                  draftVersionLabel={draftVersionLabel}
+                />
                 <Tag color={getRelationTypeColor(connection.type)}>
                   {connection.type || "unknown"}
                 </Tag>
@@ -153,17 +158,17 @@ const RelationContainer: React.FC<RelationContainerProps> = ({
               <Text
                 style={{ fontSize: "12px", color: token.colorTextSecondary }}
               >
-                {known_as
-                  ? capitalize(
-                      `${state.target} ${_replace(relation || "")} ${
-                        relation === "has_many" ? pluralize(known_as) : known_as
-                      }`
-                    )
-                  : capitalize(
-                      `${state.target} ${_replace(relation || "")} ${
-                        relation === "has_many" ? pluralize(model || "") : model
-                      }`
-                    )}
+                {capitalize(modelName)}{" "}
+                {_replace(relation || "")}{" "}
+                {relation === "has_many"
+                  ? pluralize(model || "")
+                  : capitalize(model || "")}
+                {known_as?.trim() ? (
+                  <>
+                    {" "}
+                    · GraphQL field: <Text code>{known_as}</Text>
+                  </>
+                ) : null}
               </Text>
             </div>
           </div>
@@ -174,7 +179,7 @@ const RelationContainer: React.FC<RelationContainerProps> = ({
           >
             <Button
               type="text"
-              icon={<SettingOutlined />}
+              icon={<Settings size={16} strokeWidth={1.75} />}
               size="small"
               style={{ color: token.colorTextSecondary }}
             />

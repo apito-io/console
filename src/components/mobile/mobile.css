@@ -1,0 +1,44 @@
+.mobile-menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-right: 8px;
+  padding: 0;
+  flex-shrink: 0;
+  color: var(--console-text);
+  background: none;
+  border: 1px solid var(--console-border-muted);
+  border-radius: var(--console-radius-sm);
+  cursor: pointer;
+}
+
+.mobile-menu-button:hover {
+  background: var(--console-surface-muted);
+}
+
+.mobile-menu-button svg {
+  pointer-events: none;
+}
+
+.mobile-nav-drawer.ant-drawer-open .ant-drawer-content-wrapper {
+  transform: translateX(0) !important;
+}
+
+.mobile-nav-drawer .ant-drawer-body {
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mobile-nav-drawer .console-sidebar {
+  position: relative;
+  left: auto;
+  top: auto;
+  bottom: auto;
+  width: 100%;
+  height: 100%;
+  border-right: none;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}

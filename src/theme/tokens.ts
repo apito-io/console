@@ -1,0 +1,71 @@
+export const apitoTokens = {
+  palette: {
+    primary: "#000000",
+    bgLayout: "#f9f9f9",
+    surface: "#ffffff",
+    surfaceMuted: "#f3f3f3",
+    border: "#e4e4e7",
+    borderMuted: "#cfc4c5",
+    text: "#1a1c1c",
+    textMuted: "#4c4546",
+    textSecondary: "#71717a",
+    textHeading: "#000000",
+    info: "#595959",
+    success: "#16a34a",
+    warning: "#f59e0b",
+    error: "#dc2626",
+  },
+  typography: {
+    fontFamily:
+      "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif",
+    fontSize: 14,
+    headings: {
+      h1: 28,
+      h2: 22,
+      h3: 18,
+      h4: 16,
+      h5: 14,
+    },
+    lineHeights: {
+      body: 1.5714,
+      h1: 1.2105,
+      h2: 1.2727,
+      h3: 1.3333,
+      h4: 1.4,
+      h5: 1.5714,
+    },
+  },
+  radii: {
+    xs: 2,
+    sm: 4,
+    md: 6,
+    lg: 8,
+  },
+  spacing: {
+    xs: 8,
+    sm: 12,
+    md: 16,
+    lg: 24,
+    xl: 32,
+  },
+  controlHeights: {
+    sm: 24,
+    md: 32,
+    lg: 40,
+  },
+  layout: {
+    sidebarWidth: 260,
+    headerHeight: 56,
+    projectSpaceMaxWidth: 1400,
+    settingsMaxWidth: 1200,
+  },
+  semantic: {
+    link: "#000000",
+    infoBg: "#f3f3f3",
+    successBg: "#f0fdf4",
+    errorBg: "#fef2f2",
+    warningBg: "#fffbeb",
+    textLightSolid: "#ffffff",
+  },
+} as const;
+

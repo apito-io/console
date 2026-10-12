@@ -23,7 +23,8 @@
     /* Path mapping - simplified */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@apito-console-pro/*": ["../apito-console-pro/src/*"]
     }
   },
   "include": ["src"]

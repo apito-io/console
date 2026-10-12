@@ -1,6 +1,5 @@
-// React import removed as it's not used in this file
-import { Navigate } from "react-router-dom";
-import { useGetOnlyModelsInfoQuery } from "../../generated/graphql";
+import { Navigate } from "../../router/navigation";
+import { useGetOnlyModelsInfoQuery } from "../../generated_gql/tanstack-query";
 import { Spin } from "antd";
 
 interface ModelRedirectProps {
@@ -8,10 +7,10 @@ interface ModelRedirectProps {
 }
 
 const ModelRedirect = ({ basePath }: ModelRedirectProps) => {
-  const { data, loading, error } = useGetOnlyModelsInfoQuery({
-    errorPolicy: "all",
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, isLoading: loading, error } = useGetOnlyModelsInfoQuery(
+    undefined,
+    { staleTime: 0 }
+  );
 
   if (loading) {
     return (
@@ -32,7 +31,6 @@ const ModelRedirect = ({ basePath }: ModelRedirectProps) => {
     return <Navigate to="/console" replace />;
   }
 
-  // Find first non-system model
   const firstModel = data.projectModelsInfo
     .filter((model) => model && !model.system_generated && model.name)
     .find((model) => model?.name);

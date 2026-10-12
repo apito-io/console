@@ -1,21 +1,56 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Drawer,
   Form,
   Input,
-  Checkbox,
   Button,
   Typography,
   Space,
   Alert,
-} from "antd";
-import { SaveOutlined } from "@ant-design/icons";
-import type { RolesDrawerProps } from "../../types/roles";
-import ApiPermissionsTable from "./ApiPermissionsTable";
-import LogicPermissionsSection from "./LogicPermissionsSection";
-import type { RoleFormData } from "../../types/roles";
+  Divider,
+} from 'antd';
+import type {
+  ApiPermissions,
+  RolesDrawerProps,
+  RoleFormData,
+} from '../../types/roles';
+import {
+  EMPTY_MODEL_PERMISSIONS,
+  normalizeApiPermissions,
+} from '../../types/roles';
+import ApiPermissionsTable from './ApiPermissionsTable';
+import LogicPermissionsSection from './LogicPermissionsSection';
+import { Save } from 'lucide-react';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+
+function useResponsiveDrawerWidth(maxWidth = 960): number {
+  const [width, setWidth] = useState(() =>
+    typeof window !== 'undefined' ? Math.min(maxWidth, window.innerWidth) : maxWidth
+  );
+
+  useEffect(() => {
+    const update = () => setWidth(Math.min(maxWidth, window.innerWidth));
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [maxWidth]);
+
+  return width;
+}
+
+function seedApiPermissions(
+  models: string[],
+  existing?: ApiPermissions
+): ApiPermissions {
+  const seeded: ApiPermissions = {};
+  for (const model of models) {
+    seeded[model] = existing?.[model]
+      ? { ...EMPTY_MODEL_PERMISSIONS, ...existing[model] }
+      : { ...EMPTY_MODEL_PERMISSIONS };
+  }
+  return seeded;
+}
 
 const RolesDrawer: React.FC<RolesDrawerProps> = ({
   visible,
@@ -27,43 +62,59 @@ const RolesDrawer: React.FC<RolesDrawerProps> = ({
   loading,
 }) => {
   const [form] = Form.useForm<RoleFormData>();
+  const drawerWidth = useResponsiveDrawerWidth(960);
 
   const isEditMode = roleKey !== null;
-  const isSystemGenerated = roleKey
-    ? rolesData?.currentProject?.roles?.[roleKey]?.system_generated
-    : false;
-
-  // Get existing role data for editing
   const existingRole = roleKey
     ? rolesData?.currentProject?.roles?.[roleKey]
     : null;
 
+  const isSystemGenerated = Boolean(existingRole?.system_generated);
+  const isAdminRole = Boolean(existingRole?.is_admin);
+  const formLocked = isSystemGenerated || isAdminRole;
+
+  const models = useMemo(
+    () =>
+      (permissionsData?.listPermissionsAndScopes?.models || []).filter(
+        (m): m is string => m !== null
+      ),
+    [permissionsData]
+  );
+
   useEffect(() => {
-    if (visible) {
-      if (isEditMode && existingRole) {
-        form.setFieldsValue({
-          name: roleKey,
-          is_admin: existingRole.is_admin || false,
-          logic_executions: existingRole.logic_executions || [],
-          api_permissions: existingRole.api_permissions || {},
-        });
-      } else {
-        form.resetFields();
-        form.setFieldsValue({
-          name: "",
-          is_admin: false,
-          logic_executions: [],
-          api_permissions: {},
-        });
-      }
+    if (!visible) return;
+
+    if (isEditMode && existingRole) {
+      const normalized = normalizeApiPermissions(existingRole.api_permissions);
+      form.setFieldsValue({
+        name: roleKey ?? '',
+        is_admin: false,
+        logic_executions: (existingRole.logic_executions || []).filter(
+          (f): f is string => f !== null
+        ),
+        api_permissions: seedApiPermissions(models, normalized),
+      });
+    } else {
+      form.resetFields();
+      form.setFieldsValue({
+        name: '',
+        is_admin: false,
+        logic_executions: [],
+        api_permissions: seedApiPermissions(models),
+      });
     }
-  }, [visible, isEditMode, roleKey, existingRole, form]);
+  }, [visible, isEditMode, roleKey, existingRole, form, models]);
 
   const handleSubmit = async (values: RoleFormData) => {
+    if (formLocked) return;
     try {
-      await onSubmit(values);
+      await onSubmit({
+        ...values,
+        is_admin: false,
+        api_permissions: normalizeApiPermissions(values.api_permissions),
+      });
     } catch (error) {
-      console.error("Error submitting role:", error);
+      console.error('Error submitting role:', error);
     }
   };
 
@@ -72,56 +123,51 @@ const RolesDrawer: React.FC<RolesDrawerProps> = ({
     onClose();
   };
 
-  const handleSuperAdminChange = (checked: boolean) => {
-    if (checked) {
-      // When super admin is checked, clear other permissions
-      form.setFieldsValue({
-        is_admin: true,
-        logic_executions: [],
-        api_permissions: {},
-      });
-    } else {
-      form.setFieldsValue({ is_admin: false });
-    }
-  };
+  const functions = useMemo(
+    () =>
+      (permissionsData?.listPermissionsAndScopes?.functions || []).filter(
+        (f): f is string => f !== null
+      ),
+    [permissionsData]
+  );
 
-  const functions = (
-    permissionsData?.listPermissionsAndScopes?.functions || []
-  ).filter((f): f is string => f !== null);
-  const models = (
-    permissionsData?.listPermissionsAndScopes?.models || []
-  ).filter((m): m is string => m !== null);
+  const logicExecutions = Form.useWatch('logic_executions', form) || [];
 
-  const isSuperAdmin = Form.useWatch("is_admin", form);
+  const footer = (
+    <Space style={{ width: '100%', justifyContent: 'flex-end' }} wrap>
+      <Button onClick={handleClose}>Cancel</Button>
+      <Button
+        type="primary"
+        icon={<Save size={16} strokeWidth={1.75} />}
+        onClick={() => form.submit()}
+        loading={loading}
+        disabled={formLocked}
+      >
+        {isEditMode ? 'Update' : 'Create'}
+      </Button>
+    </Space>
+  );
 
   return (
     <Drawer
       title={
         <Title level={4} style={{ margin: 0 }}>
-          {isEditMode ? "Edit Role" : "Create New Role"}
+          {isEditMode ? 'Edit Role' : 'Create New Role'}
         </Title>
       }
-      width={720}
+      width={drawerWidth}
       placement="right"
       onClose={handleClose}
       open={visible}
       destroyOnClose
-      extra={
-        <Space>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            onClick={() => form.submit()}
-            loading={loading}
-            disabled={isSystemGenerated}
-          >
-            {isEditMode ? "Update" : "Create"}
-          </Button>
-        </Space>
-      }
+      footer={footer}
+      styles={{
+        footer: {
+          borderTop: '1px solid var(--ant-color-border-secondary, #f0f0f0)',
+        },
+      }}
     >
-      {isSystemGenerated && (
+      {isSystemGenerated ? (
         <Alert
           message="System Generated Role"
           description="This role is system generated and cannot be modified."
@@ -129,65 +175,65 @@ const RolesDrawer: React.FC<RolesDrawerProps> = ({
           showIcon
           style={{ marginBottom: 16 }}
         />
-      )}
+      ) : null}
+
+      {isAdminRole ? (
+        <Alert
+          message="Admin roles are managed as the built-in admin role"
+          description="Admin privileges cannot be granted or edited from this form. Use the built-in admin role instead."
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      ) : null}
 
       <Form
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
-        disabled={isSystemGenerated}
+        disabled={formLocked}
       >
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>
+          Identity
+        </Text>
+        <Form.Item name="is_admin" hidden initialValue={false}>
+          <Input type="hidden" />
+        </Form.Item>
         <Form.Item
           name="name"
           label="Role Name"
           rules={[
-            { required: true, message: "Please enter a role name" },
-            { min: 3, message: "Role name must be at least 3 characters" },
-            { max: 50, message: "Role name must be less than 50 characters" },
+            { required: true, message: 'Please enter a role name' },
+            { min: 3, message: 'Role name must be at least 3 characters' },
+            { max: 50, message: 'Role name must be less than 50 characters' },
             {
               pattern: /^[a-zA-Z0-9_-]+$/,
               message:
-                "Role name can only contain letters, numbers, hyphens, and underscores",
+                'Role name can only contain letters, numbers, hyphens, and underscores',
             },
           ]}
         >
           <Input
             placeholder="Enter role name"
-            disabled={isEditMode}
+            disabled={isEditMode || formLocked}
             maxLength={50}
           />
         </Form.Item>
 
-        <Form.Item
-          name="is_admin"
-          valuePropName="checked"
-          label="Super Admin"
-          help="Super admins have full access to all features and data"
-        >
-          <Checkbox onChange={(e) => handleSuperAdminChange(e.target.checked)}>
-            Grant super admin privileges
-          </Checkbox>
-        </Form.Item>
+        <Divider style={{ margin: '8px 0 16px' }} />
 
-        {!isSuperAdmin && (
-          <>
-            <LogicPermissionsSection
-              functions={functions}
-              value={form.getFieldValue("logic_executions")}
-              onChange={(selectedFunctions) =>
-                form.setFieldsValue({ logic_executions: selectedFunctions })
-              }
-            />
+        <ApiPermissionsTable models={models} disabled={formLocked} />
 
-            <ApiPermissionsTable
-              models={models}
-              value={form.getFieldValue("api_permissions")}
-              onChange={(permissions) =>
-                form.setFieldsValue({ api_permissions: permissions })
-              }
-            />
-          </>
-        )}
+        <Divider style={{ margin: '8px 0 16px' }} />
+
+        <LogicPermissionsSection
+          functions={functions}
+          value={logicExecutions}
+          onChange={(selectedFunctions) =>
+            form.setFieldsValue({ logic_executions: selectedFunctions })
+          }
+          disabled={formLocked}
+        />
       </Form>
     </Drawer>
   );

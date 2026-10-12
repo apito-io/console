@@ -5,7 +5,6 @@ export interface ContentState {
   single_page?: boolean;
   single_page_uuid?: string;
   has_connections?: boolean;
-  is_tenant_model?: boolean;
   enable_revision?: boolean;
 }
 
@@ -16,8 +15,6 @@ export interface ContentAction {
     single_page?: boolean;
     single_page_uuid?: string;
     has_connections?: boolean;
-    is_tenant_model?: boolean;
-    is_common_model?: boolean;
     enable_revision?: boolean;
   };
 }
@@ -32,7 +29,6 @@ export interface ContentContextType {
 //   single_page: false,
 //   single_page_uuid: "",
 //   has_connections: false,
-//   is_tenant_model: false,
 //   enable_revision: false,
 // };
 
@@ -48,8 +44,6 @@ export const ContentReducer: Reducer<ContentState, ContentAction> = (
         single_page: action.payload.single_page || false,
         single_page_uuid: action.payload.single_page_uuid || "",
         has_connections: action.payload.has_connections || false,
-        is_tenant_model: action.payload.is_tenant_model || false,
-        is_common_model: action.payload.is_common_model || false,
         enable_revision: action.payload.enable_revision || false,
       };
     default:
@@ -82,8 +76,6 @@ export const ContentProvider: React.FC<ContentProviderProps> = ({
     single_page: false,
     single_page_uuid: "",
     has_connections: false,
-    is_tenant_model: false,
-    is_common_model: false,
     enable_revision: false,
   });
 

@@ -1,0 +1,119 @@
+.saas-strategy-compact {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saas-strategy-compact__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.saas-strategy-compact__label {
+  font-size: 12px;
+}
+
+.saas-strategy-compact__sub {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.saas-strategy-compact__group {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.saas-strategy-compact__card {
+  position: relative;
+  display: block;
+  margin: 0;
+  padding: 8px 10px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.saas-strategy-compact__card:hover {
+  border-color: #94a3b8;
+}
+
+.saas-strategy-compact__card:focus-within {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
+}
+
+.saas-strategy-compact__card--active {
+  box-shadow: 0 0 0 1px currentColor;
+}
+
+.saas-strategy-compact__card--shared.saas-strategy-compact__card--active {
+  border-color: #1677ff;
+  background: #f0f7ff;
+  color: #1677ff;
+}
+
+.saas-strategy-compact__card--silo.saas-strategy-compact__card--active {
+  border-color: #52c41a;
+  background: #f6ffed;
+  color: #389e0d;
+}
+
+.saas-strategy-compact__card--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.saas-strategy-compact__radio {
+  position: absolute !important;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.saas-strategy-compact__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #0f172a;
+}
+
+.saas-strategy-compact__title {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.saas-strategy-compact__diagram {
+  height: 72px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+}
+
+.saas-strategy-compact__diagram .saas-diagram-svg {
+  display: block;
+  width: 100%;
+  height: 72px;
+}
+
+.saas-strategy-compact__desc {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+@media (max-width: 720px) {
+  .saas-strategy-compact__group {
+    grid-template-columns: 1fr;
+  }
+}

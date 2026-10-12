@@ -10,7 +10,14 @@ export interface Project {
   color?: string;
   owner?: string;
   accessLevel?: 'admin' | 'editor' | 'viewer';
-  project_type?: number; // 1 for SaaS, 0 for regular
+  /** Pro API: 0 = general, 1 = SaaS (matches engine proconst). */
+  project_type?: number;
+  /** Pro project list only: membership role. */
+  role?: string;
+  plan_type?: string;
+  /** Pro API spelling (persisted tier). */
+  tire_type?: string;
+  tenant_model_name?: string;
 }
 
 export interface ProjectListResponse {
@@ -45,4 +52,5 @@ export interface ProjectSwitchRequest {
 
 export interface ProjectDeleteRequest {
   id: string;
+  delete_database?: boolean;
 } 

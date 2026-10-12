@@ -1,18 +1,25 @@
-import React, { useState, useMemo } from "react";
-import { Form, Input, Button, Row, Col, Space } from "antd";
+import React, { useEffect, useMemo } from "react";
+import { Form, Input, Row, Col, Segmented, Typography } from "antd";
 import { FormInstance } from "antd";
 import { httpService } from "../../services/httpService";
 import { PROJECT_NAME_CHECK } from "../../constants/api";
 import debounce from "lodash/debounce";
 
-type ProjectType = "general" | "saas";
+export type ProjectCreateFormProjectType = "general" | "saas";
 
 interface ProjectCreateFormProps {
   form: FormInstance;
-  projectType: ProjectType;
-  onProjectTypeChange: (type: ProjectType) => void;
   isValidId: boolean | null;
   onValidIdChange: (valid: boolean | null) => void;
+  /** When set with onProjectTypeChange, shows General vs SaaS (pro create flow). */
+  projectType?: ProjectCreateFormProjectType;
+  onProjectTypeChange?: (t: ProjectCreateFormProjectType) => void;
+  /** Dense create-flow layout (name/id side-by-side, shorter description). */
+  compact?: boolean;
+  /** Remaining slots shown next to General / SaaS. -1 = unlimited. */
+  generalRemaining?: number;
+  saasRemaining?: number;
+  instanceMode?: boolean;
 }
 
 const generateRandomId = (length: number): string => {
@@ -38,12 +45,18 @@ const normalizeName = (value: string): string =>
 const makeProjectIdFromName = (name: string): string =>
   `${normalizeName(name).toLowerCase()}_${generateRandomId(5)}`;
 
+const { Text } = Typography;
+
 const ProjectCreateForm: React.FC<ProjectCreateFormProps> = ({
   form,
-  projectType,
-  onProjectTypeChange,
   isValidId,
   onValidIdChange,
+  projectType,
+  onProjectTypeChange,
+  compact = false,
+  instanceMode = false,
+  generalRemaining,
+  saasRemaining,
 }) => {
   const debouncedCheck = useMemo(
     () =>
@@ -58,7 +71,11 @@ const ProjectCreateForm: React.FC<ProjectCreateFormProps> = ({
     [onValidIdChange]
   );
 
-  const onNameChange = (value: string) => {
+  const watchedName = Form.useWatch("name", form);
+
+  /** Keeps project id + availability check in sync whenever `name` changes (typing or e.g. template fill). */
+  useEffect(() => {
+    const value = typeof watchedName === "string" ? watchedName.trim() : "";
     if (!value) {
       form.setFieldsValue({ id: undefined });
       onValidIdChange(null);
@@ -67,113 +84,181 @@ const ProjectCreateForm: React.FC<ProjectCreateFormProps> = ({
     const newId = makeProjectIdFromName(value);
     form.setFieldsValue({ id: newId });
     debouncedCheck(newId);
-  };
+  }, [watchedName, debouncedCheck, form, onValidIdChange]);
+
+  useEffect(() => {
+    return () => {
+      debouncedCheck.cancel();
+    };
+  }, [debouncedCheck]);
+
+  const showProjectType =
+    projectType !== undefined && onProjectTypeChange !== undefined;
+
+  const gutter = compact ? ([8, 8] as [number, number]) : ([16, 16] as [number, number]);
+  const inputSize = compact ? "middle" : "large";
 
   return (
-    <>
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
+    <div className={compact ? "project-create-form--compact" : undefined}>
+      <Row gutter={gutter}>
+        {showProjectType && (
+          <Col span={24}>
+            <Form.Item
+              label="Project type"
+              required
+              style={compact ? { marginBottom: 8 } : undefined}
+            >
+              <Segmented
+                block
+                size={compact ? "middle" : "large"}
+                value={projectType}
+                onChange={(v) =>
+                  onProjectTypeChange(v as ProjectCreateFormProjectType)
+                }
+                options={[
+                  {
+                    label:
+                      generalRemaining === undefined
+                        ? "General"
+                        : generalRemaining < 0
+                          ? "General backend, unlimited"
+                          : `General backend, ${generalRemaining} remaining`,
+                    value: "general",
+                    disabled: generalRemaining === 0,
+                  },
+                  {
+                    label:
+                      saasRemaining === undefined
+                        ? compact
+                          ? "SaaS"
+                          : "SaaS (multi-tenant)"
+                        : saasRemaining < 0
+                          ? compact
+                            ? "SaaS, unlimited"
+                            : "SaaS backend, unlimited"
+                          : compact
+                            ? `SaaS, ${saasRemaining} remaining`
+                            : `SaaS backend, ${saasRemaining} remaining`,
+                    value: "saas",
+                    disabled: saasRemaining === 0,
+                  },
+                ]}
+              />
+              {!compact ? (
+                <Text type="secondary" style={{ display: "block", marginTop: 8 }}>
+                  SaaS projects are multi-tenant; you choose shared tables vs a
+                  separate database per tenant in the next step.
+                </Text>
+              ) : null}
+            </Form.Item>
+          </Col>
+        )}
+        <Col xs={24} md={compact ? 14 : 24}>
           <Form.Item
             name="name"
-            label="Project Name"
+            label={instanceMode ? "Instance name" : "Project Name"}
+            style={compact ? { marginBottom: 8 } : undefined}
             rules={[
-              { required: true, message: "Please enter a project name" },
+              {
+                required: true,
+                message: instanceMode
+                  ? "Please enter an instance name"
+                  : "Please enter a project name",
+              },
               {
                 min: 3,
-                message: "Project name must be at least 3 characters",
+                message: instanceMode
+                  ? "Instance name must be at least 3 characters"
+                  : "Project name must be at least 3 characters",
               },
               {
                 max: 50,
-                message: "Project name must be less than 50 characters",
+                message: instanceMode
+                  ? "Instance name must be less than 50 characters"
+                  : "Project name must be less than 50 characters",
               },
               {
                 pattern: /^[a-zA-Z0-9\s-_]+$/,
                 message:
-                  "Project name can only contain letters, numbers, spaces, hyphens, and underscores",
+                  "Name can only contain letters, numbers, spaces, hyphens, and underscores",
               },
             ]}
           >
             <Input
-              placeholder="Enter your project name"
-              size="large"
-              onChange={(e) => onNameChange(e.target.value)}
+              placeholder={
+                instanceMode
+                  ? "e.g. Production Apito"
+                  : "Enter your project name"
+              }
+              size={inputSize}
             />
           </Form.Item>
         </Col>
 
-        <Col span={24}>
+        <Col xs={24} md={compact ? 10 : 24}>
           <Form.Item
             name="id"
-            label="Project ID (Auto-generated)"
-            rules={[{ required: true, message: "Project ID is required" }]}
+            label={instanceMode ? "Instance ID" : "Project ID"}
+            style={compact ? { marginBottom: instanceMode ? 0 : 8 } : undefined}
+            rules={[
+              {
+                required: true,
+                message: instanceMode
+                  ? "Instance ID is required"
+                  : "Project ID is required",
+              },
+            ]}
             hasFeedback
             validateStatus={
               isValidId === null ? "" : isValidId ? "success" : "error"
             }
             help={
               isValidId === false
-                ? "This project ID is already taken. Please adjust the name."
+                ? instanceMode
+                  ? "This instance ID is already taken. Please adjust the name."
+                  : "This project ID is already taken. Please adjust the name."
                 : undefined
             }
           >
             <Input
               readOnly
-              disabled
-              placeholder="Generated from project name"
+              placeholder={
+                instanceMode
+                  ? "Generated from instance name"
+                  : "Generated from project name"
+              }
+              size={inputSize}
             />
           </Form.Item>
         </Col>
 
-        {/* Project Type */}
-        <Col span={24}>
-          <Form.Item label="Project Type" name="project_type">
-            <Space>
-              <Button
-                type={projectType === "general" ? "primary" : "default"}
-                onClick={() => onProjectTypeChange("general")}
-              >
-                General
-              </Button>
-              <Button
-                type={projectType === "saas" ? "primary" : "default"}
-                onClick={() => onProjectTypeChange("saas")}
-              >
-                SaaS
-              </Button>
-            </Space>
-          </Form.Item>
-        </Col>
-
-        {projectType === "saas" && (
+        {!instanceMode ? (
           <Col span={24}>
             <Form.Item
-              name="tenant_model_name"
-              label="Tenant Model Name"
-              rules={[
-                {
-                  required: true,
-                  message: "Tenant model name is required",
-                },
-              ]}
-              extra="The base entity that represents a single tenant in your multi-tenant SaaS. For example: 'Restaurant' for a restaurant management SaaS, 'Shop' for an e-commerce platform, or 'Organization' for a business tool."
+              name="description"
+              label={compact ? "Description" : "Description (Optional)"}
+              style={compact ? { marginBottom: 0 } : undefined}
             >
-              <Input placeholder="Ex. Shop, Institution, Vendor etc." />
+              {compact ? (
+                <Input
+                  placeholder="Optional short description"
+                  maxLength={200}
+                  showCount
+                  size={inputSize}
+                />
+              ) : (
+                <Input.TextArea
+                  placeholder="Describe your project..."
+                  rows={3}
+                  maxLength={200}
+                  showCount
+                />
+              )}
             </Form.Item>
           </Col>
-        )}
-
-        <Col span={24}>
-          <Form.Item name="description" label="Description (Optional)">
-            <Input.TextArea
-              placeholder="Describe your project..."
-              rows={3}
-              maxLength={200}
-              showCount
-            />
-          </Form.Item>
-        </Col>
+        ) : null}
       </Row>
-    </>
+    </div>
   );
 };
 

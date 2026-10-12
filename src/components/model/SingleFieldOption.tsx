@@ -1,6 +1,6 @@
 import React from "react";
 import { Divider, Tooltip, Typography } from "antd";
-import { Field_Type_Enum } from "../../generated/graphql";
+import { Field_Type_Enum } from "../../generated_gql/tanstack-query";
 import type { FieldTypeOption } from "../../constants/fieldTypes";
 import { generateIcon } from "../../utils/generateLabelAndIcon";
 import "./SingleFieldOption.css";

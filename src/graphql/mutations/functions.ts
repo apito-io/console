@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
 
 export const UPSERT_FUNCTION_TO_PROJECT = gql`
   mutation upsertFunctionToProject(
@@ -17,6 +17,10 @@ export const UPSERT_FUNCTION_TO_PROJECT = gql`
     $response: String
     $response_is_array: Boolean
     $update: Boolean
+    $source: String
+    $trigger_type: String
+    $language: String
+    $capabilities: [String]
   ) {
     upsertFunctionToProject(
       name: $name
@@ -34,12 +38,20 @@ export const UPSERT_FUNCTION_TO_PROJECT = gql`
       response: $response
       response_is_array: $response_is_array
       update: $update
+      source: $source
+      trigger_type: $trigger_type
+      language: $language
+      capabilities: $capabilities
     ) {
       name
       description
       graphql_schema_type
       created_at
       updated_at
+      trigger_type
+      source
+      active_revision_id
+      capabilities
       function_connected
       provider_exported_variable
       function_exported_variable
@@ -62,6 +74,7 @@ export const UPSERT_FUNCTION_TO_PROJECT = gql`
         key
         value
       }
+      rest_api_secret_url_key
     }
   }
 `;
@@ -73,4 +86,83 @@ export const DELETE_FUNCTION_FROM_PROJECT = gql`
       name
     }
   }
-`; 
+`;
+
+export const DEPLOY_FUNCTION_TO_PROJECT = gql`
+  mutation deployFunctionToProject($name: String!, $source: String) {
+    deployFunctionToProject(name: $name, source: $source) {
+      function {
+        name
+        source
+        active_revision_id
+        rest_api_secret_url_key
+        updated_at
+      }
+      revision {
+        id
+        revision
+        artifact_key
+        artifact_hash
+        created_at
+      }
+      deployment {
+        id
+        revision_id
+        status
+        created_at
+      }
+    }
+  }
+`;
+
+export const ROLLBACK_FUNCTION_DEPLOYMENT = gql`
+  mutation rollbackFunctionDeployment($name: String!, $revision_id: String!) {
+    rollbackFunctionDeployment(name: $name, revision_id: $revision_id) {
+      function {
+        name
+        source
+        active_revision_id
+        updated_at
+      }
+      revision {
+        id
+        artifact_key
+        created_at
+      }
+      deployment {
+        id
+        revision_id
+        status
+        rollback_of
+        created_at
+      }
+    }
+  }
+`;
+
+export const TEST_FUNCTION_DRAFT = gql`
+  mutation testFunctionDraft(
+    $name: String!
+    $source: String
+    $payload: JSON
+    $tenant_id: String
+  ) {
+    testFunctionDraft(
+      name: $name
+      source: $source
+      payload: $payload
+      tenant_id: $tenant_id
+    ) {
+      ok
+      response
+      error
+      error_class
+      duration_ms
+      invocation_id
+      logs {
+        level
+        message
+      }
+    }
+  }
+`;

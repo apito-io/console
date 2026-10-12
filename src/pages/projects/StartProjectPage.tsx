@@ -1,44 +1,34 @@
-import React, { useState, useEffect } from "react";
-import {
-  Card,
-  Form,
-  Button,
-  Typography,
-  Space,
-  Row,
-  Col,
-  message,
-  Tooltip,
-  App,
-} from "antd";
-import {
-  ProjectOutlined,
-  CloudOutlined,
-  RocketOutlined,
-} from "@ant-design/icons";
-import { Icon } from "@iconify/react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Form, Button, Typography, message, Tooltip, App } from "antd";
+import { FolderKanban, Plus } from "lucide-react";
+import { useLocation, useNavigate } from "../../router/navigation";
 import { httpService } from "../../services/httpService";
 import { PROJECT_CREATE } from "../../constants/api";
-
+import {
+  findProjectTemplate,
+  PROJECT_TEMPLATES,
+} from "../../constants/projectTemplates";
+import {
+  ConsoleCard,
+  ConsoleCardTitle,
+  ConsoleChip,
+  ConsoleChipGroup,
+} from "../../components/console";
 import ProjectCreateForm from "../../components/project/ProjectCreateForm";
-import DatabaseConfig from "../../components/database/DatabaseConfig";
+import SaasTenantDataStrategy from "../../components/project/SaasTenantDataStrategy";
+import "../../components/console/ConsoleShell.css";
+import "./StartProjectPage.css";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface ProjectCreateData {
   id?: string;
   name: string;
   description?: string;
-  database_type?: string;
-  project_type?: ProjectType;
-  tenant_model_name?: string;
-  db_config?: DbConfig;
+  per_tenant_separate_database?: boolean;
 }
 
 type ProjectType = "general" | "saas";
-
-type DbConfig = Record<string, unknown>;
 
 const StartProjectPage: React.FC = () => {
   const navigate = useNavigate();
@@ -46,41 +36,60 @@ const StartProjectPage: React.FC = () => {
   const { notification: notificationApi } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [selectedDatabase, setSelectedDatabase] = useState<string>("coreDB");
-  const [connectionStatus, setConnectionStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
   const [projectType, setProjectType] = useState<ProjectType>("general");
   const [isValidId, setIsValidId] = useState<boolean | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
 
-  // Handle template state from navigation
+  const perTenantSeparateDb = Form.useWatch(
+    "per_tenant_separate_database",
+    form,
+  );
+
   useEffect(() => {
-    const state = location.state as any;
-    if (state?.template && state?.project_type) {
-      console.log("Template received:", state.template);
-      console.log("Template project type:", state.project_type);
-
-      // Set the project type if provided
-      if (state.project_type === "saas" || state.project_type === "general") {
-        setProjectType(state.project_type as ProjectType);
-      }
+    const state = location.state as {
+      template?: string;
+      project_type?: ProjectType;
+    } | null;
+    if (state?.project_type === "saas" || state?.project_type === "general") {
+      setProjectType(state.project_type);
     }
-  }, [location.state]);
+    const template = findProjectTemplate(state?.template);
+    if (template) {
+      setSelectedTemplateId(template.id);
+      form.setFieldsValue({
+        name: template.title,
+        description: template.description.slice(0, 200),
+      });
+    }
+  }, [location.state, form]);
+
+  useEffect(() => {
+    if (projectType !== "saas") {
+      form.setFieldsValue({ per_tenant_separate_database: undefined });
+    }
+  }, [projectType, form]);
 
   const handleCreateProject = async (values: ProjectCreateData) => {
     try {
       setLoading(true);
-      setErrorMessage(""); // Clear any previous error messages
+      setErrorMessage("");
 
-      // Prepare payload
-      const payload = {
-        ...values,
-        database_type: selectedDatabase,
+      const projectId = String(values.id || "").trim();
+      const payload: Record<string, unknown> = {
+        name: values.name,
+        id: projectId,
+        description: values.description,
         project_type: projectType,
-        tenant_model_name:
-          projectType === "saas" ? values.tenant_model_name : undefined,
+        database_type: "sqlite",
+        db_config: { file: `apito_${projectId}.sqlite` },
       };
+      if (projectType === "saas") {
+        payload.per_tenant_separate_database =
+          values.per_tenant_separate_database ?? false;
+      }
 
       const response = await httpService.post(PROJECT_CREATE, payload);
 
@@ -90,34 +99,34 @@ const StartProjectPage: React.FC = () => {
       } else {
         message.error(response.data.message || "Failed to create project");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating project:", error);
 
-      // Extract error message from Axios error response
-      let errorMessage = "Failed to create project. Please try again.";
+      let errMsg = "Failed to create project. Please try again.";
+      const axiosError = error as {
+        response?: {
+          data?: { message?: string; error?: string };
+          status?: number;
+        };
+        request?: unknown;
+        message?: string;
+      };
 
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        errorMessage =
-          error.response.data?.message ||
-          error.response.data?.error ||
-          `Server error: ${error.response.status}`;
-      } else if (error.request) {
-        // The request was made but no response was received
-        errorMessage = "No response from server. Please check your connection.";
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        errorMessage = error.message || "An unexpected error occurred.";
+      if (axiosError.response) {
+        errMsg =
+          axiosError.response.data?.message ||
+          axiosError.response.data?.error ||
+          `Server error: ${axiosError.response.status}`;
+      } else if (axiosError.request) {
+        errMsg = "No response from server. Please check your connection.";
+      } else if (axiosError.message) {
+        errMsg = axiosError.message;
       }
 
-      // Set error message in state for UI display
-      setErrorMessage(errorMessage);
-
-      // Show Ant Design message and notification
+      setErrorMessage(errMsg);
       notificationApi.error({
         message: "Project Creation Error",
-        description: errorMessage,
+        description: errMsg,
         placement: "topRight",
         duration: 5,
       });
@@ -126,303 +135,142 @@ const StartProjectPage: React.FC = () => {
     }
   };
 
-  const isFormValid = () => {
-    if (selectedDatabase === "coreDB") {
-      return isValidId === true;
+  const saasFieldsOk =
+    projectType !== "saas" ||
+    (perTenantSeparateDb !== undefined && perTenantSeparateDb !== null);
+
+  const canCreateProject = Boolean(isValidId && saasFieldsOk);
+
+  const selectedTemplate = selectedTemplateId
+    ? PROJECT_TEMPLATES.find((tpl) => tpl.id === selectedTemplateId)
+    : null;
+
+  const createDisabledReason = (() => {
+    if (canCreateProject) return undefined;
+    if (projectType === "saas" && !saasFieldsOk) {
+      return "SaaS: choose how tenant data is stored (shared DB vs separate DB per tenant)";
     }
-    return isValidId === true && connectionStatus === "success";
-  };
+    return "Enter a valid project name to generate an available ID";
+  })();
 
   return (
-    <div style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
-      {/* Header */}
-      <div style={{ marginBottom: "32px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "16px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "48px",
-              height: "48px",
-              backgroundColor: "#f0f7ff",
-              borderRadius: "12px",
-            }}
-          >
-            <RocketOutlined style={{ fontSize: "24px", color: "#1890ff" }} />
-          </div>
-          <div>
-            <Title
-              level={2}
-              style={{
-                margin: 0,
-                fontSize: "28px",
-                fontWeight: "700",
-                color: "#262626",
-              }}
-            >
-              Start New Project
-            </Title>
-            <Text
-              type="secondary"
-              style={{ fontSize: "14px", color: "#8c8c8c", margin: 0 }}
-            >
-              Create a new Apito project with your preferred database
-              configuration
-            </Text>
-          </div>
-        </div>
-      </div>
-
-      {/* Two Column Layout */}
+    <div className="console-page create-project-page">
       <Form
         form={form}
         layout="vertical"
+        className="create-project-form"
         onFinish={handleCreateProject}
-        initialValues={{
-          database_type: "coreDB",
-        }}
       >
-        <Row gutter={32}>
-          {/* Left Column - Project Configuration Form */}
-          <Col span={10}>
-            <Card
+        <div className="create-project-layout">
+          <section className="create-project-main" aria-label="Project setup">
+            <ConsoleCard
+              className="create-project-card create-project-card--project"
               title={
-                <Space>
-                  <ProjectOutlined />
-                  Project Configuration
-                </Space>
+                <ConsoleCardTitle
+                  icon={FolderKanban}
+                  label="Project & template"
+                />
               }
-              style={{
-                background: "#ffffff",
-                border: "1px solid #f0f0f0",
-                borderRadius: "8px",
-                height: "fit-content",
-              }}
             >
-              {/* Reusable ProjectCreateForm */}
-              <ProjectCreateForm
-                form={form}
-                projectType={projectType}
-                onProjectTypeChange={setProjectType}
-                isValidId={isValidId}
-                onValidIdChange={setIsValidId}
-              />
+              <div className="create-project-combined">
+                <div className="create-project-combined__details">
+                  <ProjectCreateForm
+                    form={form}
+                    projectType={projectType}
+                    onProjectTypeChange={setProjectType}
+                    isValidId={isValidId}
+                    onValidIdChange={setIsValidId}
+                    compact
+                  />
+                  <SaasTenantDataStrategy
+                    form={form}
+                    visible={projectType === "saas"}
+                    compact
+                    perTenantAllowed
+                  />
+                </div>
 
-              {/* Action Buttons */}
-              <Form.Item style={{ marginTop: "24px", marginBottom: 0 }}>
-                <Space
-                  size="middle"
-                  direction="vertical"
-                  style={{ width: "100%" }}
+                <aside
+                  className="create-project-combined__template"
+                  aria-label="Starter template"
                 >
-                  <Space
-                    size="middle"
-                    style={{ width: "100%", justifyContent: "center" }}
-                  >
-                    <Button size="large" onClick={() => navigate("/projects")}>
-                      Cancel
-                    </Button>
-
-                    <Tooltip
-                      title={
-                        !isFormValid()
-                          ? selectedDatabase !== "coreDB" &&
-                            connectionStatus !== "success"
-                            ? "Please test database connection first"
-                            : !isValidId
-                              ? "Please enter a valid project ID"
-                              : undefined
-                          : undefined
-                      }
+                  <p className="create-project-section-label">
+                    Starter template
+                  </p>
+                  <ConsoleChipGroup>
+                    <ConsoleChip
+                      active={selectedTemplateId === null}
+                      onClick={() => setSelectedTemplateId(null)}
                     >
-                      <Button
-                        type="primary"
-                        size="large"
-                        htmlType="submit"
-                        loading={loading}
-                        disabled={!isFormValid()}
-                        icon={<RocketOutlined />}
+                      Blank
+                    </ConsoleChip>
+                    {PROJECT_TEMPLATES.map((tpl) => (
+                      <ConsoleChip
+                        key={tpl.id}
+                        active={selectedTemplateId === tpl.id}
+                        onClick={() => {
+                          setSelectedTemplateId(tpl.id);
+                          form.setFieldsValue({
+                            name: tpl.title,
+                            description: tpl.description.slice(0, 200),
+                          });
+                        }}
                       >
-                        Create Project
-                      </Button>
-                    </Tooltip>
-                  </Space>
+                        {tpl.label}
+                      </ConsoleChip>
+                    ))}
+                  </ConsoleChipGroup>
+                  <Text
+                    type="secondary"
+                    className="create-project-template-blurb"
+                    ellipsis={{ tooltip: selectedTemplate?.description }}
+                  >
+                    {selectedTemplate
+                      ? selectedTemplate.description
+                      : "Blank project, or pick a template to prefill name and description."}
+                  </Text>
+                </aside>
+              </div>
+            </ConsoleCard>
+          </section>
+        </div>
 
-                  {/* Error Message Display */}
-                  {errorMessage && (
-                    <div
-                      style={{
-                        marginBottom: "16px",
-                        padding: "12px 16px",
-                        backgroundColor: "#fff2f0",
-                        border: "1px solid #ffccc7",
-                        borderRadius: "6px",
-                        color: "#cf1322",
-                      }}
-                    >
-                      <strong>Error:</strong> {errorMessage}
-                    </div>
-                  )}
-                </Space>
-              </Form.Item>
-            </Card>
-          </Col>
+        {errorMessage ? (
+          <div
+            className="console-alert console-alert--error"
+            role="alert"
+            style={{ marginTop: 12 }}
+          >
+            {errorMessage}
+          </div>
+        ) : null}
 
-          {/* Right Column - Database Configuration */}
-          <Col span={14}>
-            <Card
-              title="Database Configuration"
-              style={{
-                background: "#ffffff",
-                border: "1px solid #f0f0f0",
-                borderRadius: "8px",
-                height: "fit-content",
-              }}
-            >
-              <DatabaseConfig
-                stage="project"
-                form={form}
-                databaseTypeField="database_type"
-                configField="db_config"
-                enableTest={true}
-                onTypeChange={(dbType) => {
-                  setSelectedDatabase(dbType);
-                }}
-                onConnectionStatusChange={(status, _errorMessage) => {
-                  setConnectionStatus(status);
-                }}
-              />
-            </Card>
-          </Col>
-        </Row>
+        <footer className="create-project-cta" aria-label="Create project">
+          <div className="create-project-cta__summary" aria-live="polite">
+            <Text strong>
+              {projectType === "saas" ? "SaaS project" : "General project"}
+              {selectedTemplate ? ` · ${selectedTemplate.label}` : ""}
+            </Text>
+            <Text type="secondary">
+              Stored in a local SQLite file for this engine.
+            </Text>
+          </div>
+          <div className="create-project-cta__actions">
+            <Button onClick={() => navigate("/projects")}>Cancel</Button>
+            <Tooltip title={createDisabledReason}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
+                disabled={!canCreateProject}
+                icon={<Plus size={16} strokeWidth={1.75} />}
+              >
+                Create project
+              </Button>
+            </Tooltip>
+          </div>
+        </footer>
       </Form>
-
-      {/* Quick Stats */}
-      <div
-        style={{
-          display: "flex",
-          gap: "24px",
-          padding: "16px 20px",
-          marginTop: "24px",
-          backgroundColor: "#fafafa",
-          borderRadius: "8px",
-          border: "1px solid #f0f0f0",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div
-            style={{
-              width: "8px",
-              height: "8px",
-              backgroundColor: "#52c41a",
-              borderRadius: "50%",
-            }}
-          />
-          <div style={{ fontSize: "13px", color: "#8c8c8c" }}>
-            <span style={{ fontWeight: "600", color: "#262626" }}>Free</span>{" "}
-            Open Source
-          </div>
-        </div>
-        <div
-          style={{ width: "1px", height: "20px", backgroundColor: "#e8e8e8" }}
-        />
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div
-            style={{
-              width: "8px",
-              height: "8px",
-              backgroundColor: "#1890ff",
-              borderRadius: "50%",
-            }}
-          />
-          <div style={{ fontSize: "13px", color: "#8c8c8c" }}>
-            <span style={{ fontWeight: "600", color: "#262626" }}>99.9%</span>{" "}
-            Uptime
-          </div>
-        </div>
-        <div
-          style={{ width: "1px", height: "20px", backgroundColor: "#e8e8e8" }}
-        />
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div
-            style={{
-              width: "8px",
-              height: "8px",
-              backgroundColor: "#722ed1",
-              borderRadius: "50%",
-            }}
-          />
-          <div style={{ fontSize: "13px", color: "#8c8c8c" }}>
-            <span style={{ fontWeight: "600", color: "#262626" }}>24/7</span>{" "}
-            Support
-          </div>
-        </div>
-      </div>
-
-      {/* Features Preview */}
-      <Card title="What you'll get" style={{ marginTop: "24px" }}>
-        <Row gutter={[16, 16]}>
-          <Col span={8}>
-            <div style={{ textAlign: "center" }}>
-              <Icon
-                icon="mdi:database"
-                style={{
-                  fontSize: "24px",
-                  color: "#52c41a",
-                  marginBottom: "8px",
-                }}
-              />
-              <div style={{ fontWeight: 500, marginBottom: "4px" }}>
-                Database Ready
-              </div>
-              <div style={{ fontSize: "12px", color: "#8c8c8c" }}>
-                Connect your own database or use the embedded option
-              </div>
-            </div>
-          </Col>
-          <Col span={8}>
-            <div style={{ textAlign: "center" }}>
-              <CloudOutlined
-                style={{
-                  fontSize: "24px",
-                  color: "#1890ff",
-                  marginBottom: "8px",
-                }}
-              />
-              <div style={{ fontWeight: 500, marginBottom: "4px" }}>
-                GraphQL API
-              </div>
-              <div style={{ fontSize: "12px", color: "#8c8c8c" }}>
-                Auto-generated GraphQL API based on your data models
-              </div>
-            </div>
-          </Col>
-          <Col span={8}>
-            <div style={{ textAlign: "center" }}>
-              <ProjectOutlined
-                style={{
-                  fontSize: "24px",
-                  color: "#722ed1",
-                  marginBottom: "8px",
-                }}
-              />
-              <div style={{ fontWeight: 500, marginBottom: "4px" }}>
-                Admin Console
-              </div>
-              <div style={{ fontSize: "12px", color: "#8c8c8c" }}>
-                Full-featured admin interface for managing your data
-              </div>
-            </div>
-          </Col>
-        </Row>
-      </Card>
     </div>
   );
 };

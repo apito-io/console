@@ -1,14 +1,15 @@
-import React from "react";
-import { Table, Tag, Space, Button, Popconfirm } from "antd";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
-import type { ColumnType } from "antd/lib/table";
-import type { GetProjectRolesQuery } from "../../generated/graphql";
-import type { RoleTableData } from "../../types/roles";
+import React from 'react';
+import { Table, Tag, Space, Button, Popconfirm } from 'antd';
+import type { ColumnType } from 'antd/es/table';
+import type { GetProjectRolesQuery } from '../../generated_gql/tanstack-query';
+import type { RoleTableData } from '../../types/roles';
+import { Copy, Pencil, Trash2 } from 'lucide-react';
 
 interface RolesTableProps {
   rolesData: GetProjectRolesQuery | undefined;
   loading: boolean;
   onEditRole: (roleKey: string) => void;
+  onDuplicateRole: (roleKey: string) => void;
   onDeleteRole: (roleKey: string) => void;
   deleteLoading: boolean;
 }
@@ -17,6 +18,7 @@ const RolesTable: React.FC<RolesTableProps> = ({
   rolesData,
   loading,
   onEditRole,
+  onDuplicateRole,
   onDeleteRole,
   deleteLoading,
 }) => {
@@ -28,60 +30,52 @@ const RolesTable: React.FC<RolesTableProps> = ({
     name: key,
     identifier: key,
     system_generated: rolesObj[key]?.system_generated || false,
-    no_of_users: rolesObj[key]?.no_of_users || 0,
     is_admin: rolesObj[key]?.is_admin || false,
   }));
 
   const columns: ColumnType<RoleTableData>[] = [
     {
-      title: "Name",
-      dataIndex: "name",
-      key: "name",
-      render: (text: string) => (
-        <span style={{ textTransform: "capitalize" }}>{text}</span>
-      ),
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text: string) => <span className="mono-badge">{text}</span>,
     },
     {
-      title: "Identifier",
-      dataIndex: "identifier",
-      key: "identifier",
+      title: 'Identifier',
+      dataIndex: 'identifier',
+      key: 'identifier',
       render: (text: string) => <Tag>{text}</Tag>,
     },
     {
-      title: "System Generated",
-      dataIndex: "system_generated",
-      key: "system_generated",
-      align: "center",
-      render: (systemGenerated: boolean) => (
-        <Tag color={systemGenerated ? "green" : "blue"}>
-          {systemGenerated ? "Yes" : "No"}
-        </Tag>
+      title: 'Flags',
+      key: 'flags',
+      render: (_, record) => (
+        <Space size={4} wrap>
+          {record.is_admin ? <Tag color="gold">Admin</Tag> : null}
+          {record.system_generated ? <Tag>System</Tag> : <Tag color="blue">Custom</Tag>}
+        </Space>
       ),
     },
     {
-      title: "Users",
-      dataIndex: "no_of_users",
-      key: "no_of_users",
-      align: "center",
-      render: (count: number) => (
-        <span>
-          {count} user{count !== 1 ? "s" : ""}
-        </span>
-      ),
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      align: "center",
+      title: 'Actions',
+      key: 'actions',
+      align: 'center',
       render: (_, record) => (
         <Space>
           <Button
             type="text"
-            icon={<EditOutlined />}
+            icon={<Pencil size={16} strokeWidth={1.75} />}
             onClick={() => onEditRole(record.key)}
             disabled={record.system_generated}
           >
             Edit
+          </Button>
+          <Button
+            type="text"
+            icon={<Copy size={16} strokeWidth={1.75} />}
+            onClick={() => onDuplicateRole(record.key)}
+          >
+            Duplicate
           </Button>
           <Popconfirm
             title="Delete Role"
@@ -89,14 +83,14 @@ const RolesTable: React.FC<RolesTableProps> = ({
             onConfirm={() => onDeleteRole(record.key)}
             okText="Yes"
             cancelText="No"
-            disabled={record.system_generated || deleteLoading}
+            disabled={record.system_generated || record.is_admin || deleteLoading}
           >
             <Button
               type="text"
               danger
-              icon={<DeleteOutlined />}
+              icon={<Trash2 size={16} strokeWidth={1.75} />}
               loading={deleteLoading}
-              disabled={record.system_generated}
+              disabled={record.system_generated || record.is_admin}
             >
               Delete
             </Button>
@@ -108,6 +102,7 @@ const RolesTable: React.FC<RolesTableProps> = ({
 
   return (
     <Table
+      className="mono-table"
       dataSource={tableData}
       columns={columns}
       loading={loading}
@@ -120,7 +115,7 @@ const RolesTable: React.FC<RolesTableProps> = ({
         showTotal: (total) => `Total ${total} roles`,
       }}
       locale={{
-        emptyText: "No roles found",
+        emptyText: 'No roles found',
       }}
     />
   );

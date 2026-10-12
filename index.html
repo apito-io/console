@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Apito Console</title>
     
@@ -44,12 +44,12 @@
     ></script>
     
     <!-- Apito Design System (Optional for Plugins) -->
-    <link rel="stylesheet" href="/apito-design-tokens.css">
-    <script src="/apito-plugin-utils.js"></script>
+    <link rel="stylesheet" href="%BASE_URL%apito-design-tokens.css">
+    <script src="%BASE_URL%apito-plugin-utils.js"></script>
   </head>
   <body>
     <!-- Runtime config from Docker/entrypoint (env.js); loaded before app so window.env is available -->
-    <script src="/env.js"></script>
+    <script src="%BASE_URL%env.js"></script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

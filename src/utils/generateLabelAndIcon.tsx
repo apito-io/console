@@ -1,28 +1,7 @@
 import React from "react";
-import {
-  CalendarOutlined,
-  EnvironmentFilled,
-  FileImageOutlined,
-  FontSizeOutlined,
-  PartitionOutlined,
-  MailOutlined,
-  PhoneOutlined,
-  UserOutlined,
-  HomeOutlined,
-  TagOutlined,
-  FileTextOutlined,
-  DatabaseOutlined,
-  CheckSquareOutlined,
-  UploadOutlined,
-  NumberOutlined,
-  GlobalOutlined,
-  EditOutlined,
-  UnorderedListOutlined,
-  SelectOutlined,
-  AppstoreOutlined,
-} from "@ant-design/icons";
 import { Space, Tag } from "antd";
 import { Icon } from "@iconify/react";
+import { Calendar, Database, FileText, GitBranch, Globe, Hash, Home, Image, LayoutGrid, List, ListChecks, Mail, MapPin, Pencil, Phone, SquareCheck, Tag as TagIcon, Type, Upload, User } from "lucide-react";
 
 interface FieldInfo {
   serial: number;
@@ -47,7 +26,7 @@ export const generateIcon = (field: FieldInfo): React.ReactNode => {
 
   // Email fields
   if (fieldLabel.includes("email") || fieldLabel.includes("mail")) {
-    return <MailOutlined />;
+    return <Mail size={16} strokeWidth={1.75} />;
   }
 
   // Phone fields
@@ -56,7 +35,7 @@ export const generateIcon = (field: FieldInfo): React.ReactNode => {
     fieldLabel.includes("tel") ||
     fieldLabel.includes("mobile")
   ) {
-    return <PhoneOutlined />;
+    return <Phone size={16} strokeWidth={1.75} />;
   }
 
   // Name fields
@@ -65,7 +44,7 @@ export const generateIcon = (field: FieldInfo): React.ReactNode => {
     fieldLabel.includes("title") ||
     fieldLabel.includes("label")
   ) {
-    return <UserOutlined />;
+    return <User size={16} strokeWidth={1.75} />;
   }
 
   // Address/Location fields
@@ -74,7 +53,7 @@ export const generateIcon = (field: FieldInfo): React.ReactNode => {
     fieldLabel.includes("location") ||
     fieldLabel.includes("street")
   ) {
-    return <HomeOutlined />;
+    return <Home size={16} strokeWidth={1.75} />;
   }
 
   // Slogan/Description/Bio fields
@@ -84,7 +63,7 @@ export const generateIcon = (field: FieldInfo): React.ReactNode => {
     fieldLabel.includes("description") ||
     fieldLabel.includes("about")
   ) {
-    return <TagOutlined />;
+    return <TagIcon size={16} strokeWidth={1.75} />;
   }
 
   // Logo/Image/File fields
@@ -94,7 +73,7 @@ export const generateIcon = (field: FieldInfo): React.ReactNode => {
     fieldLabel.includes("picture") ||
     fieldLabel.includes("avatar")
   ) {
-    return <FileImageOutlined />;
+    return <Image size={16} strokeWidth={1.75} />;
   }
 
   // URL/Website fields
@@ -103,7 +82,7 @@ export const generateIcon = (field: FieldInfo): React.ReactNode => {
     fieldLabel.includes("website") ||
     fieldLabel.includes("link")
   ) {
-    return <GlobalOutlined />;
+    return <Globe size={16} strokeWidth={1.75} />;
   }
 
   // Now check by field type
@@ -112,33 +91,33 @@ export const generateIcon = (field: FieldInfo): React.ReactNode => {
       // Check input_type for specific text variations
       switch (field.input_type) {
         case "email":
-          return <MailOutlined />;
+          return <Mail size={16} strokeWidth={1.75} />;
         case "phone":
-          return <PhoneOutlined />;
+          return <Phone size={16} strokeWidth={1.75} />;
         case "url":
-          return <GlobalOutlined />;
+          return <Globe size={16} strokeWidth={1.75} />;
         default:
-          return <FontSizeOutlined />;
+          return <Type size={16} strokeWidth={1.75} />;
       }
 
     case "multiline":
-      return <EditOutlined />;
+      return <Pencil size={16} strokeWidth={1.75} />;
 
     case "date":
-      return <CalendarOutlined />;
+      return <Calendar size={16} strokeWidth={1.75} />;
 
     case "number":
       if (field.input_type === "double") {
-        return <NumberOutlined />;
+        return <Hash size={16} strokeWidth={1.75} />;
       } else {
-        return <NumberOutlined />;
+        return <Hash size={16} strokeWidth={1.75} />;
       }
 
     case "object":
-      return <DatabaseOutlined />;
+      return <Database size={16} strokeWidth={1.75} />;
 
     case "repeated":
-      return <AppstoreOutlined />;
+      return <LayoutGrid size={16} strokeWidth={1.75} />;
 
     case "list": {
       const list = field?.validation?.fixed_list_elements || [];
@@ -148,7 +127,7 @@ export const generateIcon = (field: FieldInfo): React.ReactNode => {
         (list.length > 0 && !multiChoice)
       ) {
         // dropdown
-        return <SelectOutlined />;
+        return <ListChecks size={16} strokeWidth={1.75} />;
       }
       if (
         field?.field_sub_type === "multiselect" ||
@@ -162,25 +141,25 @@ export const generateIcon = (field: FieldInfo): React.ReactNode => {
         (list.length === 0 && !multiChoice)
       ) {
         // dynamic list
-        return <UnorderedListOutlined />;
+        return <List size={16} strokeWidth={1.75} />;
       }
-      return <UnorderedListOutlined />;
+      return <List size={16} strokeWidth={1.75} />;
     }
 
     case "boolean":
-      return <CheckSquareOutlined />;
+      return <SquareCheck size={16} strokeWidth={1.75} />;
 
     case "media":
-      return <UploadOutlined />;
+      return <Upload size={16} strokeWidth={1.75} />;
 
     case "geo":
-      return <EnvironmentFilled />;
+      return <MapPin size={16} strokeWidth={1.75} />;
 
     case "relation":
-      return <PartitionOutlined />;
+      return <GitBranch size={16} strokeWidth={1.75} />;
 
     default:
-      return <FileTextOutlined />;
+      return <FileText size={16} strokeWidth={1.75} />;
   }
 };
 

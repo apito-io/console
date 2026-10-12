@@ -1,152 +1,115 @@
 import {
-  CloudServerOutlined,
-  DatabaseOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
-  EyeOutlined,
-  GoldOutlined,
-  HddOutlined,
-  MoreOutlined,
-  RocketOutlined,
-  SettingOutlined,
-  CopyOutlined,
-  ExclamationCircleOutlined,
-} from "@ant-design/icons";
-import {
-  Avatar,
-  Breadcrumb,
   Button,
+  Checkbox,
   Drawer,
   Dropdown,
   Empty,
   Input,
   Modal,
-  Table,
   Tag,
   Tooltip,
   Typography,
   message,
-  theme,
 } from "antd";
+import type { MenuProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import React, { useState } from "react";
-import { useCookies } from "react-cookie";
-import { useNavigate } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import { useNavigate } from "../../router/navigation";
 import { useAuth } from "../../contexts/AuthContext";
-import { useProjectList } from "../../hooks/useProjectList";
+import { useConsoleExtensions } from "../../contexts/ConsoleExtensionsContext";
+import {
+  useProjectsQuery,
+  useSwitchProjectMutation,
+  useDeleteProjectMutation,
+} from "./queries";
 import type { Project } from "../../types/project";
+import { Icon } from "@iconify/react";
+import { canOfferRemoteDatabaseDelete } from "./remoteDatabaseDelete";
+import { PROJECT_TEMPLATES } from "../../constants/projectTemplates";
+import { useProjectSpaceMeta } from "../../contexts/ProjectSpaceMetaContext";
+import { MonoTableCard } from "../../components/console";
+import "../../components/console/ConsoleShell.css";
+import {
+  CircleAlert,
+  Copy,
+  Database,
+  Download,
+  Ellipsis,
+  Eye,
+  Rocket,
+  Settings,
+  Trash2,
+  Users,
+} from "lucide-react";
 
 const { Title, Text } = Typography;
 
-// Demo project data for now - will be replaced with real data
-const PROJECT_TEMPLATES = [
-  {
-    id: "template-1",
-    name: "E-commerce Platform",
-    description:
-      "Complete online store with product catalog, cart, and payment processing",
-    project_type: "saas" as const,
-    db: "postgresql",
-    status: "TEMPLATE" as const,
-    avatar: "EC",
-    color: "#1890ff",
-  },
-  {
-    id: "template-2",
-    name: "SaaS Dashboard",
-    description:
-      "Multi-tenant SaaS application with user management and analytics",
-    project_type: "saas" as const,
-    db: "postgresql",
-    status: "TEMPLATE" as const,
-    avatar: "SD",
-    color: "#52c41a",
-  },
-  {
-    id: "template-3",
-    name: "Content Management",
-    description: "Blog and content management system with rich text editor",
-    project_type: "general" as const,
-    db: "postgresql",
-    status: "TEMPLATE" as const,
-    avatar: "CM",
-    color: "#722ed1",
-  },
-  {
-    id: "template-4",
-    name: "Task Management",
-    description: "Project and task tracking with team collaboration features",
-    project_type: "general" as const,
-    db: "postgresql",
-    status: "TEMPLATE" as const,
-    avatar: "TM",
-    color: "#fa8c16",
-  },
-  {
-    id: "template-5",
-    name: "Inventory System",
-    description: "Warehouse and inventory management with barcode scanning",
-    project_type: "general" as const,
-    db: "postgresql",
-    status: "TEMPLATE" as const,
-    avatar: "IS",
-    color: "#eb2f96",
-  },
-];
+type ProjectRowMenuItem = NonNullable<MenuProps["items"]>[number];
 
-const ProjectsPage: React.FC = () => {
+function templateInitials(label: string): string {
+  const parts = label.split(/[\s-]+/).filter(Boolean);
+  if (parts.length === 0) return "TP";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+const ProjectsPage: React.FC<{
+  createAction?: React.ReactNode;
+  quotaBanner?: React.ReactNode;
+  extraRowMenuItems?: (project: Project) => ProjectRowMenuItem[];
+}> = ({ createAction, quotaBanner, extraRowMenuItems }) => {
   const navigate = useNavigate();
-  const { token } = theme.useToken();
   const { decodeTokenData } = useAuth();
-  const { data, isLoading, error, refetch, switchProject, deleteProject } =
-    useProjectList();
+  const projectsQuery = useProjectsQuery();
+  const switchMutation = useSwitchProjectMutation();
+  const deleteMutation = useDeleteProjectMutation();
+  const data = projectsQuery.data ?? null;
+  const isLoading = projectsQuery.isPending || projectsQuery.isLoading;
+  const error = projectsQuery.error ? projectsQuery.error.message : null;
+  const refetch = () => projectsQuery.refetch();
+  const switchProject = (id: string) => switchMutation.mutateAsync(id);
+  const deleteProject = (payload: { id: string; delete_database?: boolean }) =>
+    deleteMutation.mutateAsync(payload);
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState("");
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteRemoteDatabase, setDeleteRemoteDatabase] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState(false);
 
   const tokenData = decodeTokenData();
   const projects = data?.body || [];
-  const [, , removeCookie] = useCookies(["temp_tenant_id"]);
+  const { onBeforeProjectSwitch, resolveConsoleEntryPath } =
+    useConsoleExtensions();
 
-  // Function to get database icon based on driver type
   const getDatabaseIcon = (db: string | undefined) => {
-    if (!db || db.toLowerCase().includes("coredb")) {
-      return (
-        <img
-          src="/logo.svg"
-          alt="Apito"
-          style={{ width: "16px", height: "16px" }}
-        />
-      );
+    const dbLower = (db || "").toLowerCase();
+    const brand = (icon: string, color: string, label: string) => (
+      <Icon icon={icon} width={16} height={16} color={color} aria-label={label} />
+    );
+    if (dbLower.includes("sqlite")) {
+      return brand("simple-icons:sqlite", "#003B57", "SQLite");
     }
-
-    const dbLower = db.toLowerCase();
-    if (dbLower.includes("postgres") || dbLower.includes("postgresql")) {
-      return <CloudServerOutlined style={{ color: "#336791" }} />;
+    if (dbLower.includes("postgres")) {
+      return brand("simple-icons:postgresql", "#4169E1", "PostgreSQL");
     }
-    if (dbLower.includes("mongo") || dbLower.includes("mongodb")) {
-      return <HddOutlined style={{ color: "#47A248" }} />;
-    }
-    if (dbLower.includes("arango") || dbLower.includes("arangodb")) {
-      return <GoldOutlined style={{ color: "#DDA76A" }} />;
+    if (dbLower.includes("mariadb")) {
+      return brand("simple-icons:mariadb", "#003545", "MariaDB");
     }
     if (dbLower.includes("mysql")) {
-      return <DatabaseOutlined style={{ color: "#00618A" }} />;
+      return brand("simple-icons:mysql", "#4479A1", "MySQL");
     }
-    // Default Apito Managed DB icon
-    return (
-      <img
-        src="/logo.svg"
-        alt="Apito"
-        style={{ width: "16px", height: "16px" }}
-      />
-    );
+    if (dbLower.includes("mongo")) {
+      return brand("simple-icons:mongodb", "#47A248", "MongoDB");
+    }
+    return <Database size={16} strokeWidth={1.75} className="console-icon-muted" aria-label="Database" />;
   };
 
-  // Function to get database display name
   const getDatabaseName = (db: string | undefined) => {
     if (!db || db.toLowerCase().includes("coredb")) {
       return "Apito Managed DB";
@@ -154,82 +117,115 @@ const ProjectsPage: React.FC = () => {
     return db;
   };
 
-  // Function to generate consistent avatar color based on project name
-  const generateAvatarColor = (name: string) => {
-    // Simple hash function to ensure consistent color for same name
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-
-    // Predefined nice colors for avatars
-    const colors = [
-      "#f56a00",
-      "#7265e6",
-      "#ffbf00",
-      "#00a2ae",
-      "#87d068",
-      "#2db7f5",
-      "#722ed1",
-      "#eb2f96",
-      "#52c41a",
-      "#fa8c16",
-      "#1890ff",
-      "#fa541c",
-      "#13c2c2",
-      "#a0d911",
-      "#cf1322",
-      "#531dab",
-      "#c41d7f",
-      "#096dd9",
-      "#ad4e00",
-      "#08979c",
-    ];
-
-    return colors[Math.abs(hash) % colors.length];
-  };
-
   const handleActiveProject = (id: string) => {
     setActiveProjectId(id);
     setSettingsDrawerOpen(true);
   };
 
-  const handleStartNewProject = () => {
-    navigate("/projects/new");
+  const handleStartNewProject = (projectType: "general" | "saas") => {
+    navigate("/projects/new", { state: { project_type: projectType } });
   };
 
-  const handleCopyTemplate = (template: any) => {
-    message.info(`Starting new project from ${template.name} template...`);
-    // Navigate to new project page with template pre-selected
+  const headerActions = useMemo(
+    () => (
+      <>
+        {createAction ?? (
+          <>
+            <Tooltip
+              title="One product and one database, with no customer separation. Example: a company blog, or a notebook like Todo Notes."
+            >
+              <Button
+                type="primary"
+                icon={<Rocket size={16} strokeWidth={1.75} />}
+                onClick={() => handleStartNewProject("general")}
+              >
+                Create General Project
+              </Button>
+            </Tooltip>
+            <Tooltip
+              title="One product used by many customers. Each customer is a tenant and only sees their own data. Example: gym software where each gym is a tenant."
+            >
+              <Button
+                icon={<Users size={16} strokeWidth={1.75} />}
+                onClick={() => handleStartNewProject("saas")}
+              >
+                Create SaaS Project
+              </Button>
+            </Tooltip>
+          </>
+        )}
+        <Button
+          icon={<Download size={16} strokeWidth={1.75} />}
+          href="https://apito.io/docs/cli-getting-started/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mono-icon-btn"
+        >
+          Install CLI
+        </Button>
+      </>
+    ),
+    [handleStartNewProject, createAction],
+  );
+
+  useProjectSpaceMeta({ fullWidth: true });
+
+  const handleCopyTemplate = (template: (typeof PROJECT_TEMPLATES)[number]) => {
     navigate("/projects/new", {
-      state: {
-        template: template.name,
-        project_type: template.project_type,
-      },
+      state: { template: template.id },
     });
   };
 
   const showDeleteConfirmation = (project: Project) => {
     setProjectToDelete(project);
     setDeleteConfirmText("");
+    setDeleteRemoteDatabase(false);
     setDeleteModalVisible(true);
   };
 
+  const resetDeleteModal = () => {
+    setDeleteModalVisible(false);
+    setProjectToDelete(null);
+    setDeleteConfirmText("");
+    setDeleteRemoteDatabase(false);
+  };
+
   const handleDeleteConfirm = async () => {
-    if (deleteConfirmText !== "DELETE" || !projectToDelete) {
-      message.error("Please type DELETE to confirm");
+    if (!projectToDelete) {
+      return;
+    }
+    if (deleteConfirmText.trim() !== projectToDelete.id) {
+      message.error(
+        `Please type the project id (${projectToDelete.id}) to confirm`,
+      );
       return;
     }
 
     try {
       setDeletingProject(true);
-      await deleteProject(projectToDelete.id);
+      const response = await deleteProject({
+        id: projectToDelete.id,
+        delete_database: deleteRemoteDatabase,
+      });
+      const warning = response.data?.message;
+      if (warning) {
+        message.warning(warning);
+      }
       message.success("Project deleted successfully");
-      setDeleteModalVisible(false);
-      setProjectToDelete(null);
-      setDeleteConfirmText("");
-    } catch {
-      message.error("Failed to delete project");
+      resetDeleteModal();
+    } catch (err: unknown) {
+      const apiMessage =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: { message?: string } } }).response
+          ?.data?.message === "string"
+          ? (err as { response: { data: { message: string } } }).response.data
+              .message
+          : err instanceof Error
+            ? err.message
+            : "Failed to delete project";
+      message.error(apiMessage);
     } finally {
       setDeletingProject(false);
     }
@@ -237,15 +233,13 @@ const ProjectsPage: React.FC = () => {
 
   const handleCardClick = async (project: Project) => {
     try {
-      // Remove temp_tenant_id cookie if switching to non-SaaS project
-      if (project.project_type !== 1) {
-        removeCookie("temp_tenant_id", { path: "/" });
-      }
+      onBeforeProjectSwitch?.(project);
 
       await switchProject(project.id);
       message.success(`Switched to ${project.name}`);
-      // Redirect to console content after successful project switch
-      navigate("/console/content");
+      const entryPath =
+        resolveConsoleEntryPath?.(project) ?? "/console/content";
+      navigate(entryPath);
     } catch {
       message.error("Failed to switch project");
     }
@@ -260,87 +254,62 @@ const ProjectsPage: React.FC = () => {
     if (diffInDays === 0) return "Today";
     if (diffInDays === 1) return "1 day ago";
     if (diffInDays < 30) return `${diffInDays} days ago`;
-    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`;
-    return `${Math.floor(diffInDays / 365)} years ago`;
+    if (diffInDays < 365) {
+      const months = Math.max(1, Math.floor(diffInDays / 30));
+      return months === 1 ? "1 month ago" : `${months} months ago`;
+    }
+    const years = Math.floor(diffInDays / 365);
+    return years === 1 ? "1 year ago" : `${years} years ago`;
   };
 
-  const getMenuItems = (project: Project, isDemoProject = false) => [
+  const getMenuItems = (project: Project, isDemoProject = false): ProjectRowMenuItem[] => [
     {
       key: "settings",
       label: "Project Settings",
-      icon: <SettingOutlined />,
+      icon: <Settings size={16} strokeWidth={1.75} />,
       onClick: () => handleActiveProject(project.id),
       disabled: isDemoProject,
     },
+    ...(extraRowMenuItems?.(project) || []),
     {
       key: "delete",
       label: "Delete Project",
-      icon: <DeleteOutlined />,
+      icon: <Trash2 size={16} strokeWidth={1.75} />,
       onClick: () => showDeleteConfirmation(project),
       disabled: isDemoProject,
       danger: true,
     },
   ];
 
-  // Define table columns matching the database view design
-  const getProjectColumns = (isDemoSection = false): ColumnsType<Project> => [
+  const getProjectColumns = (
+    isDemoSection = false,
+  ): ColumnsType<Project> => [
     {
       title: "Name",
       dataIndex: "name",
       key: "name",
-      width: "30%",
+      width: 260,
+      fixed: "left" as const,
+      ellipsis: true,
       render: (name: string, project: Project) => (
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ position: "relative" }}>
-            <Avatar
-              size={40}
-              style={{
-                backgroundColor:
-                  project.color || generateAvatarColor(project.name),
-                fontWeight: 600,
-                fontSize: "16px",
-              }}
-            >
+        <div className="console-cell-row">
+          <div className="mono-avatar-wrap">
+            <div className="mono-avatar">
               {project.avatar || name.substring(0, 2).toUpperCase()}
-            </Avatar>
-            {project.status === "LIVE" && (
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: -2,
-                  right: -2,
-                  width: 12,
-                  height: 12,
-                  borderRadius: "50%",
-                  backgroundColor: token.colorSuccess,
-                  border: `2px solid ${token.colorBgContainer}`,
-                }}
-              />
-            )}
-          </div>
-          <div>
-            <div
-              style={{
-                fontWeight: 500,
-                color: token.colorText,
-                fontSize: 14,
-                lineHeight: 1.4,
-              }}
-            >
-              {name}
             </div>
-            {project.description && (
-              <div
-                style={{
-                  color: token.colorTextSecondary,
-                  fontSize: 12,
-                  lineHeight: 1.4,
-                  marginTop: 2,
-                }}
-              >
-                {project.description}
-              </div>
-            )}
+            {project.status === "LIVE" ? (
+              <span className="mono-avatar--live-dot" />
+            ) : null}
+          </div>
+          <div className="console-cell-body">
+            <Tooltip title={name}>
+              <div className="mono-cell-title">{name}</div>
+            </Tooltip>
+            {project.description ? (
+              <Tooltip title={project.description}>
+                <div className="mono-cell-subtitle">{project.description}</div>
+              </Tooltip>
+            ) : null}
           </div>
         </div>
       ),
@@ -349,25 +318,11 @@ const ProjectsPage: React.FC = () => {
       title: "Database",
       dataIndex: "db",
       key: "database",
-      width: "20%",
+      width: 132,
       render: (db: string) => (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div
-            style={{
-              width: 24,
-              height: 24,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 4,
-              backgroundColor: token.colorBgTextHover,
-            }}
-          >
-            {getDatabaseIcon(db)}
-          </div>
-          <span style={{ fontSize: 14, color: token.colorText }}>
-            {getDatabaseName(db)}
-          </span>
+        <div className="console-cell-row console-cell-row--sm">
+          <div className="console-db-icon-wrap">{getDatabaseIcon(db)}</div>
+          <span className="console-cell-text">{getDatabaseName(db)}</span>
         </div>
       ),
     },
@@ -375,59 +330,79 @@ const ProjectsPage: React.FC = () => {
       title: "Project Type",
       dataIndex: "project_type",
       key: "project_type",
-      width: "15%",
-      render: (project_type: number) => (
-        <Tag
-          color={
-            project_type === 1 ? "blue" : "green"
-          }
-          style={{
-            fontSize: 12,
-            fontWeight: 500,
-            borderRadius: 4,
-            textTransform: "capitalize",
-          }}
-        >
+      width: 96,
+      align: "center",
+      render: (project_type: number | undefined) => (
+        <span className="mono-badge">
           {project_type === 1 ? "SaaS" : "General"}
-        </Tag>
+        </span>
       ),
+    },
+    {
+      title: "Tenant model",
+      key: "tenant_model_name",
+      width: 100,
+      render: (_: unknown, project: Project) =>
+        project.project_type === 1 && project.tenant_model_name ? (
+          <span className="mono-badge">{project.tenant_model_name}</span>
+        ) : (
+          <span className="mono-cell-subtitle">—</span>
+        ),
+    },
+    {
+      title: "Role",
+      dataIndex: "role",
+      key: "role",
+      width: 88,
+      align: "center",
+      render: (role: string | undefined) =>
+        role ? (
+          <span className="mono-badge">{role}</span>
+        ) : (
+          <span className="mono-cell-subtitle">—</span>
+        ),
     },
     {
       title: "Created",
       dataIndex: "created_at",
       key: "created",
-      width: "15%",
+      width: 118,
       render: (date: string) => (
-        <div style={{ fontSize: 14, color: token.colorText }}>
-          {getRelativeTime(date)}
-        </div>
+        <span className="console-cell-text">{getRelativeTime(date)}</span>
       ),
     },
     {
       title: "Unique ID",
       dataIndex: "id",
       key: "id",
-      width: "10%",
-      render: (id: string) => <Tag color="blue">{id}</Tag>,
+      width: 148,
+      render: (id: string) => (
+        <Tooltip title={id}>
+          <code className="console-id-code">{id}</code>
+        </Tooltip>
+      ),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: "10%",
+      width: 96,
+      align: "center",
       render: (status: string) => (
-        <Tag
-          color={status === "LIVE" ? "green" : "orange"}
-          style={{ fontSize: 12, fontWeight: 500, borderRadius: 4 }}
+        <span
+          className={`mono-badge${
+            status === "LIVE" ? " mono-badge--live" : ""
+          }`}
         >
           {status || "Active"}
-        </Tag>
+        </span>
       ),
     },
     {
       title: "",
       key: "actions",
-      width: "10%",
+      width: 52,
+      fixed: "right" as const,
       render: (_, project) => (
         <div onClick={(e) => e.stopPropagation()}>
           {!isDemoSection ? (
@@ -438,26 +413,18 @@ const ProjectsPage: React.FC = () => {
             >
               <Button
                 type="text"
-                icon={<MoreOutlined />}
+                icon={<Ellipsis size={16} strokeWidth={1.75} />}
                 size="small"
-                style={{
-                  color: token.colorTextTertiary,
-                  width: 32,
-                  height: 32,
-                }}
+                className="mono-icon-btn"
               />
             </Dropdown>
           ) : (
             <Tooltip title="Demo project - view only">
               <Button
                 type="text"
-                icon={<EyeOutlined />}
+                icon={<Eye size={16} strokeWidth={1.75} />}
                 size="small"
-                style={{
-                  color: token.colorTextTertiary,
-                  width: 32,
-                  height: 32,
-                }}
+                className="mono-icon-btn"
               />
             </Tooltip>
           )}
@@ -466,131 +433,52 @@ const ProjectsPage: React.FC = () => {
     },
   ];
 
-  // Define template columns for project templates
-  const getTemplateColumns = (): ColumnsType<any> => [
+  const getTemplateColumns = (): ColumnsType<
+    (typeof PROJECT_TEMPLATES)[number]
+  > => [
     {
       title: "Name",
-      dataIndex: "name",
+      dataIndex: "title",
       key: "name",
-      width: "35%",
-      render: (name: string, template: any) => (
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ position: "relative" }}>
-            <Avatar
-              size={40}
-              style={{
-                backgroundColor: template.color,
-                fontWeight: 600,
-                fontSize: "16px",
-              }}
-            >
-              {template.avatar}
-            </Avatar>
-          </div>
-          <div>
-            <div
-              style={{
-                fontWeight: 500,
-                color: token.colorText,
-                fontSize: 14,
-                lineHeight: 1.4,
-              }}
-            >
-              {name}
-            </div>
-            {template.description && (
-              <div
-                style={{
-                  color: token.colorTextSecondary,
-                  fontSize: 12,
-                  lineHeight: 1.4,
-                  marginTop: 2,
-                }}
-              >
-                {template.description}
-              </div>
-            )}
+      width: 280,
+      render: (title: string, template) => (
+        <div className="console-cell-row console-cell-row--md">
+          <div className="mono-avatar">{templateInitials(template.label)}</div>
+          <div className="console-cell-body">
+            <div className="mono-cell-title">{title}</div>
+            {template.description ? (
+              <div className="mono-cell-subtitle">{template.description}</div>
+            ) : null}
           </div>
         </div>
       ),
     },
     {
-      title: "Database",
-      dataIndex: "db",
-      key: "database",
-      width: "20%",
-      render: (db: string) => (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div
-            style={{
-              width: 24,
-              height: 24,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 4,
-              backgroundColor: token.colorBgTextHover,
-            }}
-          >
-            {getDatabaseIcon(db)}
-          </div>
-          <span style={{ fontSize: 14, color: token.colorText }}>
-            {getDatabaseName(db)}
-          </span>
+      title: "Schema design",
+      dataIndex: "models",
+      key: "models",
+      render: (models: string[]) => (
+        <div className="console-template-models">
+          {models.map((model) => (
+            <Tag key={model}>{model}</Tag>
+          ))}
         </div>
-      ),
-    },
-    {
-      title: "Project Type",
-      dataIndex: "project_type",
-      key: "project_type",
-      width: "20%",
-      render: (type: string) => (
-        <Tag
-          color={type === "saas" ? "blue" : "green"}
-          style={{
-            fontSize: 12,
-            fontWeight: 500,
-            borderRadius: 4,
-            textTransform: "capitalize",
-          }}
-        >
-          {type === "saas" ? "SaaS" : "General"}
-        </Tag>
-      ),
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      width: "15%",
-      render: (status: string) => (
-        <Tag
-          color="purple"
-          style={{ fontSize: 12, fontWeight: 500, borderRadius: 4 }}
-        >
-          {status}
-        </Tag>
       ),
     },
     {
       title: "",
       key: "actions",
-      width: "10%",
+      width: 120,
+      align: "right",
       render: (_, template) => (
         <div onClick={(e) => e.stopPropagation()}>
           <Button
             type="primary"
             size="small"
-            icon={<CopyOutlined />}
+            icon={<Copy size={16} strokeWidth={1.75} />}
             onClick={() => handleCopyTemplate(template)}
-            style={{
-              padding: "4px 12px",
-              fontSize: 12,
-              height: 28,
-            }}
           >
-            Copy This
+            Use this
           </Button>
         </div>
       ),
@@ -599,10 +487,10 @@ const ProjectsPage: React.FC = () => {
 
   if (error) {
     return (
-      <div style={{ padding: "24px", textAlign: "center" }}>
+      <div className="console-loading-state">
         <Title level={3}>Error loading projects</Title>
         <Text type="danger">{error}</Text>
-        <div style={{ marginTop: "16px" }}>
+        <div className="console-loading-state-text">
           <Button type="primary" onClick={refetch}>
             Retry
           </Button>
@@ -612,69 +500,34 @@ const ProjectsPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: "25px", margin: "0 auto" }}>
-      {/* Breadcrumb Navigation - like Turso */}
-      <div style={{ marginBottom: "24px" }}>
-        <Breadcrumb
-          style={{ fontSize: "14px" }}
-          items={[
-            {
-              title: (
-                <span style={{ color: token.colorTextSecondary }}>
-                  Projects
-                </span>
-              ),
-            },
-          ]}
-        />
-      </div>
-
-      {/* Action Buttons Row - like Turso's Create Database/Create Group */}
-      <div style={{ display: "flex", gap: "12px", marginBottom: "32px" }}>
-        <Button
-          type="primary"
-          icon={<RocketOutlined />}
-          onClick={handleStartNewProject}
-        >
-          Create Project
-        </Button>
-        <Button
-          icon={<DownloadOutlined />}
-          href="https://apito.io/docs/cli"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Install Apito CLI
-        </Button>
-      </div>
-
-      {/* Projects Table - No card wrapper to match Turso design */}
-      <div style={{ marginBottom: 48 }}>
-        <Table
-          columns={getProjectColumns()}
-          dataSource={projects.length > 0 ? projects : []}
-          loading={isLoading}
-          rowKey="id"
-          scroll={{ x: 800 }}
-          size="middle"
-          pagination={{
+    <div className="console-page">
+      {quotaBanner}
+      <div className="console-page-toolbar">{headerActions}</div>
+      <MonoTableCard
+        className="mono-table-section"
+        tableProps={{
+          columns: getProjectColumns(),
+          dataSource: projects.length > 0 ? projects : [],
+          loading: isLoading,
+          rowKey: "id",
+          tableLayout: "fixed",
+          scroll: { x: 1280 },
+          size: "small",
+          pagination: {
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} of ${total} projects`,
             pageSizeOptions: ["10", "20", "50", "100"],
             defaultPageSize: 20,
-            style: { padding: "16px 24px" },
-            responsive: true,
-            size: "default",
-          }}
-          locale={{
+            size: "small",
+          },
+          locale: {
             emptyText: (
               <Empty
-                imageStyle={{ height: 80 }}
                 description={
                   <span>
-                    You haven't started any projects yet. Click{" "}
+                    You haven&apos;t started any projects yet. Click{" "}
                     <a
                       href="https://apito.io/docs/build-api-quick-start-guide"
                       target="_blank"
@@ -691,40 +544,33 @@ const ProjectsPage: React.FC = () => {
                 </Button>
               </Empty>
             ),
-          }}
-          onRow={(record) => ({
-            style: { cursor: "pointer" },
+          },
+          onRow: (record) => ({
+            className: "console-table-clickable",
             onClick: () => handleCardClick(record),
-          })}
+          }),
+        }}
+      />
+
+      <div className="mono-templates-section">
+        <h3 className="mono-section-title">Project Templates</h3>
+        <p className="mono-section-desc">Start with proven project structures</p>
+        <MonoTableCard
+          tableProps={{
+            columns: getTemplateColumns(),
+            dataSource: PROJECT_TEMPLATES,
+            rowKey: "id",
+            tableLayout: "fixed",
+            pagination: false,
+            size: "small",
+            onRow: (template) => ({
+              className: "console-table-clickable",
+              onClick: () => handleCopyTemplate(template),
+            }),
+          }}
         />
       </div>
 
-      {/* Project Templates Section */}
-      <div style={{ marginTop: 48 }}>
-        <div style={{ marginBottom: 24 }}>
-          <Title level={4} style={{ margin: 0, marginBottom: "8px" }}>
-            Project Templates
-          </Title>
-          <Text type="secondary">Start with proven project structures</Text>
-        </div>
-        <div>
-          <Table
-            columns={getTemplateColumns()}
-            dataSource={PROJECT_TEMPLATES}
-            rowKey="id"
-            pagination={false}
-            size="middle"
-            scroll={{ x: 800 }}
-            style={{
-              background: token.colorBgContainer,
-              border: `1px solid ${token.colorBorderSecondary}`,
-              borderRadius: "8px",
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Settings Drawer */}
       <Drawer
         title="Update project settings"
         placement="right"
@@ -737,47 +583,34 @@ const ProjectsPage: React.FC = () => {
           </Button>
         }
       >
-        {settingsDrawerOpen && (
+        {settingsDrawerOpen ? (
           <div>
             <Text>Project settings for: {activeProjectId}</Text>
-            <div style={{ marginTop: "16px" }}>
+            <div className="console-settings-stack">
               <Text type="secondary">
                 User: {tokenData?.email || "Unknown"}
               </Text>
             </div>
-            <div style={{ marginTop: "8px" }}>
+            <div className="console-settings-stack--sm">
               <Text type="secondary">
                 Role: {tokenData?.project_role || "Unknown"}
               </Text>
             </div>
-            <div style={{ marginTop: "8px" }}>
+            <div className="console-settings-stack--sm">
               <Text type="secondary">
                 Current Project: {tokenData?.project_id || "None"}
               </Text>
             </div>
-            {/* This will be replaced with actual project settings form */}
           </div>
-        )}
+        ) : null}
       </Drawer>
 
-      {/* Delete Confirmation Modal */}
       <Modal
         title="Delete Project"
         open={deleteModalVisible}
-        onCancel={() => {
-          setDeleteModalVisible(false);
-          setProjectToDelete(null);
-          setDeleteConfirmText("");
-        }}
+        onCancel={resetDeleteModal}
         footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setDeleteModalVisible(false);
-              setProjectToDelete(null);
-              setDeleteConfirmText("");
-            }}
-          >
+          <Button key="cancel" onClick={resetDeleteModal}>
             Cancel
           </Button>,
           <Button
@@ -785,50 +618,67 @@ const ProjectsPage: React.FC = () => {
             type="primary"
             danger
             loading={deletingProject}
-            disabled={deleteConfirmText !== "DELETE"}
+            disabled={
+              !projectToDelete ||
+              deleteConfirmText.trim() !== projectToDelete.id
+            }
             onClick={handleDeleteConfirm}
           >
             Delete Project
           </Button>,
         ]}
       >
-        <div
-          style={{
-            marginBottom: "16px",
-            padding: "12px 16px",
-            background: "#fff2f0",
-            border: "1px solid #ffccc7",
-            borderRadius: "6px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <ExclamationCircleOutlined style={{ color: "#cf1322", fontSize: 20, marginRight: 8 }} />
-          <Text style={{ color: "#cf1322", fontWeight: 500 }}>
-            This action cannot be undone. This will permanently delete project{" "}
-            <Tag color="red" style={{ fontWeight: 600 }}>{projectToDelete?.name}</Tag>
-            and all of its data.
-          </Text>
+        <div className="console-alert console-alert--error console-delete-warning">
+          <div className="console-inline-row">
+            <CircleAlert
+              size={16}
+              strokeWidth={1.75}
+              className="console-icon-danger"
+            />
+            <Text className="console-text-medium">
+              This action cannot be undone. This will permanently delete project{" "}
+              <Tag className="mono-badge--danger">{projectToDelete?.name}</Tag>
+              and all of its data.
+            </Text>
+          </div>
         </div>
 
-        <div style={{ marginBottom: "16px" }}>
+        <div className="console-mb-md">
           <Text>
-            Please type{" "}
+            Please type the project id{" "}
             <Text code strong>
-              DELETE
+              {projectToDelete?.id}
             </Text>{" "}
             to confirm:
           </Text>
         </div>
 
         <Input
-          placeholder="Type DELETE to confirm"
+          placeholder={
+            projectToDelete ? `Type ${projectToDelete.id}` : "Project id"
+          }
           value={deleteConfirmText}
           onChange={(e) => setDeleteConfirmText(e.target.value)}
           onPressEnter={handleDeleteConfirm}
-          style={{ fontFamily: "monospace" }}
+          className="console-monospace-input"
         />
+
+        {canOfferRemoteDatabaseDelete(projectToDelete) ? (
+          <Checkbox
+            checked={deleteRemoteDatabase}
+            onChange={(e) => setDeleteRemoteDatabase(e.target.checked)}
+          >
+            Also delete remote database
+          </Checkbox>
+        ) : null}
+        {canOfferRemoteDatabaseDelete(projectToDelete) ? (
+          <div className="console-settings-stack--sm">
+            <Text type="secondary" className="console-text-caption">
+              Permanently removes the hosted Turso, Neon, or SQL database. This
+              cannot be undone.
+            </Text>
+          </div>
+        ) : null}
       </Modal>
     </div>
   );

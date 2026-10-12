@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
 
 export const UPDATE_USER_PROFILE = gql`
   mutation updateUserProfile(

@@ -1,30 +1,41 @@
 import React, { useState } from "react";
-import { Typography, Card, Button, Space, Alert, Divider, Tabs } from "antd";
-import {
-  ApiOutlined,
-  BookOutlined,
-  CodeOutlined,
-  ExperimentOutlined,
-  GlobalOutlined,
-  PlayCircleOutlined,
-  ConsoleSqlOutlined,
-} from "@ant-design/icons";
-import { useAuth } from "../../contexts/AuthContext";
+import { Button, Space, Alert, Divider, Tabs } from "antd";
 import { GraphiQL } from "graphiql";
 import { createGraphiQLFetcher } from "@graphiql/toolkit";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import { SYSTEM_GRAPHQL_URL } from "../../constants/api";
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
+import type { LucideIcon } from "lucide-react";
+import {
+  BookOpen,
+  CirclePlay,
+  Code,
+  FlaskConical,
+  Globe,
+  Terminal,
+  Webhook,
+} from "lucide-react";
+import { ConsoleCard, ConsoleCardTitle } from "../../components/console";
+import "../../components/console/ConsoleShell.css";
 
-const { Title, Text, Paragraph } = Typography;
+interface ApiEndpoint {
+  method: string;
+  endpoint: string;
+  description: string;
+}
+
+interface ApiFeature {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  buttonText: string;
+  action: () => void;
+}
 
 const SystemApiPage: React.FC = () => {
-  const { decodeTokenData } = useAuth();
-
   const [activeTab, setActiveTab] = useState("tools");
 
-  // GraphiQL fetcher setup
   const fetcher = createGraphiQLFetcher({
     url: SYSTEM_GRAPHQL_URL,
     headers: {
@@ -45,53 +56,44 @@ const SystemApiPage: React.FC = () => {
     },
   });
 
-  // GraphiQL explorer plugin
   const explorer = explorerPlugin();
 
-  const apiEndpoints = [
+  const apiEndpoints: ApiEndpoint[] = [
     {
       method: "GET",
       endpoint: "/system/graphql",
       description: "GraphQL endpoint for system operations",
-      color: "#52c41a",
     },
     {
       method: "POST",
       endpoint: "/system/project/list",
       description: "Fetch all projects for current user",
-      color: "#1890ff",
     },
     {
       method: "POST",
       endpoint: "/system/project/create",
       description: "Create a new project",
-      color: "#1890ff",
     },
     {
       method: "POST",
       endpoint: "/system/project/switch",
       description: "Switch between projects",
-      color: "#1890ff",
     },
     {
       method: "GET",
       endpoint: "/system/user/profile",
       description: "Get current user profile",
-      color: "#52c41a",
     },
     {
       method: "POST",
       endpoint: "/system/user/profile",
       description: "Update user profile",
-      color: "#1890ff",
     },
   ];
 
-  const features = [
+  const features: ApiFeature[] = [
     {
-      icon: (
-        <ExperimentOutlined style={{ fontSize: "24px", color: "#1890ff" }} />
-      ),
+      icon: FlaskConical,
       title: "Interactive API Explorer",
       description:
         "Test API endpoints directly from the browser with real-time results",
@@ -99,21 +101,21 @@ const SystemApiPage: React.FC = () => {
       action: () => window.open("/api-explorer", "_blank"),
     },
     {
-      icon: <BookOutlined style={{ fontSize: "24px", color: "#52c41a" }} />,
+      icon: BookOpen,
       title: "API Documentation",
       description: "Comprehensive documentation for all system APIs",
       buttonText: "View Docs",
       action: () => window.open("https://apito.io/docs/api", "_blank"),
     },
     {
-      icon: <CodeOutlined style={{ fontSize: "24px", color: "#722ed1" }} />,
+      icon: Code,
       title: "GraphQL Schema",
       description: "Explore the GraphQL schema and available queries",
       buttonText: "View Schema",
       action: () => window.open("/graphql", "_blank"),
     },
     {
-      icon: <GlobalOutlined style={{ fontSize: "24px", color: "#fa8c16" }} />,
+      icon: Globe,
       title: "REST API",
       description: "RESTful API endpoints for system operations",
       buttonText: "View REST Docs",
@@ -122,9 +124,8 @@ const SystemApiPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: "24px", margin: "0 auto" }}>
-      {/* API Tools Tabs */}
-      <div style={{ marginBottom: "32px" }}>
+    <div className="console-page">
+      <div className="console-stack">
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
@@ -133,50 +134,38 @@ const SystemApiPage: React.FC = () => {
               key: "tools",
               label: (
                 <Space>
-                  <ApiOutlined />
+                  <Webhook size={16} strokeWidth={1.75} />
                   API Tools
                 </Space>
               ),
               children: (
-                <div>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "repeat(auto-fit, minmax(280px, 1fr))",
-                      gap: "16px",
-                      marginBottom: "24px",
-                    }}
-                  >
-                    {features.map((feature, index) => (
-                      <Card
-                        key={index}
+                <div className="console-grid-cards console-mb-md">
+                  {features.map((feature) => {
+                    const Icon = feature.icon;
+                    return (
+                      <ConsoleCard
+                        key={feature.title}
+                        className="console-channel-card"
                         hoverable
-                        style={{ textAlign: "center", height: "100%" }}
-                        bodyStyle={{ padding: "24px" }}
                       >
-                        <div style={{ marginBottom: "16px" }}>
-                          {feature.icon}
+                        <div className="console-channel-icon">
+                          <Icon size={24} strokeWidth={1.75} />
                         </div>
-                        <Title level={4} style={{ marginBottom: "8px" }}>
-                          {feature.title}
-                        </Title>
-                        <Paragraph
-                          style={{ marginBottom: "20px", minHeight: "48px" }}
-                        >
+                        <p className="console-channel-title">{feature.title}</p>
+                        <p className="console-channel-desc">
                           {feature.description}
-                        </Paragraph>
+                        </p>
                         <Button
                           type="primary"
                           block
-                          icon={<PlayCircleOutlined />}
+                          icon={<CirclePlay size={16} strokeWidth={1.75} />}
                           onClick={feature.action}
                         >
                           {feature.buttonText}
                         </Button>
-                      </Card>
-                    ))}
-                  </div>
+                      </ConsoleCard>
+                    );
+                  })}
                 </div>
               ),
             },
@@ -184,7 +173,7 @@ const SystemApiPage: React.FC = () => {
               key: "graphiql",
               label: (
                 <Space>
-                  <ConsoleSqlOutlined />
+                  <Terminal size={16} strokeWidth={1.75} />
                   System GraphQL Endpoint
                 </Space>
               ),
@@ -194,17 +183,10 @@ const SystemApiPage: React.FC = () => {
                     message="Interactive GraphQL Explorer"
                     description="Use this interface to explore the GraphQL schema, write queries, and test your API endpoints in real-time."
                     type="info"
-                    style={{ marginBottom: "16px" }}
+                    className="console-mb-sm"
                     showIcon
                   />
-                  <div
-                    style={{
-                      height: "600px",
-                      border: "1px solid #d9d9d9",
-                      borderRadius: "6px",
-                      overflow: "hidden",
-                    }}
-                  >
+                  <div className="console-graphiql-shell">
                     <GraphiQL
                       fetcher={fetcher}
                       plugins={[explorer]}
@@ -246,130 +228,93 @@ query GetUserProjects {
             },
           ]}
         />
-      </div>
 
-      <Divider />
+        <Divider />
 
-      {/* System API Endpoints */}
-      <div style={{ marginBottom: "32px" }}>
-        <Title level={3}>System API Endpoints</Title>
-        <Text type="secondary">
-          Common system endpoints available for your applications
-        </Text>
-
-        <div style={{ marginTop: "16px" }}>
-          {apiEndpoints.map((endpoint, index) => (
-            <Card
-              key={index}
-              size="small"
-              style={{ marginBottom: "8px" }}
-              bodyStyle={{ padding: "16px" }}
-            >
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "16px" }}
-              >
-                <div
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    backgroundColor: endpoint.color,
-                    color: "white",
-                    fontSize: "12px",
-                    fontWeight: "bold",
-                    minWidth: "60px",
-                    textAlign: "center",
-                  }}
-                >
-                  {endpoint.method}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Text code style={{ fontSize: "14px" }}>
-                    {endpoint.endpoint}
-                  </Text>
-                  <div style={{ marginTop: "4px" }}>
-                    <Text type="secondary" style={{ fontSize: "12px" }}>
-                      {endpoint.description}
-                    </Text>
+        <ConsoleCard
+          title={
+            <ConsoleCardTitle
+              icon={Globe}
+              label="System API Endpoints"
+            />
+          }
+        >
+          <p className="console-text-muted-block console-mb-md">
+            Common system endpoints available for your applications
+          </p>
+          <div className="console-endpoint-list">
+            {apiEndpoints.map((endpoint) => (
+              <div key={endpoint.endpoint} className="console-endpoint-row">
+                <span className="console-method-badge">{endpoint.method}</span>
+                <div className="console-endpoint-body">
+                  <code className="console-code-inline">{endpoint.endpoint}</code>
+                  <div className="console-endpoint-desc">
+                    {endpoint.description}
                   </div>
                 </div>
               </div>
-            </Card>
-          ))}
-        </div>
-      </div>
+            ))}
+          </div>
+        </ConsoleCard>
 
-      {/* Quick Actions */}
-      <Card title="Quick Actions" style={{ marginTop: "24px" }}>
-        <Space size="middle" wrap>
-          <Button
-            type="primary"
-            icon={<ExperimentOutlined />}
-            onClick={() => window.open("/api-explorer", "_blank")}
-          >
-            Launch API Explorer
-          </Button>
-          <Button
-            icon={<BookOutlined />}
-            onClick={() => window.open("https://apito.io/docs", "_blank")}
-          >
-            View Documentation
-          </Button>
-          <Button
-            icon={<CodeOutlined />}
-            onClick={() => window.open("/graphql", "_blank")}
-          >
-            GraphQL Playground
-          </Button>
-          <Button
-            icon={<GlobalOutlined />}
-            onClick={() => window.open("/system/doc", "_blank")}
-          >
-            REST API Docs
-          </Button>
-        </Space>
-      </Card>
-
-      {/* Usage Examples */}
-      <Card title="Usage Examples" style={{ marginTop: "24px" }}>
-        <Title level={5}>Fetch Projects (cURL)</Title>
-        <div
-          style={{
-            backgroundColor: "#f6f8fa",
-            padding: "16px",
-            borderRadius: "4px",
-            marginBottom: "16px",
-            fontFamily: "monospace",
-            fontSize: "12px",
-            border: "1px solid #e1e4e8",
-          }}
+        <ConsoleCard
+          title={
+            <ConsoleCardTitle icon={FlaskConical} label="Quick Actions" />
+          }
         >
-          {`curl -X POST ${window.location.origin}/api/system/project/list \\
+          <Space size="middle" wrap>
+            <Button
+              type="primary"
+              icon={<FlaskConical size={16} strokeWidth={1.75} />}
+              onClick={() => window.open("/api-explorer", "_blank")}
+            >
+              Launch API Explorer
+            </Button>
+            <Button
+              icon={<BookOpen size={16} strokeWidth={1.75} />}
+              onClick={() => window.open("https://apito.io/docs", "_blank")}
+            >
+              View Documentation
+            </Button>
+            <Button
+              icon={<Code size={16} strokeWidth={1.75} />}
+              onClick={() => window.open("/graphql", "_blank")}
+            >
+              GraphQL Playground
+            </Button>
+            <Button
+              icon={<Globe size={16} strokeWidth={1.75} />}
+              onClick={() => window.open("/system/doc", "_blank")}
+            >
+              REST API Docs
+            </Button>
+          </Space>
+        </ConsoleCard>
+
+        <ConsoleCard
+          title={<ConsoleCardTitle icon={Code} label="Usage Examples" />}
+        >
+          <p className="console-section-title console-section-title--flush">
+            Fetch Projects (cURL)
+          </p>
+          <pre className="console-code-block console-mb-md">{`curl -X POST ${window.location.origin}/api/system/project/list \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \\
-  --data '{}'`}
-        </div>
+  --data '{}'`}</pre>
 
-        <Title level={5}>GraphQL Query</Title>
-        <div
-          style={{
-            backgroundColor: "#f6f8fa",
-            padding: "16px",
-            borderRadius: "4px",
-            fontFamily: "monospace",
-            fontSize: "12px",
-            border: "1px solid #e1e4e8",
-          }}
-        >
-          {`query {
+          <p className="console-section-title console-section-title--flush">
+            GraphQL Query
+          </p>
+          <pre className="console-code-block">{`query {
   getCurrentUser {
     email
     first_name
     last_name
     project_limit
   }
-}`}
-        </div>
-      </Card>
+}`}</pre>
+        </ConsoleCard>
+      </div>
     </div>
   );
 };

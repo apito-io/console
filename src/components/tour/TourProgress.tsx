@@ -1,7 +1,7 @@
 import React from "react";
 import { Progress, Typography, Space, Button, theme } from "antd";
-import { CheckCircleOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import { useTour } from "../../contexts/TourContext";
+import { CircleCheck, CirclePlay } from "lucide-react";
 
 const { Text } = Typography;
 
@@ -86,7 +86,7 @@ const TourProgress: React.FC = () => {
               {status.text}
             </Text>
             {tourProgress.isCompleted && (
-              <CheckCircleOutlined style={{ color: token.colorSuccess }} />
+              <CircleCheck size={16} strokeWidth={1.75} style={{ color: token.colorSuccess }} />
             )}
           </Space>
 
@@ -94,7 +94,7 @@ const TourProgress: React.FC = () => {
             <Button
               type="primary"
               size="small"
-              icon={<PlayCircleOutlined />}
+              icon={<CirclePlay size={16} strokeWidth={1.75} />}
               onClick={startTour}
             >
               Start Guide
@@ -114,7 +114,7 @@ const TourProgress: React.FC = () => {
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
           {steps.map((step, index) => (
             <Space key={step.key} align="center" size="small">
-              <CheckCircleOutlined
+              <CircleCheck size={16} strokeWidth={1.75}
                 style={{
                   color: step.completed
                     ? token.colorSuccess

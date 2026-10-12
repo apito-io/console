@@ -1,203 +1,202 @@
-import type { ThemeConfig } from 'antd';
+import type { ThemeConfig } from "antd";
+import { theme } from "antd";
+import { apitoTokens } from "./tokens";
 
-// Centralized theme configuration based on the database view design
-// This theme ensures consistent look and feel across open-core and pro versions
+/** Shared layout surfaces — keep ConsoleLayout in sync via this constant. */
+export const apitoSidebarBg = apitoTokens.palette.bgLayout;
+
+// Centralized monotone theme for open-core + pro (single ConfigProvider source).
 export const apitoTheme: ThemeConfig = {
-    token: {
-        // Primary color - clean, professional blue
-        colorPrimary: '#1c1e20',
+  algorithm: theme.defaultAlgorithm,
+  token: {
+    colorPrimary: apitoTokens.palette.primary,
+    // Keep info accent neutral — do NOT reuse primary or Alert info fills go dark.
+    colorInfo: apitoTokens.palette.info,
+    colorSuccess: apitoTokens.palette.success,
+    colorWarning: apitoTokens.palette.warning,
+    colorError: apitoTokens.palette.error,
 
-        // Typography
-        fontFamily: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif`,
-        fontSize: 14,
-        fontSizeHeading1: 28,
-        fontSizeHeading2: 22,
-        fontSizeHeading3: 18,
-        fontSizeHeading4: 16,
-        fontSizeHeading5: 14,
+    fontFamily: apitoTokens.typography.fontFamily,
+    fontSize: apitoTokens.typography.fontSize,
+    fontSizeHeading1: apitoTokens.typography.headings.h1,
+    fontSizeHeading2: apitoTokens.typography.headings.h2,
+    fontSizeHeading3: apitoTokens.typography.headings.h3,
+    fontSizeHeading4: apitoTokens.typography.headings.h4,
+    fontSizeHeading5: apitoTokens.typography.headings.h5,
 
-        // Border radius - minimal for clean look
-        borderRadius: 6,
-        borderRadiusXS: 2,
-        borderRadiusSM: 4,
-        borderRadiusLG: 8,
+    borderRadius: apitoTokens.radii.md,
+    borderRadiusXS: apitoTokens.radii.xs,
+    borderRadiusSM: apitoTokens.radii.sm,
+    borderRadiusLG: apitoTokens.radii.lg,
 
-        // Colors - updated to match design
-        colorBgContainer: '#ffffff',          // Main surfaces (content area)
-        colorBgElevated: '#ffffff',
-        colorBgLayout: '#ffffff',             // Page background should be all white
-        colorBgSpotlight: '#fafafa',          // Sidebar background
+    colorBgContainer: apitoTokens.palette.surface,
+    colorBgElevated: apitoTokens.palette.surface,
+    colorBgLayout: apitoTokens.palette.bgLayout,
+    // Ant Design uses this for Tooltip/Popover spotlight — must stay dark for readable text.
+    colorBgSpotlight: apitoTokens.palette.primary,
+    colorTextLightSolid: apitoTokens.palette.surface,
 
-        // Border colors - subtle and consistent
-        colorBorder: '#d9d9d9',
-        colorBorderSecondary: '#f0f0f0',
+    colorBorder: apitoTokens.palette.borderMuted,
+    colorBorderSecondary: apitoTokens.palette.border,
 
-        // Text colors
-        colorText: '#262626',
-        colorTextHeading: '#000000',
-        colorTextSecondary: '#8c8c8c',
-        colorTextTertiary: '#bfbfbf',
-        colorTextQuaternary: '#d9d9d9',
+    colorText: apitoTokens.palette.text,
+    colorTextHeading: apitoTokens.palette.textHeading,
+    colorTextSecondary: apitoTokens.palette.textSecondary,
 
-        // Spacing - consistent with database view
-        padding: 16,
-        paddingSM: 12,
-        paddingXS: 8,
-        paddingLG: 24,
-        paddingXL: 32,
+    colorFill: apitoTokens.palette.surfaceMuted,
+    colorFillSecondary: apitoTokens.palette.bgLayout,
+    colorFillTertiary: apitoTokens.palette.surfaceMuted,
 
-        margin: 16,
-        marginSM: 12,
-        marginXS: 8,
-        marginLG: 24,
-        marginXL: 32,
+    padding: apitoTokens.spacing.md,
+    paddingSM: apitoTokens.spacing.sm,
+    paddingXS: apitoTokens.spacing.xs,
+    paddingLG: apitoTokens.spacing.lg,
+    paddingXL: apitoTokens.spacing.xl,
 
-        // Control heights
-        controlHeight: 32,
-        controlHeightSM: 24,
-        controlHeightLG: 40,
+    margin: apitoTokens.spacing.md,
+    marginSM: apitoTokens.spacing.sm,
+    marginXS: apitoTokens.spacing.xs,
+    marginLG: apitoTokens.spacing.lg,
+    marginXL: apitoTokens.spacing.xl,
 
-        // Line heights
-        lineHeight: 1.5714,
-        lineHeightHeading1: 1.2105,
-        lineHeightHeading2: 1.2727,
-        lineHeightHeading3: 1.3333,
-        lineHeightHeading4: 1.4,
-        lineHeightHeading5: 1.5714,
+    controlHeight: apitoTokens.controlHeights.md,
+    controlHeightSM: apitoTokens.controlHeights.sm,
+    controlHeightLG: apitoTokens.controlHeights.lg,
 
-        // Shadows - subtle for depth
-        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)',
-        boxShadowSecondary: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)',
+    lineHeight: apitoTokens.typography.lineHeights.body,
+    lineHeightHeading1: apitoTokens.typography.lineHeights.h1,
+    lineHeightHeading2: apitoTokens.typography.lineHeights.h2,
+    lineHeightHeading3: apitoTokens.typography.lineHeights.h3,
+    lineHeightHeading4: apitoTokens.typography.lineHeights.h4,
+    lineHeightHeading5: apitoTokens.typography.lineHeights.h5,
 
-        // Motion
-        motionDurationSlow: '0.3s',
-        motionDurationMid: '0.2s',
-        motionDurationFast: '0.1s',
+    boxShadow: "none",
+    boxShadowSecondary: "none",
+  },
+
+  components: {
+    Tooltip: {
+      colorBgSpotlight: apitoTokens.palette.primary,
+      colorTextLightSolid: apitoTokens.palette.surface,
     },
-
-    components: {
-        // Table styling to match database view
-        Table: {
-            headerBg: '#fafafa',
-            headerColor: '#262626',
-            headerSortActiveBg: '#f0f0f0',
-            headerSortHoverBg: '#f5f5f5',
-            bodySortBg: '#fafafa',
-            rowHoverBg: '#f5f5f5',
-            borderColor: '#f0f0f0',
-            fontSize: 14,
-            cellPaddingBlock: 12,
-            cellPaddingInline: 16,
-        },
-
-        // Button styling
-        Button: {
-            borderRadius: 6,
-            fontWeight: 400,
-            primaryShadow: 'none',
-            defaultShadow: 'none',
-        },
-
-        // Card styling for clean cards
-        Card: {
-            borderRadiusLG: 8,
-            headerBg: 'transparent',
-            headerHeight: 56,
-            bodyPadding: 24,
-            paddingLG: 24,
-        },
-
-        // Layout styling
-        Layout: {
-            siderBg: '#fafafa',               // Sidebar background per design
-            triggerBg: '#ffffff',
-            triggerColor: '#262626',
-            headerBg: '#ffffff',
-            headerHeight: 64,
-            headerPadding: '0 24px',
-            footerBg: '#ffffff',
-            bodyBg: '#ffffff',
-        },
-
-        // Menu styling for sidebar
-        Menu: {
-            itemBg: 'transparent',
-            itemSelectedBg: '#e6f7ff',
-            itemSelectedColor: '#1890ff',
-            itemHoverBg: '#f5f5f5',
-            itemHoverColor: '#262626',
-            itemActiveBg: '#f0f0f0',
-            subMenuItemBg: 'transparent',
-            fontSize: 14,
-            itemHeight: 40,
-            itemMarginBlock: 4,
-            itemMarginInline: 0,
-            itemPaddingInline: 16,
-        },
-
-        // Typography styling
-        Typography: {
-            titleMarginBottom: '0.5em',
-            titleMarginTop: '1.2em',
-        },
-
-        // Tag styling
-        Tag: {
-            borderRadiusSM: 4,
-            fontSizeSM: 12,
-            lineHeightSM: 1.5,
-        },
-
-        // Input styling
-        Input: {
-            borderRadius: 6,
-            paddingBlock: 8,
-            paddingInline: 12,
-        },
-
-        // Select styling
-        Select: {
-            borderRadius: 6,
-        },
-
-        // Modal styling
-        Modal: {
-            borderRadiusLG: 8,
-            headerBg: '#fafafa',
-            contentBg: '#ffffff',
-            footerBg: 'transparent',
-        },
-
-        // Drawer styling
-        Drawer: {
-            borderRadiusLG: 0,
-        },
-
-        // Pagination styling
-        Pagination: {
-            itemBg: '#ffffff',
-            itemSize: 32,
-            borderRadius: 6,
-        },
-
-        // Alert styling
-        Alert: {
-            borderRadiusLG: 8,
-            defaultPadding: '12px 16px',
-            withDescriptionPadding: '16px 16px',
-        },
-
-        // Segmented - black/white theme (e.g. Database Configuration on Start Project)
-        Segmented: {
-            trackBg: '#f0f0f0',
-            itemColor: 'rgba(0,0,0,0.88)',
-            itemHoverBg: 'rgba(0,0,0,0.06)',
-            itemHoverColor: 'rgba(0,0,0,0.88)',
-            itemSelectedBg: '#000',
-            itemSelectedColor: '#fff',
-            itemActiveBg: 'rgba(0,0,0,0.15)',
-        },
+    Popover: {
+      colorBgElevated: apitoTokens.palette.surface,
     },
+    Table: {
+      headerBg: apitoTokens.palette.surfaceMuted,
+      headerColor: apitoTokens.palette.textSecondary,
+      headerSortActiveBg: apitoTokens.palette.surfaceMuted,
+      headerSortHoverBg: apitoTokens.palette.surfaceMuted,
+      bodySortBg: apitoTokens.palette.bgLayout,
+      rowHoverBg: apitoTokens.palette.surfaceMuted,
+      borderColor: apitoTokens.palette.borderMuted,
+      fontSize: apitoTokens.typography.fontSize,
+      cellPaddingBlock: 10,
+      cellPaddingInline: 12,
+    },
+    Button: {
+      borderRadius: apitoTokens.radii.sm,
+      fontWeight: 500,
+      primaryShadow: "none",
+      defaultShadow: "none",
+      primaryColor: apitoTokens.palette.surface,
+      colorPrimaryHover: apitoTokens.palette.text,
+      colorPrimaryActive: apitoTokens.palette.primary,
+    },
+    Tabs: {
+      itemColor: apitoTokens.palette.textMuted,
+      itemSelectedColor: apitoTokens.palette.primary,
+      itemHoverColor: apitoTokens.palette.text,
+      inkBarColor: apitoTokens.palette.primary,
+      titleFontSize: 13,
+    },
+    Card: {
+      borderRadiusLG: apitoTokens.radii.lg,
+      headerBg: "transparent",
+      headerHeight: 44,
+      bodyPadding: 16,
+      paddingLG: 16,
+      boxShadow: "none",
+    },
+    Layout: {
+      siderBg: apitoTokens.palette.surface,
+      triggerBg: apitoTokens.palette.surface,
+      triggerColor: apitoTokens.palette.text,
+      headerBg: apitoTokens.palette.surface,
+      headerHeight: apitoTokens.layout.headerHeight,
+      headerPadding: `0 ${apitoTokens.spacing.lg}px`,
+      footerBg: apitoTokens.palette.surface,
+      bodyBg: apitoTokens.palette.bgLayout,
+    },
+    Menu: {
+      itemBg: "transparent",
+      itemSelectedBg: apitoTokens.palette.primary,
+      itemSelectedColor: apitoTokens.palette.surface,
+      itemHoverBg: apitoTokens.palette.surfaceMuted,
+      itemHoverColor: apitoTokens.palette.text,
+      itemActiveBg: apitoTokens.palette.primary,
+      subMenuItemBg: "transparent",
+      fontSize: 13,
+      itemHeight: 36,
+      itemMarginBlock: 2,
+      itemMarginInline: 0,
+      itemPaddingInline: 16,
+    },
+    Typography: {
+      titleMarginBottom: "0.5em",
+      titleMarginTop: "1.2em",
+    },
+    Tag: {
+      borderRadiusSM: apitoTokens.radii.sm,
+      fontSizeSM: 12,
+      lineHeightSM: 1.5,
+    },
+    Input: {
+      borderRadius: apitoTokens.radii.md,
+      // Keep paddingBlock in lockstep with controlHeight (32). Extra block
+      // padding inflates Input.Search while the addon button stays 32px.
+      paddingBlock: 5,
+      paddingInline: 11,
+    },
+    Select: {
+      borderRadius: apitoTokens.radii.md,
+    },
+    Modal: {
+      borderRadiusLG: apitoTokens.radii.lg,
+      headerBg: apitoTokens.palette.surfaceMuted,
+      contentBg: apitoTokens.palette.surface,
+      footerBg: "transparent",
+    },
+    Pagination: {
+      itemBg: apitoTokens.palette.surface,
+      itemSize: 32,
+      borderRadius: apitoTokens.radii.md,
+    },
+    Alert: {
+      borderRadiusLG: apitoTokens.radii.lg,
+      defaultPadding: "12px 16px",
+      withDescriptionPadding: "16px 16px",
+      colorInfoBg: apitoTokens.palette.surfaceMuted,
+      colorInfoBorder: apitoTokens.palette.borderMuted,
+    },
+    Segmented: {
+      trackBg: apitoTokens.palette.surfaceMuted,
+      itemColor: apitoTokens.palette.text,
+      itemHoverBg: apitoTokens.palette.surfaceMuted,
+      itemHoverColor: apitoTokens.palette.text,
+      itemSelectedBg: apitoTokens.palette.primary,
+      itemSelectedColor: apitoTokens.palette.surface,
+      itemActiveBg: apitoTokens.palette.surfaceMuted,
+    },
+    Breadcrumb: {
+      linkColor: apitoTokens.palette.textSecondary,
+      linkHoverColor: apitoTokens.palette.text,
+      separatorColor: apitoTokens.palette.borderMuted,
+    },
+    Progress: {
+      defaultColor: apitoTokens.palette.primary,
+    },
+  },
 };
 
 export default apitoTheme;

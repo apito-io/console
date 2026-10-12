@@ -1,23 +1,28 @@
 import React, { useState } from "react";
 import { Card, Button, Typography, theme, Badge, Dropdown } from "antd";
-import {
-  SettingOutlined,
-  FileTextOutlined,
-  EditOutlined,
-  CalendarOutlined,
-  UploadOutlined,
-  SwitcherOutlined,
-  BarsOutlined,
-  // MenuOutlined, // Removed unused import
-  DatabaseOutlined,
-  DragOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-  DownOutlined,
-  RightOutlined,
-  SwapOutlined,
-} from "@ant-design/icons";
 import type { FieldInfo, DrawerParam } from "../../types/model";
+import type { SchemaOverlayChangeKind } from "../../types/schemaDraftOverlay";
+import { useSortableDragHandle } from "../../contexts/SortableDragHandleContext";
+import SchemaOverlayBadge, {
+  schemaOverlaySurfaceStyle,
+  schemaOverlayTextStyle,
+} from "./SchemaOverlayBadge";
+import {
+  ArrowLeftRight,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Database,
+  FileText,
+  GripVertical,
+  Menu,
+  Pencil,
+  Settings,
+  ToggleLeft,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 const { Text } = Typography;
 
@@ -26,6 +31,10 @@ interface FieldContainerProps {
   openDrawer: (data: DrawerParam) => void;
   objectIdentifier: string;
   children?: React.ReactNode;
+  overlayKind?: SchemaOverlayChangeKind;
+  draftVersionLabel?: string;
+  disableActions?: boolean;
+  overlayPreviousLabel?: string;
 }
 
 const FieldContainer: React.FC<FieldContainerProps> = ({
@@ -33,29 +42,34 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
   openDrawer,
   objectIdentifier,
   children,
+  overlayKind = "live",
+  draftVersionLabel,
+  disableActions = false,
+  overlayPreviousLabel,
 }) => {
   const { token } = theme.useToken();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const dragHandle = useSortableDragHandle();
 
   const getFieldIcon = (fieldType?: string) => {
     switch (fieldType) {
       case "text":
-        return <FileTextOutlined style={{ color: token.colorPrimary }} />;
+        return <FileText size={16} strokeWidth={1.75} style={{ color: token.colorPrimary }} />;
       case "richtext":
-        return <EditOutlined style={{ color: token.colorPrimary }} />;
+        return <Pencil size={16} strokeWidth={1.75} style={{ color: token.colorPrimary }} />;
       case "datetime":
-        return <CalendarOutlined style={{ color: token.colorPrimary }} />;
+        return <Calendar size={16} strokeWidth={1.75} style={{ color: token.colorPrimary }} />;
       case "file":
-        return <UploadOutlined style={{ color: token.colorPrimary }} />;
+        return <Upload size={16} strokeWidth={1.75} style={{ color: token.colorPrimary }} />;
       case "boolean":
-        return <SwitcherOutlined style={{ color: token.colorPrimary }} />;
+        return <ToggleLeft size={16} strokeWidth={1.75} style={{ color: token.colorPrimary }} />;
       case "repeated":
       case "array":
-        return <BarsOutlined style={{ color: token.colorPrimary }} />;
+        return <Menu size={16} strokeWidth={1.75} style={{ color: token.colorPrimary }} />;
       case "object":
-        return <DatabaseOutlined style={{ color: token.colorPrimary }} />;
+        return <Database size={16} strokeWidth={1.75} style={{ color: token.colorPrimary }} />;
       default:
-        return <FileTextOutlined style={{ color: token.colorPrimary }} />;
+        return <FileText size={16} strokeWidth={1.75} style={{ color: token.colorPrimary }} />;
     }
   };
 
@@ -81,11 +95,18 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
     }
   };
 
+  const isSystemRelation = field.system_generated && field.field_type === "relation";
+  
+  const isRemoved = overlayKind === "removed";
+  const surfaceStyle = schemaOverlaySurfaceStyle(overlayKind, token);
+  const textStyle = schemaOverlayTextStyle(overlayKind);
+
   const menuItems = [
     {
       key: "configure",
-      label: "Configure",
-      icon: <SettingOutlined />,
+      label: isSystemRelation ? "Configure (System Relation)" : "Configure",
+      icon: <Settings size={16} strokeWidth={1.75} />,
+      disabled: isSystemRelation || isRemoved || disableActions,
       onClick: () =>
         openDrawer({
           field,
@@ -96,7 +117,8 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
     {
       key: "rename",
       label: "Rename",
-      icon: <EditOutlined />,
+      icon: <Pencil size={16} strokeWidth={1.75} />,
+      disabled: isRemoved || disableActions,
       onClick: () =>
         openDrawer({
           field,
@@ -107,7 +129,8 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
     {
       key: "duplicate",
       label: "Duplicate",
-      icon: <CopyOutlined />,
+      icon: <Copy size={16} strokeWidth={1.75} />,
+      disabled: isRemoved || disableActions,
       onClick: () =>
         openDrawer({
           field,
@@ -118,7 +141,8 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
     {
       key: "changeType",
       label: "Change Type",
-      icon: <SwapOutlined />,
+      icon: <ArrowLeftRight size={16} strokeWidth={1.75} />,
+      disabled: isRemoved || disableActions,
       onClick: () =>
         openDrawer({
           field,
@@ -132,8 +156,9 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
     {
       key: "delete",
       label: "Delete",
-      icon: <DeleteOutlined />,
+      icon: <Trash2 size={16} strokeWidth={1.75} />,
       danger: true,
+      disabled: isRemoved || disableActions,
       onClick: () =>
         openDrawer({
           field,
@@ -156,6 +181,7 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
         borderRadius: "8px",
         border: `1px solid ${token.colorBorderSecondary}`,
         boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
+        ...surfaceStyle,
       }}
       bodyStyle={{ padding: "12px 16px" }}
     >
@@ -176,18 +202,24 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
             minHeight: "32px", // Match parent height
           }}
         >
-          <DragOutlined
+          <div
+            ref={dragHandle?.setActivatorNodeRef}
+            {...(dragHandle?.listeners ?? {})}
+            {...(dragHandle?.attributes ?? {})}
             style={{
               color: token.colorTextTertiary,
-              cursor: "grab",
+              cursor: dragHandle ? "grab" : "default",
               fontSize: "14px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               width: "20px",
               height: "20px",
+              touchAction: dragHandle ? "none" : undefined,
             }}
-          />
+          >
+            <GripVertical size={16} strokeWidth={1.75} />
+          </div>
           <div
             style={{
               display: "flex",
@@ -217,9 +249,13 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
                 marginBottom: "2px",
               }}
             >
-              <Text strong style={{ fontSize: "14px", lineHeight: "20px" }}>
+              <Text strong style={{ fontSize: "14px", lineHeight: "20px", ...textStyle }}>
                 {field.label || field.identifier}
               </Text>
+              <SchemaOverlayBadge
+                kind={overlayKind}
+                draftVersionLabel={draftVersionLabel}
+              />
               {field.identifier && (
                 <Badge
                   count={field.identifier}
@@ -249,6 +285,15 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
             >
               {field.description || `${field.field_type || "Unknown"} field`}
             </Text>
+            {overlayPreviousLabel ? (
+              <Text
+                delete
+                type="secondary"
+                style={{ fontSize: "11px", lineHeight: "14px" }}
+              >
+                was {overlayPreviousLabel}
+              </Text>
+            ) : null}
           </div>
         </div>
 
@@ -263,7 +308,7 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
           {isCollapsibleField && children && (
             <Button
               type="text"
-              icon={isCollapsed ? <RightOutlined /> : <DownOutlined />}
+              icon={isCollapsed ? <ChevronRight size={16} strokeWidth={1.75} /> : <ChevronDown size={16} strokeWidth={1.75} />}
               size="small"
               style={{
                 color: token.colorTextSecondary,
@@ -284,7 +329,7 @@ const FieldContainer: React.FC<FieldContainerProps> = ({
           >
             <Button
               type="text"
-              icon={<SettingOutlined />}
+              icon={<Settings size={16} strokeWidth={1.75} />}
               size="small"
               style={{
                 color: token.colorTextSecondary,

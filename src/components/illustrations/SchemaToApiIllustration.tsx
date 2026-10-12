@@ -2,21 +2,7 @@ import React from "react";
 import { ReactFlow, Background, Node, Edge, Handle, Position } from "reactflow";
 import "reactflow/dist/style.css";
 import { Typography } from "antd";
-import {
-  DatabaseOutlined,
-  ApiOutlined,
-  BranchesOutlined,
-  CodeOutlined,
-  ToolOutlined,
-  AppstoreAddOutlined,
-  LockOutlined,
-  RobotOutlined,
-  SafetyCertificateOutlined,
-  CloudSyncOutlined,
-  DeploymentUnitOutlined,
-  TeamOutlined,
-  LinkOutlined,
-} from "@ant-design/icons";
+import { Bot, CloudCog, Code, Database, GitBranch, LayoutGrid, Link, Lock, Network, ShieldCheck, Users, Webhook, Wrench } from "lucide-react";
 
 const { Text } = Typography;
 
@@ -36,10 +22,7 @@ const CustomNode = ({ data }: { data: any }) => {
     minWidth: size === "large" ? "200px" : "auto",
   };
 
-  const iconStyle = {
-    color: color,
-    fontSize: size === "large" ? "20px" : "16px",
-  };
+  const iconSize = size === "large" ? 20 : 16;
 
   return (
     <div style={nodeStyle}>
@@ -47,7 +30,7 @@ const CustomNode = ({ data }: { data: any }) => {
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
-      <Icon style={iconStyle} />
+      <Icon size={iconSize} strokeWidth={1.75} color={color} />
       <div>
         <Text
           style={{
@@ -88,7 +71,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 300, y: 50 },
     data: {
-      icon: DatabaseOutlined,
+      icon: Database,
       label: "Schema",
       description: "Design types & relations",
       color: "#52c41a",
@@ -102,7 +85,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 285, y: 220 },
     data: {
-      icon: ApiOutlined,
+      icon: Webhook,
       label: "Generated APIs",
       description: "CRUD, auth, filters, pagination",
       color: "#1677ff",
@@ -116,7 +99,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 220, y: 410 },
     data: {
-      icon: BranchesOutlined,
+      icon: GitBranch,
       label: "GraphQL",
       description: "Schema-first",
       color: "#722ed1",
@@ -127,7 +110,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 420, y: 410 },
     data: {
-      icon: CodeOutlined,
+      icon: Code,
       label: "REST",
       description: "Auto-generated",
       color: "#fa8c16",
@@ -140,7 +123,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 600, y: 180 },
     data: {
-      icon: ToolOutlined,
+      icon: Wrench,
       label: "Plugins",
       color: "#1677ff",
     },
@@ -152,7 +135,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 750, y: 120 },
     data: {
-      icon: AppstoreAddOutlined,
+      icon: LayoutGrid,
       label: "Media",
       color: "#52c41a",
     },
@@ -162,7 +145,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 750, y: 180 },
     data: {
-      icon: LockOutlined,
+      icon: Lock,
       label: "Auth",
       color: "#f5222d",
     },
@@ -172,7 +155,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 750, y: 240 },
     data: {
-      icon: RobotOutlined,
+      icon: Bot,
       label: "AI",
       color: "#722ed1",
     },
@@ -184,7 +167,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 50, y: 80 },
     data: {
-      icon: SafetyCertificateOutlined,
+      icon: ShieldCheck,
       label: "Roles",
       color: "#13c2c2",
     },
@@ -194,7 +177,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 50, y: 150 },
     data: {
-      icon: CloudSyncOutlined,
+      icon: CloudCog,
       label: "Workflows",
       color: "#722ed1",
     },
@@ -204,7 +187,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 50, y: 220 },
     data: {
-      icon: DeploymentUnitOutlined,
+      icon: Network,
       label: "Webhooks",
       color: "#faad14",
     },
@@ -214,7 +197,7 @@ const initialNodes: Node[] = [
     type: "custom",
     position: { x: 50, y: 290 },
     data: {
-      icon: TeamOutlined,
+      icon: Users,
       label: "Teams",
       color: "#2f54eb",
     },
@@ -371,7 +354,7 @@ const SchemaToApiIllustration: React.FC = () => {
               boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
             }}
           >
-            <LinkOutlined style={{ color: "#64748b", fontSize: "12px" }} />
+            <Link size={16} strokeWidth={1.75} style={{ color: "#64748b", fontSize: "12px" }} />
             <Text
               style={{ color: "#475569", fontSize: "11px", fontWeight: 500 }}
             >

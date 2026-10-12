@@ -4,15 +4,22 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type {
   TourContextType,
   TourProgress,
   ProjectCompletionStatus,
+  TourStep,
 } from "../types/tour";
-import { useGetOnlyModelsInfoQuery } from "../generated/graphql";
-import { TOUR_STEPS } from "../constants/tourSteps";
+import { useGetOnlyModelsInfoQuery } from "../generated_gql/tanstack-query";
+import { GENERAL_TOUR_STEPS } from "../constants/tourStepsBase";
+import { useOnboardingTourExtensions } from "./OnboardingTourExtensionsContext";
+import { projectKeys } from "../lib/queryKeys";
+import { fetchProjectList } from "../pages/projects/api";
+import { selectProjectCompletionCacheGeneration } from "../pages/projects/selectors";
 
 const TourContext = createContext<TourContextType | undefined>(undefined);
 
@@ -20,12 +27,76 @@ interface TourProviderProps {
   children: ReactNode;
 }
 
+function stepMilestoneMet(
+  stepId: string | undefined,
+  ctx: {
+    hasTenant: boolean;
+    hasModel: boolean;
+    hasUserModel: boolean;
+    useUserModelForCreateModel: boolean;
+    modelHasFields: boolean;
+    modelHasContent: boolean;
+    hasRunQuery: boolean;
+  }
+): boolean {
+  if (!stepId) return false;
+  switch (stepId) {
+    case "create-tenant":
+      return (
+        ctx.hasTenant ||
+        localStorage.getItem("tour-skip-tenant-step") === "true"
+      );
+    case "create-model":
+      return ctx.useUserModelForCreateModel ? ctx.hasUserModel : ctx.hasModel;
+    case "add-fields":
+      return ctx.modelHasFields;
+    case "add-content":
+      return ctx.modelHasContent;
+    case "run-query":
+      return ctx.hasRunQuery;
+    default:
+      return false;
+  }
+}
+
+function firstIncompleteStepIndex(
+  steps: TourStep[],
+  ctx: Parameters<typeof stepMilestoneMet>[1]
+): number {
+  for (let i = 0; i < steps.length; i++) {
+    if (!stepMilestoneMet(steps[i]?.id, ctx)) {
+      return i;
+    }
+  }
+  return Math.max(0, steps.length - 1);
+}
+
 export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
+  const onboardingExt = useOnboardingTourExtensions();
+
+  const tourSteps = useMemo<TourStep[]>(
+    () =>
+      onboardingExt.steps && onboardingExt.steps.length > 0
+        ? onboardingExt.steps
+        : GENERAL_TOUR_STEPS,
+    [onboardingExt.steps]
+  );
+
+  const useUserModelForCreateModel = useMemo(
+    () => tourSteps.some((s) => s.id === "create-tenant"),
+    [tourSteps]
+  );
+
   const [isTourActive, setIsTourActive] = useState(false);
   const [isTourModalVisible, setIsTourModalVisible] = useState(false);
+  const [isTourDismissed, setIsTourDismissed] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      localStorage.getItem("tour-dismissed") === "true"
+  );
   const [tourProgress, setTourProgress] = useState<TourProgress>({
     currentStep: 0,
-    totalSteps: 4,
+    totalSteps: GENERAL_TOUR_STEPS.length,
     completedSteps: [],
     isCompleted: false,
   });
@@ -37,47 +108,47 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
     hasRunQuery: false,
   });
 
-  // Query for models to check project status
+  useEffect(() => {
+    setTourProgress((prev) => ({
+      ...prev,
+      totalSteps: tourSteps.length,
+    }));
+  }, [tourSteps.length]);
+
   const { data: modelsData, refetch: refetchModels } =
-    useGetOnlyModelsInfoQuery({
-      errorPolicy: "all",
-      fetchPolicy: "cache-and-network",
-    });
+    useGetOnlyModelsInfoQuery();
 
-  // Check if tour should be shown (new project with no models)
-  // const shouldShowTour =
-  //   !projectStatus.hasModel && !localStorage.getItem("tour-dismissed");
+  /** Same cache entry as `useProjectsQuery` — `select` avoids re-renders on unrelated list fields. */
+  const projectsCacheGeneration = useQuery({
+    queryKey: projectKeys.list(),
+    queryFn: fetchProjectList,
+    select: selectProjectCompletionCacheGeneration,
+  });
 
-  // Check project completion status
   const checkProjectStatus = useCallback(async () => {
     try {
-      // Refetch models data
       const result = await refetchModels();
       const models = result.data?.projectModelsInfo || [];
 
       const hasModel = models.length > 0;
+      const hasUserModel = models.some((m) => m && !m.system_generated);
+      const catalogCount =
+        onboardingExt.stepSignals?.["create-tenant"] ?? 0;
+      const hasTenant = catalogCount > 0;
+
       let modelHasFields = false;
       let modelHasContent = false;
 
       if (hasModel && models[0]) {
-        // Check if the first model has fields by checking localStorage
-        // This will be set when user adds fields
         modelHasFields = localStorage.getItem("project-has-fields") === "true";
-
-        // TODO: Check if model has content entries
-        // This would require a separate query to check content
-        // For now, we'll check localStorage for content status
         modelHasContent =
           localStorage.getItem("project-has-content") === "true";
       }
 
-      // Check if user has run a GraphQL query
       const hasRunQuery =
         localStorage.getItem("project-has-run-query") === "true";
 
-      console.log("checkProjectStatus - hasRunQuery:", hasRunQuery);
-
-      const newStatus = {
+      const newStatus: ProjectCompletionStatus = {
         hasModel,
         modelHasFields,
         modelHasContent,
@@ -86,134 +157,150 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
 
       setProjectStatus(newStatus);
 
-      // Update completed steps based on status
+      const milestoneCtx = {
+        hasTenant,
+        hasModel,
+        hasUserModel,
+        useUserModelForCreateModel,
+        modelHasFields,
+        modelHasContent,
+        hasRunQuery,
+      };
+
       const completedSteps: string[] = [];
-      if (hasModel) completedSteps.push("create-model");
-      if (modelHasFields) completedSteps.push("add-fields");
-      if (modelHasContent) completedSteps.push("add-content");
-      if (hasRunQuery) completedSteps.push("run-query");
+      for (const step of tourSteps) {
+        if (stepMilestoneMet(step.id, milestoneCtx)) {
+          completedSteps.push(step.id);
+        }
+      }
+
+      const totalSteps = tourSteps.length;
 
       setTourProgress((prev) => ({
         ...prev,
+        totalSteps,
         completedSteps,
-        isCompleted: completedSteps.length === prev.totalSteps,
+        isCompleted: completedSteps.length >= totalSteps,
       }));
 
-      // Auto-advance tour based on completion
-      console.log(
-        "Tour status check - isTourActive:",
-        isTourActive,
-        "tourProgress.currentStep:",
-        tourProgress.currentStep,
-        "hasRunQuery:",
-        hasRunQuery
-      );
       if (isTourActive) {
-        const currentStepId = TOUR_STEPS[tourProgress.currentStep]?.id;
-        console.log(
-          "Auto-advance check - currentStep:",
-          tourProgress.currentStep,
-          "currentStepId:",
-          currentStepId,
-          "hasRunQuery:",
-          hasRunQuery
-        );
+        const currentStepId = tourSteps[tourProgress.currentStep]?.id;
+        const curIdx = tourProgress.currentStep;
 
-        // Check if current step is completed and advance tour
         if (
-          currentStepId === "create-model" &&
-          hasModel &&
-          tourProgress.currentStep === 0
+          stepMilestoneMet(currentStepId, milestoneCtx) &&
+          curIdx < totalSteps - 1
         ) {
-          setTourProgress((prev) => ({ ...prev, currentStep: 1 }));
-        } else if (
-          currentStepId === "add-fields" &&
-          modelHasFields &&
-          tourProgress.currentStep === 1
-        ) {
-          setTourProgress((prev) => ({ ...prev, currentStep: 2 }));
-        } else if (
-          currentStepId === "add-content" &&
-          modelHasContent &&
-          tourProgress.currentStep === 2
-        ) {
-          setTourProgress((prev) => ({ ...prev, currentStep: 3 }));
+          setTourProgress((prev) => ({
+            ...prev,
+            currentStep: prev.currentStep + 1,
+          }));
         } else if (
           currentStepId === "run-query" &&
           hasRunQuery &&
-          tourProgress.currentStep === 3
+          curIdx === totalSteps - 1
         ) {
-          console.log("Tour step 4 completed - ending tour");
-          // Complete the tour
           setIsTourActive(false);
           localStorage.setItem("tour-completed", "true");
         }
       }
 
-      // Auto-end tour if all steps completed
-      if (completedSteps.length === 4) {
+      if (completedSteps.length >= totalSteps && totalSteps > 0) {
         setIsTourActive(false);
         localStorage.setItem("tour-completed", "true");
       }
     } catch (error) {
       console.error("Error checking project status:", error);
     }
-  }, [refetchModels, isTourActive, tourProgress.currentStep]);
+  }, [
+    refetchModels,
+    isTourActive,
+    tourProgress.currentStep,
+    tourSteps,
+    useUserModelForCreateModel,
+    onboardingExt.stepSignals,
+  ]);
 
-  // Check project status on mount and when models data changes
   useEffect(() => {
-    checkProjectStatus();
-  }, [modelsData, checkProjectStatus]);
+    void checkProjectStatus();
+  }, [modelsData, projectsCacheGeneration.data, checkProjectStatus]); // `data` here is the select output (fingerprint string)
 
   const startTour = useCallback(() => {
-    // Determine the correct step to start from
-    let currentStep = 0;
-    if (projectStatus.hasModel && !projectStatus.modelHasFields) {
-      currentStep = 1; // Start at "add-fields"
-    } else if (projectStatus.modelHasFields && !projectStatus.modelHasContent) {
-      currentStep = 2; // Start at "add-content"
-    } else if (projectStatus.modelHasContent && !projectStatus.hasRunQuery) {
-      currentStep = 3; // Start at "run-query"
-    }
+    // Manual Setup from the header always wins over a prior Skip/dismiss.
+    localStorage.removeItem("tour-dismissed");
+    setIsTourDismissed(false);
+    localStorage.removeItem("tour-waiting-for-model");
+    localStorage.removeItem("tour-waiting-for-tenant");
+    localStorage.removeItem("tour-waiting-for-fields");
+    localStorage.removeItem("tour-waiting-for-content");
+    localStorage.removeItem("tour-waiting-for-query");
+
+    const models = modelsData?.projectModelsInfo || [];
+    const hasModel = models.length > 0;
+    const hasUserModel = models.some((m) => m && !m.system_generated);
+    const catalogCount = onboardingExt.stepSignals?.["create-tenant"] ?? 0;
+    const hasTenant = catalogCount > 0;
+    const modelHasFields =
+      localStorage.getItem("project-has-fields") === "true";
+    const modelHasContent =
+      localStorage.getItem("project-has-content") === "true";
+    const hasRunQuery =
+      localStorage.getItem("project-has-run-query") === "true";
+
+    const milestoneCtx = {
+      hasTenant,
+      hasModel,
+      hasUserModel,
+      useUserModelForCreateModel,
+      modelHasFields,
+      modelHasContent,
+      hasRunQuery,
+    };
+
+    const currentStep = firstIncompleteStepIndex(tourSteps, milestoneCtx);
 
     setIsTourActive(true);
     setIsTourModalVisible(true);
-    setTourProgress((prev) => ({ ...prev, currentStep }));
-  }, [projectStatus]);
+    setTourProgress((prev) => ({
+      ...prev,
+      currentStep,
+      totalSteps: tourSteps.length,
+      isCompleted: false,
+    }));
+  }, [modelsData, tourSteps, useUserModelForCreateModel, onboardingExt.stepSignals]);
 
-  // Auto-start tour when setup is incomplete
   useEffect(() => {
-    // Don't auto-start if user is already in model creation process
+    // Skip / X dismiss must stick until the user clicks Setup in the header.
+    if (isTourDismissed || localStorage.getItem("tour-dismissed") === "true") {
+      return;
+    }
+    if (localStorage.getItem("tour-completed") === "true") {
+      return;
+    }
     if (localStorage.getItem("tour-waiting-for-model") === "true") {
       return;
     }
-
-    // Don't auto-start if user is already in field creation process
+    if (localStorage.getItem("tour-waiting-for-tenant") === "true") {
+      return;
+    }
     if (localStorage.getItem("tour-waiting-for-fields") === "true") {
       return;
     }
-
-    // Don't auto-start if user is already in content creation process
     if (localStorage.getItem("tour-waiting-for-content") === "true") {
       return;
     }
-
-    // Don't auto-start if user is already in query execution process
     if (localStorage.getItem("tour-waiting-for-query") === "true") {
       return;
     }
 
-    // Don't auto-start if tour is already active
     if (isTourActive) {
       return;
     }
 
-    // Check if tour should be shown based on project completion status
     const isSetupIncomplete = !tourProgress.isCompleted;
     const hasIncompleteSteps =
       tourProgress.completedSteps.length < tourProgress.totalSteps;
 
-    // Auto-start tour if setup is incomplete
     if (isSetupIncomplete && hasIncompleteSteps) {
       const timer = setTimeout(() => {
         startTour();
@@ -222,58 +309,8 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
       return () => clearTimeout(timer);
     }
 
-    // Handle restart after user cancellation
-    if (
-      !projectStatus.hasModel &&
-      !isTourActive &&
-      sessionStorage.getItem("tour-should-restart") === "true"
-    ) {
+    if (!isTourActive && sessionStorage.getItem("tour-should-restart") === "true") {
       sessionStorage.removeItem("tour-should-restart");
-      const timer = setTimeout(() => {
-        startTour();
-      }, 500);
-
-      return () => clearTimeout(timer);
-    }
-
-    // Also check if we were waiting for field creation but user canceled
-    if (
-      localStorage.getItem("tour-waiting-for-fields") === "true" &&
-      !projectStatus.modelHasFields &&
-      !isTourActive
-    ) {
-      // User closed drawer without creating field, restart tour
-      localStorage.removeItem("tour-waiting-for-fields");
-      const timer = setTimeout(() => {
-        startTour();
-      }, 500);
-
-      return () => clearTimeout(timer);
-    }
-
-    // Also check if we were waiting for content creation but user canceled
-    if (
-      localStorage.getItem("tour-waiting-for-content") === "true" &&
-      !projectStatus.modelHasContent &&
-      !isTourActive
-    ) {
-      // User closed drawer without creating content, restart tour
-      localStorage.removeItem("tour-waiting-for-content");
-      const timer = setTimeout(() => {
-        startTour();
-      }, 500);
-
-      return () => clearTimeout(timer);
-    }
-
-    // Also check if we were waiting for query execution but user canceled
-    if (
-      localStorage.getItem("tour-waiting-for-query") === "true" &&
-      !projectStatus.hasRunQuery &&
-      !isTourActive
-    ) {
-      // User canceled without running query, restart tour
-      localStorage.removeItem("tour-waiting-for-query");
       const timer = setTimeout(() => {
         startTour();
       }, 500);
@@ -282,10 +319,10 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
     }
   }, [
     isTourActive,
+    isTourDismissed,
     tourProgress.isCompleted,
     tourProgress.completedSteps.length,
     tourProgress.totalSteps,
-    projectStatus.hasModel,
     startTour,
   ]);
 
@@ -293,6 +330,7 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
     setIsTourActive(false);
     setIsTourModalVisible(false);
     localStorage.setItem("tour-dismissed", "true");
+    setIsTourDismissed(true);
   };
 
   const closeTourModal = () => {
@@ -317,17 +355,26 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
     }));
   };
 
+  /** Skip / dismiss entire tour — do not auto-show again until Setup is clicked. */
   const skipTour = () => {
     setIsTourActive(false);
     setIsTourModalVisible(false);
     localStorage.setItem("tour-dismissed", "true");
+    setIsTourDismissed(true);
+    localStorage.removeItem("tour-waiting-for-model");
+    localStorage.removeItem("tour-waiting-for-tenant");
+    localStorage.removeItem("tour-waiting-for-fields");
+    localStorage.removeItem("tour-waiting-for-content");
+    localStorage.removeItem("tour-waiting-for-query");
   };
 
-  const skipStep = () => {
-    const currentStepId = TOUR_STEPS[tourProgress.currentStep]?.id;
+  const skipStep = useCallback(() => {
+    const currentStepId = tourSteps[tourProgress.currentStep]?.id;
 
-    // Mark the current step as completed in localStorage
     switch (currentStepId) {
+      case "create-tenant":
+        localStorage.setItem("tour-skip-tenant-step", "true");
+        break;
       case "create-model":
         localStorage.setItem("project-has-model-skipped", "true");
         break;
@@ -342,39 +389,45 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
         break;
     }
 
-    // Remove any waiting flags
     localStorage.removeItem("tour-waiting-for-model");
+    localStorage.removeItem("tour-waiting-for-tenant");
     localStorage.removeItem("tour-waiting-for-fields");
     localStorage.removeItem("tour-waiting-for-content");
     localStorage.removeItem("tour-waiting-for-query");
 
-    // Add the current step to completed steps
-    setTourProgress((prev) => ({
-      ...prev,
-      completedSteps: [...prev.completedSteps, currentStepId],
-    }));
+    const stepId = currentStepId ?? "";
+    const last = tourProgress.currentStep >= tourProgress.totalSteps - 1;
 
-    // Move to next step or end tour if this was the last step
-    if (tourProgress.currentStep < tourProgress.totalSteps - 1) {
-      setTourProgress((prev) => ({
+    setTourProgress((prev) => {
+      const nextCompleted = [...prev.completedSteps];
+      if (stepId && !nextCompleted.includes(stepId)) {
+        nextCompleted.push(stepId);
+      }
+      if (last) {
+        return { ...prev, completedSteps: nextCompleted };
+      }
+      return {
         ...prev,
+        completedSteps: nextCompleted,
         currentStep: prev.currentStep + 1,
-      }));
-      // Refresh project status to reflect the skip
-      checkProjectStatus();
-    } else {
-      // Last step was skipped, end tour
+      };
+    });
+
+    if (last) {
       setIsTourActive(false);
       setIsTourModalVisible(false);
       localStorage.setItem("tour-completed", "true");
+    } else {
+      void checkProjectStatus();
     }
-  };
+  }, [tourSteps, tourProgress, checkProjectStatus]);
 
   const value: TourContextType = {
     isTourActive,
     isTourModalVisible,
     tourProgress,
     projectStatus,
+    tourSteps,
     startTour,
     endTour,
     closeTourModal,
@@ -384,7 +437,8 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
     skipTour,
     skipStep,
     checkProjectStatus,
-    shouldShowTour: false, // This is not used but required by the type
+    // Header Setup stays available after Skip; hide only when fully completed.
+    shouldShowTour: !tourProgress.isCompleted || isTourDismissed,
   };
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
@@ -398,7 +452,6 @@ export const useTour = (): TourContextType => {
   return context;
 };
 
-// Optional hook that returns null instead of throwing an error
 export const useTourSafe = (): TourContextType | null => {
   const context = useContext(TourContext);
   return context || null;

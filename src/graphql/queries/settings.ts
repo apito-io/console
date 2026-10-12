@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
 
 export const GET_SETTINGS_WEBHOOKS = gql`
   query getSettingsWebhooks {
@@ -46,8 +46,8 @@ export const GET_TEAMS_MEMBERS = gql`
   }
 `;
 
-export const SEARCH_USERS = gql`
-  query searchUsers(
+export const SEARCH_SYSTEM_USERS = gql`
+  query searchSystemUsers(
     $project_id: String
     $limit: Int
     $page: Int
@@ -57,7 +57,7 @@ export const SEARCH_USERS = gql`
     $username: String
     $email: String
   ) {
-    searchUsers(
+    searchSystemUsers(
       _id: $project_id
       filter: { limit: $limit, page: $page }
       where: {
@@ -94,8 +94,8 @@ export const GET_SETTINGS = gql`
       id
       name
       description
+      project_icon
       roles
-      tenant_model_name
       project_secret_key
       settings {
         locals
@@ -104,6 +104,8 @@ export const GET_SETTINGS = gql`
         default_storage_plugin
         default_function_plugin
         default_locale
+        idle_tenant_retention_days
+        auto_soft_delete_idle_tenants
       }
       created_at
     }

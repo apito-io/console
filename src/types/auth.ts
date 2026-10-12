@@ -1,6 +1,6 @@
 export interface LoginFormData {
   email: string;
-  password: string;
+  secret: string;
 }
 
 export interface RegistrationFormData {
@@ -29,7 +29,8 @@ export interface TokenData {
   project_role?: string;
   iss?: string;
   'cognito:username'?: string;
-  is_super_admin?: string;
+  is_super_admin?: string | boolean;
+  is_admin?: string | boolean;
   project_plan?: string;
   aud?: string;
   event_id?: string;

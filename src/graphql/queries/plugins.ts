@@ -1,18 +1,17 @@
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
 
 export const GET_PLUGINS = gql`
-  query GetPlugins(
+  query GetSystemPlugins(
     $name: String
     $limit: Int
     $page: Int
     $project_id: String
   ) {
-    getPlugins(
+    getSystemPlugins(
       _id: $project_id
       filter: { limit: $limit, page: $page }
       where: { name: { eq: $name } }
     ) {
-      type
       role
       id
       icon
@@ -26,6 +25,47 @@ export const GET_PLUGINS = gql`
       repository_url
       branch
       author
+      capabilities
+      official
+      signed
+      publisher
+      bundle_url
+      env_vars {
+        key
+        value
+      }
+    }
+  }
+`;
+
+export const GET_PROJECT_PLUGINS = gql`
+  query GetProjectPlugins(
+    $name: String
+    $limit: Int
+    $page: Int
+  ) {
+    getProjectPlugins(
+      filter: { limit: $limit, page: $page }
+      where: { name: { eq: $name } }
+    ) {
+      role
+      id
+      icon
+      title
+      version
+      exported_variable
+      enable
+      description
+      load_status
+      activate_status
+      repository_url
+      branch
+      author
+      capabilities
+      official
+      signed
+      publisher
+      bundle_url
       env_vars {
         key
         value

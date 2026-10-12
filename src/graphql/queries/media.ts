@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from 'graphql-tag';
 
 export const GET_ALL_PHOTOS = gql`
   query getAllPhotos($limit: Int, $page: Int, $search: String, $models: [String]) {

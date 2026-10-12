@@ -1,15 +1,10 @@
-import { BrowserRouter, Routes } from "react-router-dom";
-import { ApolloProvider } from "@apollo/client";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { ConfigProvider, message } from "antd";
 import { CookiesProvider } from "react-cookie";
-import { apolloClient } from "./services/apolloClient";
-import { AuthProvider } from "./contexts/AuthContext";
-import { ContentProvider } from "./contexts/ContentContext";
-import { ModelDndProvider } from "./contexts/ModelDndContext";
-import { PluginManagerProvider } from "./plugins/PluginManager";
-import { renderAuthRoutes, renderMainRoutes } from "./router/baseRoutes";
-import CommonLayout from "./layouts/CommonLayout";
+import { queryClient } from "./lib/queryClient";
+import CoreRouter from "./router/CoreRouter";
 import { apitoTheme } from "./theme";
+import { applyLayoutVars } from "./theme/applyLayoutVars";
 import "./App.css";
 
 // Configure global message settings
@@ -20,29 +15,15 @@ message.config({
   rtl: false,
 });
 
+applyLayoutVars();
+
 function App() {
   return (
     <CookiesProvider>
-      <ConfigProvider theme={apitoTheme}>
-        <ApolloProvider client={apolloClient}>
-          <BrowserRouter>
-            <AuthProvider>
-              <ContentProvider>
-                <ModelDndProvider>
-                  <PluginManagerProvider>
-                    <Routes>
-                      {/* Auth routes */}
-                      {renderAuthRoutes()}
-
-                      {/* Main routes with open-core layout (no pro features) */}
-                      {renderMainRoutes(CommonLayout, null)}
-                    </Routes>
-                  </PluginManagerProvider>
-                </ModelDndProvider>
-              </ContentProvider>
-            </AuthProvider>
-          </BrowserRouter>
-        </ApolloProvider>
+      <ConfigProvider theme={{ ...apitoTheme, cssVar: { key: "apito" } }}>
+        <QueryClientProvider client={queryClient}>
+          <CoreRouter />
+        </QueryClientProvider>
       </ConfigProvider>
     </CookiesProvider>
   );

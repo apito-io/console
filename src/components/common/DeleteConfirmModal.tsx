@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, Input, Modal, Typography } from "antd";
-import { ExclamationCircleOutlined, LoadingOutlined } from "@ant-design/icons";
+import { CircleAlert, Loader2 } from "lucide-react";
 
 const { Text } = Typography;
 
@@ -63,7 +63,7 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
       }}
     >
       <Button
-        icon={loader ? <LoadingOutlined spin /> : undefined}
+        icon={loader ? <Loader2 size={16} className="lucide-spin" /> : undefined}
         onClick={() => {
           return !loader ? onDelete() : null;
         }}
@@ -80,7 +80,7 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
     <Modal
       title={
         <span style={{ textAlign: "center" }}>
-          <ExclamationCircleOutlined /> {title}
+          <CircleAlert size={16} strokeWidth={1.75} /> {title}
         </span>
       }
       open={isVisible}

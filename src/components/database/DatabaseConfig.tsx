@@ -11,10 +11,10 @@ import {
   theme,
   message,
 } from "antd";
-import { DatabaseOutlined, CopyOutlined } from "@ant-design/icons";
 import { Icon } from "@iconify/react";
 import type { FormInstance } from "antd";
 import { httpService } from "../../services/httpService";
+import { Copy, Database } from "lucide-react";
 
 type ConnectionStatus = "idle" | "success" | "error";
 
@@ -41,9 +41,9 @@ type DatabaseOption = {
 
 const getDatabaseOptions = (token: any): DatabaseOption[] => [
   {
-    value: "coreDB",
+    value: "coredb",
     label: "Sandbox DB (Dev/Test)",
-    icon: <DatabaseOutlined style={{ color: token.colorSuccess }} />,
+    icon: <Database size={16} strokeWidth={1.75} style={{ color: token.colorSuccess }} />,
   },
   {
     value: "sqlite",
@@ -120,7 +120,7 @@ const getDefaultDbConfig = (db: string) => {
       return { uri: "mongodb://localhost:27017/apito" };
     case "sqlite":
       return { file: "apito-project.sqlite" };
-    case "coreDB":
+    case "coredb":
       return { file: "apito-project.db" };
     default:
       return {};
@@ -244,7 +244,7 @@ const CliCommand: React.FC<{ command: string; token?: any }> = ({
         </div>
 
         {/* Copy Icon */}
-        <CopyOutlined
+        <Copy size={16} strokeWidth={1.75}
           style={{
             color: token?.colorTextTertiary || "#9ca3af",
             fontSize: "12px",
@@ -298,7 +298,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
   form,
   databaseTypeField = "database_type",
   configField = "db_config",
-  defaultType = "coreDB",
+  defaultType = "coredb",
   enableTest = false,
   testEndpoint = "/system/database/check",
   onTypeChange,
@@ -340,9 +340,9 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
     }
   }, [projectId, selectedDatabase, form, configField]);
 
-  // When coreDB (Sandbox DB) is selected, auto-populate DB file name using project id
+  // When coredb (Sandbox DB) is selected, auto-populate DB file name using project id
   useEffect(() => {
-    if (selectedDatabase !== "coreDB") return;
+    if (selectedDatabase !== "coredb") return;
     const currentProjectId = projectId || form.getFieldValue("id");
     if (!currentProjectId) return;
     const currentCfg = form.getFieldValue(configField) || {};
@@ -532,7 +532,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
             <Input placeholder="apito-project.sqlite" />
           </Form.Item>
         );
-      case "coreDB":
+      case "coredb":
         return (
           <Form.Item
             name={[configField, "file"]}
@@ -635,7 +635,7 @@ const DatabaseConfig: React.FC<DatabaseConfigProps> = ({
             message="SQLite is file-based and great for local development; not recommended for production."
           />
         )}
-        {selectedDatabase === "coreDB" && (
+        {selectedDatabase === "coredb" && (
           <Alert
             type="warning"
             showIcon
