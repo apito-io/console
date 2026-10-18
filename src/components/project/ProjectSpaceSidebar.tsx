@@ -267,7 +267,7 @@ const ProjectSpaceSidebar: React.FC<ProjectSpaceSidebarProps> = ({
           type="button"
           className="console-nav-item console-discord-btn"
           onClick={() =>
-            window.open("https://discord.gg/4EmZYYQATb", "_blank")
+            window.open("https://discord.gg/Xb7p2ddC6E", "_blank")
           }
         >
           <span className="console-nav-item-main">

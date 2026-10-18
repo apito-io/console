@@ -2,9 +2,19 @@
 
 **Build locally. Scale when you’re ready.**
 
-Fair Source admin UI for a self-hosted Apito Engine. Model data, manage content, run tenants, draft and publish schema changes, and inspect the project database. Apito Cloud adds managed hosting and collaboration. This UI does not require Cloud to operate a project.
+Admin UI for a self-hosted Apito Engine. Model data, manage content, run tenants, draft and publish schema changes, and inspect the project database. Apito Cloud adds managed hosting and collaboration. This UI does not require Cloud to operate a project.
 
-Current releases are **Fair Source — converts to Apache 2.0 after two years** (FSL-1.1-ALv2). They are not OSI open source. See [LICENSING.md](LICENSING.md).
+Licensed under AGPL-3.0. You can use, modify and self-host it. If you run a modified version as a network service, you must publish your changes under AGPL-3.0. A commercial license is available from Apito LLC. Releases v1.8.26 to v1.8.30 remain FSL-1.1-ALv2; see LICENSING.md.
+
+## Run it
+
+```bash
+apito start
+```
+
+Open http://localhost:4055. The engine API is at http://localhost:5055.
+
+Docs: https://apito.io/docs
 
 Reference: the overall project vision and tone follow the Apito Engine README. See the engine repository for core concepts and ecosystem context: [apito-io/engine README](https://github.com/apito-io/engine/blob/main/README.md).
 
@@ -127,4 +137,6 @@ Issues and pull requests are welcome. Please open an issue first to discuss sign
 
 ## License
 
-This project is part of the Apito ecosystem. Licensing terms may differ between the engine and the console. Please refer to the LICENSE file in this repository (if present) and the Engine repository for additional context: [apito-io/engine README](https://github.com/apito-io/engine/blob/main/README.md).
+Licensed under AGPL-3.0. You can use, modify and self-host it. If you run a modified version as a network service, you must publish your changes under AGPL-3.0. A commercial license is available from Apito LLC. Releases v1.8.26 to v1.8.30 remain FSL-1.1-ALv2; see LICENSING.md.
+
+Contributions are accepted under [CLA.md](CLA.md).

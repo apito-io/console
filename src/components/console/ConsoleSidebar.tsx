@@ -433,7 +433,7 @@ const ConsoleSidebar: React.FC<ConsoleSidebarProps> = ({
         <button
           type="button"
           className="console-nav-item"
-          onClick={() => window.open("https://docs.apito.io", "_blank")}
+          onClick={() => window.open("https://apito.io/docs", "_blank")}
         >
           <span className="console-nav-item-main">
             <BookOpen size={16} strokeWidth={1.75} />
