@@ -1,10 +1,6 @@
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import "@graphiql/plugin-explorer/style.css";
-import {
-  createGraphiQLFetcher,
-  type FetcherOpts,
-  type FetcherParams,
-} from "@graphiql/toolkit";
+import { createGraphiQLFetcher } from "@graphiql/toolkit";
 import { GraphiQL } from "graphiql";
 import "graphiql/style.css";
 import React, { useMemo, useEffect, useCallback } from "react";
@@ -41,13 +37,15 @@ const GraphqlApiPage: React.FC = () => {
       const body = typeof args?.body === "string" ? args.body : "";
       const isIntrospection =
         body.includes("__schema") || body.includes("IntrospectionQuery");
+      const headers = new Headers(args?.headers);
+      headers.set("Accept", "application/json");
+      headers.set("Content-Type", "application/json");
+      if (!headers.has("Authorization")) {
+        headers.set("X-Use-Cookies", "true");
+      }
       return fetch(url, {
         ...args,
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "X-Use-Cookies": "true",
-        },
+        headers,
         credentials: "include",
       }).then((response) => {
         if (response.ok && !isIntrospection) {
@@ -74,32 +72,6 @@ const GraphqlApiPage: React.FC = () => {
         }
         return response;
       });
-    },
-    schemaFetcher: (graphqlParam: FetcherParams, _opts?: FetcherOpts): any => {
-      try {
-        return fetch(graphqlEndpoint, {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            "X-Use-Cookies": "true",
-          },
-          credentials: "include",
-          body: JSON.stringify(graphqlParam),
-        })
-          .then(function (response) {
-            return response.text();
-          })
-          .then(function (responseBody) {
-            try {
-              return JSON.parse(responseBody);
-            } catch {
-              return responseBody;
-            }
-          });
-      } catch (e) {
-        console.log("gql fetch error", e);
-      }
     },
   });
 
@@ -140,11 +112,14 @@ const GraphqlApiPage: React.FC = () => {
     <div className="api-page-shell">
       <div className="api-embed-root">
         <GraphiQL
-          key="graphiql-instance"
+          key={projectId || "graphiql-instance"}
           fetcher={baseFetcher}
           plugins={plugins}
           className="api-graphiql-embed"
           defaultQuery={`# Welcome to Apito GraphQL API
+# Authorize with a project API key from Settings → API Secrets:
+# Authorization: Bearer ak_…
+# With no Authorization header, this page uses the console session cookie.
 # 
 # Use this playground to explore your API
 # Try selecting a query from the Explorer on the left, or write your own:

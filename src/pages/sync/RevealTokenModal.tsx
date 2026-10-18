@@ -31,19 +31,7 @@ apito-cli sync push`;
 
   const mcp = `{
   "mcpServers": {
-    "apito": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://apito-mcp.apito.workers.dev/sse",
-        "--header",
-        "Authorization:Bearer \${APITO_ACCESS_TOKEN}"
-      ],
-      "env": {
-        "APITO_ACCESS_TOKEN": "${token}"
-      }
-    }
+    "apito": { "type": "http", "url": "${restApi}/mcp" }
   }
 }`;
 
@@ -122,7 +110,15 @@ export function RevealTokenModal({ open, token, tokenName, onClose }: RevealToke
           {
             key: "mcp",
             label: "MCP client",
-            children: <CopyBlock code={mcp} label="MCP config" />,
+            children: (
+              <>
+                <Paragraph type="secondary">
+                  Do not paste the token above into this file. The client
+                  opens the URL and asks you to approve access.
+                </Paragraph>
+                <CopyBlock code={mcp} label="MCP config" />
+              </>
+            ),
           },
         ]}
       />

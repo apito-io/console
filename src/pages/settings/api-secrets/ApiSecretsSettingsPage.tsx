@@ -41,6 +41,8 @@ import {
   MonoTableCard,
 } from "../../../components/console";
 import { useNavigate } from "../../../router/navigation";
+import { getRestUrl } from "../../../constants/api";
+import { ENV } from "../../../utils/env";
 dayjs.extend(relativeTime);
 dayjs.extend(duration);
 
@@ -150,12 +152,12 @@ const ApiSecretsSettingsPage: React.FC = () => {
   const projectSecretKey =
     currentProjectData?.currentProject?.project_secret_key;
 
+  const projectId = currentProjectData?.currentProject?.id ?? "";
   const graphqlEndpoint =
-    import.meta.env.REACT_APP_GRAPHQL_ENDPOINT ||
-    `${window.location.origin}/graphql`;
-  const restEndpoint =
-    import.meta.env.REACT_APP_REST_API_ENDPOINT ||
-    `${window.location.origin}/api`;
+    ENV.VITE_PUBLIC_GRAPH_API || getRestUrl("/secured/graphql");
+  const restEndpoint = projectId
+    ? `${getRestUrl("/secured/rest")}/${projectId}`
+    : getRestUrl("/secured/rest");
 
   useEffect(() => {
     const tokenList = currentProjectData?.currentProject?.tokens ?? [];

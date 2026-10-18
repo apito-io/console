@@ -5,7 +5,7 @@
     "url": "https://github.com/apito-io/console.git"
   },
   "private": true,
-  "version": "0.2.13",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

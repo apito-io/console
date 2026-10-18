@@ -1,380 +1,477 @@
-import React from "react";
-import { ReactFlow, Background, Node, Edge, Handle, Position } from "reactflow";
-import "reactflow/dist/style.css";
+import React, { useEffect, useRef, useState } from "react";
 import { Typography } from "antd";
-import { Bot, CloudCog, Code, Database, GitBranch, LayoutGrid, Link, Lock, Network, ShieldCheck, Users, Webhook, Wrench } from "lucide-react";
+import {
+  Background,
+  Edge,
+  Handle,
+  Node,
+  NodeProps,
+  Position,
+  ReactFlow,
+} from "reactflow";
+import "reactflow/dist/style.css";
+import type { LucideIcon } from "lucide-react";
+import {
+  Bot,
+  Cloud,
+  CloudCog,
+  Code,
+  Database,
+  GitBranch,
+  Handshake,
+  LayoutGrid,
+  Lock,
+  Server,
+  Terminal,
+  Users,
+  Webhook,
+  Wrench,
+} from "lucide-react";
 
 const { Text } = Typography;
 
-// Custom node component
-const CustomNode = ({ data }: { data: any }) => {
+type IllustrationNodeData = {
+  icon: LucideIcon;
+  label: string;
+  description?: string;
+  color: string;
+  size?: "normal" | "large";
+};
+
+const hiddenHandleStyle = { opacity: 0 };
+
+const CustomNode = ({ data }: NodeProps<IllustrationNodeData>) => {
   const { icon: Icon, label, description, color, size = "normal" } = data;
-
-  const nodeStyle = {
-    background: "#fff",
-    border: "1px solid #eaecef",
-    borderRadius: size === "large" ? "16px" : "12px",
-    padding: size === "large" ? "16px 20px" : "8px 12px",
-    boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
-    display: "flex",
-    alignItems: "center",
-    gap: size === "large" ? "12px" : "8px",
-    minWidth: size === "large" ? "200px" : "auto",
-  };
-
-  const iconSize = size === "large" ? 20 : 16;
+  const isLarge = size === "large";
 
   return (
-    <div style={nodeStyle}>
-      <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
-      <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
-      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
-      <Icon size={iconSize} strokeWidth={1.75} color={color} />
-      <div>
+    <div
+      style={{
+        background: "#fff",
+        border: "1px solid #eaecef",
+        borderRadius: isLarge ? "16px" : "12px",
+        padding: isLarge ? "16px 20px" : "8px 12px",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+        display: "flex",
+        alignItems: "center",
+        gap: isLarge ? "12px" : "8px",
+        width: isLarge ? "220px" : "210px",
+        boxSizing: "border-box",
+      }}
+    >
+      <Handle
+        id="target-left"
+        type="target"
+        position={Position.Left}
+        style={hiddenHandleStyle}
+      />
+      <Handle
+        id="source-left"
+        type="source"
+        position={Position.Left}
+        style={hiddenHandleStyle}
+      />
+      <Handle
+        id="target-right"
+        type="target"
+        position={Position.Right}
+        style={hiddenHandleStyle}
+      />
+      <Handle
+        id="source-right"
+        type="source"
+        position={Position.Right}
+        style={hiddenHandleStyle}
+      />
+      <Handle
+        id="target-top"
+        type="target"
+        position={Position.Top}
+        style={hiddenHandleStyle}
+      />
+      <Handle
+        id="source-bottom"
+        type="source"
+        position={Position.Bottom}
+        style={hiddenHandleStyle}
+      />
+      <Icon
+        size={isLarge ? 20 : 16}
+        strokeWidth={1.75}
+        color={color}
+        aria-hidden="true"
+      />
+      <div style={{ minWidth: 0 }}>
         <Text
           style={{
             color: "#111827",
-            fontSize: size === "large" ? "14px" : "12px",
-            fontWeight: size === "large" ? 600 : 500,
+            fontSize: isLarge ? "14px" : "12px",
+            fontWeight: isLarge ? 600 : 500,
+            display: "block",
+            lineHeight: 1.2,
           }}
         >
           {label}
         </Text>
-        {description && (
-          <div>
-            <Text
-              style={{
-                color: "#6b7280",
-                fontSize: "11px",
-                display: "block",
-                lineHeight: 1.2,
-              }}
-            >
-              {description}
-            </Text>
-          </div>
-        )}
+        {description ? (
+          <Text
+            style={{
+              color: "#6b7280",
+              fontSize: "11px",
+              display: "block",
+              lineHeight: 1.2,
+            }}
+          >
+            {description}
+          </Text>
+        ) : null}
       </div>
     </div>
   );
 };
 
-const nodeTypes = {
-  custom: CustomNode,
-};
+const nodeTypes = { custom: CustomNode };
 
-const initialNodes: Node[] = [
-  // Core Schema node
+const initialNodes: Node<IllustrationNodeData>[] = [
   {
     id: "schema",
     type: "custom",
-    position: { x: 300, y: 50 },
+    position: { x: 150, y: 0 },
     data: {
       icon: Database,
       label: "Schema",
-      description: "Design types & relations",
+      description: "Models, relations, versioned",
       color: "#52c41a",
       size: "large",
     },
   },
-
-  // Generated APIs
   {
-    id: "generated-apis",
+    id: "versioning",
     type: "custom",
-    position: { x: 285, y: 220 },
-    data: {
-      icon: Webhook,
-      label: "Generated APIs",
-      description: "CRUD, auth, filters, pagination",
-      color: "#1677ff",
-      size: "large",
-    },
-  },
-
-  // GraphQL & REST
-  {
-    id: "graphql",
-    type: "custom",
-    position: { x: 220, y: 410 },
+    position: { x: 10, y: 90 },
     data: {
       icon: GitBranch,
-      label: "GraphQL",
-      description: "Schema-first",
+      label: "Versioning",
+      description: "Publish & sync",
       color: "#722ed1",
     },
   },
   {
-    id: "rest",
+    id: "engine",
     type: "custom",
-    position: { x: 420, y: 410 },
+    position: { x: 150, y: 170 },
     data: {
-      icon: Code,
-      label: "REST",
-      description: "Auto-generated",
-      color: "#fa8c16",
+      icon: Server,
+      label: "Engine",
+      description: "Runs your schema",
+      color: "#2f54eb",
+      size: "large",
     },
   },
-
-  // Plugins system
+  {
+    id: "sqlite",
+    type: "custom",
+    position: { x: 10, y: 260 },
+    data: {
+      icon: Database,
+      label: "SQLite",
+      description: "Default",
+      color: "#13c2c2",
+    },
+  },
+  {
+    id: "postgres",
+    type: "custom",
+    position: { x: 300, y: 260 },
+    data: {
+      icon: Database,
+      label: "Postgres",
+      color: "#1677ff",
+    },
+  },
+  {
+    id: "apis",
+    type: "custom",
+    position: { x: 150, y: 360 },
+    data: {
+      icon: Webhook,
+      label: "Generated APIs",
+      description: "GraphQL + REST, filters, pagination",
+      color: "#1677ff",
+      size: "large",
+    },
+  },
+  {
+    id: "auth",
+    type: "custom",
+    position: { x: 10, y: 470 },
+    data: {
+      icon: Lock,
+      label: "Auth & roles",
+      description: "RBAC",
+      color: "#f5222d",
+    },
+  },
   {
     id: "plugins",
     type: "custom",
-    position: { x: 600, y: 180 },
+    position: { x: 300, y: 470 },
     data: {
       icon: Wrench,
       label: "Plugins",
       color: "#1677ff",
     },
   },
-
-  // Plugin examples
   {
-    id: "media",
+    id: "storage",
     type: "custom",
-    position: { x: 750, y: 120 },
+    position: { x: 10, y: 540 },
     data: {
       icon: LayoutGrid,
-      label: "Media",
+      label: "Storage",
+      description: "Media files",
       color: "#52c41a",
     },
   },
   {
-    id: "auth",
+    id: "tenants",
     type: "custom",
-    position: { x: 750, y: 180 },
+    position: { x: 300, y: 540 },
     data: {
-      icon: Lock,
-      label: "Auth",
-      color: "#f5222d",
+      icon: Users,
+      label: "SaaS tenants",
+      description: "One database per tenant",
+      color: "#fa8c16",
     },
   },
   {
-    id: "ai",
+    id: "functions",
     type: "custom",
-    position: { x: 750, y: 240 },
+    position: { x: 10, y: 610 },
     data: {
-      icon: Bot,
-      label: "AI",
+      icon: CloudCog,
+      label: "Cloud functions",
       color: "#722ed1",
     },
   },
-
-  // Independent capabilities
   {
-    id: "roles",
+    id: "app",
     type: "custom",
-    position: { x: 50, y: 80 },
+    position: { x: 10, y: 700 },
     data: {
-      icon: ShieldCheck,
-      label: "Roles",
+      icon: Code,
+      label: "Your app",
+      description: "JS, Go, Flutter SDKs",
+      color: "#fa8c16",
+    },
+  },
+  {
+    id: "mcp",
+    type: "custom",
+    position: { x: 300, y: 700 },
+    data: {
+      icon: Bot,
+      label: "AI agents",
+      description: "MCP server",
+      color: "#722ed1",
+    },
+  },
+  {
+    id: "local",
+    type: "custom",
+    position: { x: 10, y: 820 },
+    data: {
+      icon: Terminal,
+      label: "Local Studio",
+      description: "apito start",
       color: "#13c2c2",
     },
   },
   {
-    id: "workflows",
+    id: "cloud",
     type: "custom",
-    position: { x: 50, y: 150 },
+    position: { x: 300, y: 820 },
     data: {
-      icon: CloudCog,
-      label: "Workflows",
-      color: "#722ed1",
+      icon: Cloud,
+      label: "Apito Cloud",
+      description: "Backups, point-in-time restore",
+      color: "#1677ff",
     },
   },
   {
-    id: "webhooks",
+    id: "handover",
     type: "custom",
-    position: { x: 50, y: 220 },
+    position: { x: 150, y: 940 },
     data: {
-      icon: Network,
-      label: "Webhooks",
-      color: "#faad14",
-    },
-  },
-  {
-    id: "teams",
-    type: "custom",
-    position: { x: 50, y: 290 },
-    data: {
-      icon: Users,
-      label: "Teams",
-      color: "#2f54eb",
+      icon: Handshake,
+      label: "Hand over to your client",
+      description: "Freelance Project, Cloud",
+      color: "#52c41a",
     },
   },
 ];
+
+const solidEdgeStyle = { stroke: "#d1d5db", strokeWidth: 2 };
+const dashedEdgeStyle = {
+  stroke: "#d1d5db",
+  strokeWidth: 2,
+  strokeDasharray: "5,5",
+};
 
 const initialEdges: Edge[] = [
-  // Schema to Generated APIs - straight line
   {
-    id: "schema-to-apis",
+    id: "schema-to-engine",
     source: "schema",
-    target: "generated-apis",
+    sourceHandle: "source-bottom",
+    target: "engine",
+    targetHandle: "target-top",
     type: "smoothstep",
-    style: { stroke: "#d1d5db", strokeWidth: 2 },
-    animated: false,
+    style: solidEdgeStyle,
   },
-
-  // Generated APIs to GraphQL and REST - straight lines
   {
-    id: "apis-to-graphql",
-    source: "generated-apis",
-    target: "graphql",
+    id: "schema-to-versioning",
+    source: "schema",
+    sourceHandle: "source-left",
+    target: "versioning",
+    targetHandle: "target-right",
     type: "smoothstep",
-    style: { stroke: "#d1d5db", strokeWidth: 2 },
-    animated: false,
+    style: dashedEdgeStyle,
   },
   {
-    id: "apis-to-rest",
-    source: "generated-apis",
-    target: "rest",
+    id: "engine-to-sqlite",
+    source: "engine",
+    sourceHandle: "source-left",
+    target: "sqlite",
+    targetHandle: "target-right",
     type: "smoothstep",
-    style: { stroke: "#d1d5db", strokeWidth: 2 },
-    animated: false,
+    style: dashedEdgeStyle,
   },
-
-  // Plugins to Schema (optional) - straight line
   {
-    id: "plugins-to-schema",
-    source: "plugins",
-    target: "schema",
+    id: "engine-to-postgres",
+    source: "engine",
+    sourceHandle: "source-right",
+    target: "postgres",
+    targetHandle: "target-left",
     type: "smoothstep",
-    style: { stroke: "#d1d5db", strokeWidth: 2 },
-    animated: false,
-  },
-
-  // Plugin examples to Plugins - straight lines
-  {
-    id: "media-to-plugins",
-    source: "media",
-    target: "plugins",
-    type: "bezier",
-    style: { stroke: "#d1d5db", strokeWidth: 2, strokeDasharray: "5,5" },
-    animated: false,
+    style: dashedEdgeStyle,
   },
   {
-    id: "auth-to-plugins",
-    source: "auth",
-    target: "plugins",
-    type: "bezier",
-    style: { stroke: "#d1d5db", strokeWidth: 2, strokeDasharray: "5,5" },
-    animated: false,
+    id: "engine-to-apis",
+    source: "engine",
+    sourceHandle: "source-bottom",
+    target: "apis",
+    targetHandle: "target-top",
+    type: "smoothstep",
+    style: solidEdgeStyle,
+  },
+  ...(["auth", "storage", "functions"] as const).map((target) => ({
+    id: `apis-to-${target}`,
+    source: "apis",
+    sourceHandle: "source-left",
+    target,
+    targetHandle: "target-right",
+    type: "smoothstep" as const,
+    style: dashedEdgeStyle,
+  })),
+  ...(["plugins", "tenants"] as const).map((target) => ({
+    id: `apis-to-${target}`,
+    source: "apis",
+    sourceHandle: "source-right",
+    target,
+    targetHandle: "target-left",
+    type: "smoothstep" as const,
+    style: dashedEdgeStyle,
+  })),
+  {
+    id: "apis-to-app",
+    source: "apis",
+    sourceHandle: "source-bottom",
+    target: "app",
+    targetHandle: "target-top",
+    type: "smoothstep",
+    style: solidEdgeStyle,
   },
   {
-    id: "ai-to-plugins",
-    source: "ai",
-    target: "plugins",
-    type: "bezier",
-    style: { stroke: "#d1d5db", strokeWidth: 2, strokeDasharray: "5,5" },
-    animated: false,
-  },
-
-  // Independent capabilities to Schema - straight lines
-  {
-    id: "roles-to-schema",
-    source: "roles",
-    target: "schema",
-    type: "bezier",
-    style: { stroke: "#d1d5db", strokeWidth: 2, strokeDasharray: "5,5" },
-    animated: false,
+    id: "apis-to-mcp",
+    source: "apis",
+    sourceHandle: "source-bottom",
+    target: "mcp",
+    targetHandle: "target-top",
+    type: "smoothstep",
+    style: solidEdgeStyle,
   },
   {
-    id: "workflows-to-schema",
-    source: "workflows",
-    target: "schema",
-    type: "bezier",
-    style: { stroke: "#d1d5db", strokeWidth: 2, strokeDasharray: "5,5" },
-    animated: false,
+    id: "app-to-local",
+    source: "app",
+    sourceHandle: "source-bottom",
+    target: "local",
+    targetHandle: "target-top",
+    type: "smoothstep",
+    style: solidEdgeStyle,
   },
   {
-    id: "webhooks-to-schema",
-    source: "webhooks",
-    target: "schema",
-    type: "bezier",
-    style: { stroke: "#d1d5db", strokeWidth: 2, strokeDasharray: "5,5" },
-    animated: false,
+    id: "mcp-to-cloud",
+    source: "mcp",
+    sourceHandle: "source-bottom",
+    target: "cloud",
+    targetHandle: "target-top",
+    type: "smoothstep",
+    style: solidEdgeStyle,
   },
   {
-    id: "teams-to-schema",
-    source: "teams",
-    target: "schema",
-    type: "bezier",
-    style: { stroke: "#d1d5db", strokeWidth: 2, strokeDasharray: "5,5" },
-    animated: false,
+    id: "cloud-to-handover",
+    source: "cloud",
+    sourceHandle: "source-left",
+    target: "handover",
+    targetHandle: "target-right",
+    type: "smoothstep",
+    style: dashedEdgeStyle,
   },
 ];
 
+const diagramNodes: Node<IllustrationNodeData>[] = initialNodes.map((node) => {
+  const large = node.data.size === "large";
+  return {
+    ...node,
+    width: large ? 220 : 210,
+    height: large ? 78 : 58,
+  };
+});
+
+const board = { width: 532, height: 1030 };
+const lockedViewport = { x: 6, y: 16, zoom: 1 };
+
 const SchemaToApiIllustration: React.FC = () => {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const fit = () => {
+      const width = host.clientWidth;
+      const height = host.clientHeight;
+      if (width < 8 || height < 8) return;
+      setScale(Math.min(width / board.width, height / board.height));
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div style={{ height: "100%", width: "100%", position: "relative" }}>
-      <ReactFlow
-        nodes={initialNodes}
-        edges={initialEdges}
-        nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.1 }}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable={false}
-        zoomOnScroll={false}
-        zoomOnPinch={false}
-        panOnScroll={false}
-        panOnDrag={false}
-        preventScrolling={true}
-        style={{ background: "transparent" }}
-      >
-        <Background gap={20} size={1} color="#ebedf0" />
-      </ReactFlow>
-
-      {/* Integration chips */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "80px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          display: "flex",
-          gap: "12px",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          maxWidth: "500px",
-        }}
-      >
-        {["Next.js", "Node", "Go", "Webhooks"].map((tech) => (
-          <div
-            key={tech}
-            style={{
-              background: "#f8fafc",
-              border: "1px solid #e2e8f0",
-              borderRadius: "20px",
-              padding: "6px 16px",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-            }}
-          >
-            <Link size={16} strokeWidth={1.75} style={{ color: "#64748b", fontSize: "12px" }} />
-            <Text
-              style={{ color: "#475569", fontSize: "11px", fontWeight: 500 }}
-            >
-              {tech}
-            </Text>
-          </div>
-        ))}
-      </div>
-
-      {/* Caption */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          left: "50%",
-          top: "100px",
-          transform: "translateX(-50%)",
-          textAlign: "center",
-        }}
-      >
+    <div
+      style={{
+        height: "100%",
+        minHeight: 0,
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ flex: "0 0 auto", padding: "4px 4px 14px" }}>
         <Text
           style={{
             color: "#1f2937",
@@ -384,18 +481,55 @@ const SchemaToApiIllustration: React.FC = () => {
             marginBottom: "4px",
           }}
         >
-          Build API in Seconds, Delivery Projects in Weeks
+          Model your data once. Ship the backend.
         </Text>
         <Text
           style={{
             color: "#6b7280",
             fontSize: "13px",
             lineHeight: "1.4",
+            display: "block",
           }}
         >
-          GraphQL-first and REST. Open source. Extensible plugins. Integrates
-          anywhere.
+          GraphQL and REST, auth, multi-tenant SaaS, and an MCP server for your
+          AI tools. Run it locally or on Apito Cloud.
         </Text>
+      </div>
+      <div
+        ref={hostRef}
+        style={{ flex: 1, minHeight: 0, width: "100%", position: "relative", overflow: "hidden" }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            width: board.width,
+            height: board.height,
+            transform: `translate(-50%, -50%) scale(${scale})`,
+          }}
+        >
+          <ReactFlow
+            nodes={diagramNodes}
+            edges={initialEdges}
+            nodeTypes={nodeTypes}
+            minZoom={1}
+            maxZoom={1}
+            defaultViewport={lockedViewport}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            elementsSelectable={false}
+            zoomOnScroll={false}
+            zoomOnPinch={false}
+            panOnScroll={false}
+            panOnDrag={false}
+            preventScrolling
+            proOptions={{ hideAttribution: true }}
+            style={{ background: "transparent", width: "100%", height: "100%" }}
+          >
+            <Background gap={20} size={1} color="#ebedf0" />
+          </ReactFlow>
+        </div>
       </div>
     </div>
   );

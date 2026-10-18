@@ -88,6 +88,10 @@ export interface CreateAccessTokenFormProps {
   projectOptions: SimpleProjectOption[];
   projectsLoading?: boolean;
   isSubmitting?: boolean;
+  lockedPreset?: string;
+  defaultName?: string;
+  submitLabel?: string;
+  cardLabel?: string;
   onSubmit: (payload: CreateAccessTokenPayload) => Promise<void> | void;
 }
 
@@ -129,9 +133,17 @@ export function CreateAccessTokenForm({
   projectOptions,
   projectsLoading,
   isSubmitting,
+  lockedPreset,
+  defaultName = "",
+  submitLabel = "Generate access token",
+  cardLabel = "Create access token",
   onSubmit,
 }: CreateAccessTokenFormProps) {
-  const [draft, setDraft] = useState<Draft>(initialDraft);
+  const [draft, setDraft] = useState<Draft>({
+    ...initialDraft,
+    preset: lockedPreset || initialDraft.preset,
+    name: defaultName,
+  });
   const [showErrors, setShowErrors] = useState(false);
 
   const resolvedCatalog = useMemo(
@@ -240,7 +252,7 @@ export function CreateAccessTokenForm({
 
   return (
     <ConsoleCard
-      title={<ConsoleCardTitle icon={Plus} label="Create access token" />}
+      title={<ConsoleCardTitle icon={Plus} label={cardLabel} />}
     >
       {/* Basics */}
       <div className="token-section">
@@ -281,6 +293,7 @@ export function CreateAccessTokenForm({
       </div>
 
       {/* Usage preset */}
+      {lockedPreset ? null : (
       <div className="token-section">
         <div className="token-section-title">Usage preset</div>
         <Text type="secondary" className="token-section-desc">
@@ -402,6 +415,7 @@ export function CreateAccessTokenForm({
           </div>
         ) : null}
       </div>
+      )}
 
       {/* Resource scope */}
       <div className="token-section">
@@ -612,7 +626,7 @@ export function CreateAccessTokenForm({
           loading={isSubmitting}
           onClick={handleSubmit}
         >
-          Generate access token
+          {submitLabel}
         </Button>
       </div>
     </ConsoleCard>

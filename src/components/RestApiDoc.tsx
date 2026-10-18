@@ -57,19 +57,12 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
     document.head.appendChild(styleElement);
 
     const fetchOpenApiSpec = async () => {
-      console.log("Debug - projectId:", projectId);
-      console.log("Debug - token:", token ? "exists" : "missing");
-      console.log("Debug - restApiUrl:", restApiUrl);
-
       if (!projectId) {
-        console.log("No project_id found, skipping API fetch");
         setLoading(false);
         return;
       }
 
       try {
-        console.log("Fetching OpenAPI spec from:", restApiUrl);
-
         const response = await fetch(restApiUrl, {
           credentials: "include",
           headers: {
@@ -80,19 +73,14 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
           },
         });
 
-        console.log("Response status:", response.status);
-        console.log("Response ok:", response.ok);
-
         if (!response.ok) {
           const errorText = await response.text();
-          console.log("Error response body:", errorText);
           throw new Error(
             `Failed to fetch OpenAPI spec: ${response.status} ${response.statusText} - ${errorText}`
           );
         }
 
         const spec = await response.json();
-        console.log("OpenAPI spec loaded:", spec);
         setOpenApiSpec(spec);
         setLoading(false);
       } catch (err) {
@@ -161,7 +149,7 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
       >
         <p>No API documentation available.</p>
         <p style={{ fontSize: "14px", color: "#999", marginTop: "8px" }}>
-          Debug info: project_id={projectId || "missing"}
+          Select a project, then refresh.
         </p>
       </div>
     );
@@ -214,6 +202,11 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
           height: "100%",
         }}
       >
+        <p style={{ margin: "12px 16px", color: "#666" }}>
+          Authorize with a project API key from Settings → API Secrets. Paste
+          it as <code>Bearer ak_…</code>. Leave this empty until you do. The
+          console session is not an API key.
+        </p>
         <ApiReferenceReact
           configuration={{
             content: openApiSpec,
@@ -224,7 +217,7 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
               preferredSecurityScheme: "bearerAuth",
               securitySchemes: {
                 bearerAuth: {
-                  token: token || "",
+                  token: "",
                 },
               },
             },

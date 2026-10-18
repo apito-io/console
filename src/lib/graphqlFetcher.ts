@@ -14,7 +14,7 @@ function resolveGraphqlUri(): string {
   if (typeof window !== "undefined") {
     return `${window.location.origin}/system/graphql`;
   }
-  return "http://localhost:5051/system/graphql";
+  return "http://localhost:5055/system/graphql";
 }
 
 /** WebSocket URL for system operator subscriptions (notifySystem). */

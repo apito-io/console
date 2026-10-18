@@ -6,8 +6,8 @@ import {
   Skeleton,
   Typography,
 } from "antd";
-import { useNavigate } from "../../router/navigation";
-import { ENV } from "../../utils/env";
+import { useLocation, useNavigate } from "../../router/navigation";
+import DeviceApprovalPage from "../sync/DeviceApprovalPage";
 import {
   useAccessTokensQuery,
   useRevokeAccessTokenMutation,
@@ -19,42 +19,20 @@ import "../../components/console/ConsoleShell.css";
 
 const { Text, Paragraph } = Typography;
 
-const MCP_REMOTE_SSE = "https://apito-mcp.apito.workers.dev/sse";
-
 const cursorLocalConfig = `{
   "mcpServers": {
     "apito": {
-      "command": "npx",
-      "args": ["tsx", "/absolute/path/to/apito-mcp/src/index.ts"],
-      "env": {
-        "APITO_API_KEY": "apt_your-token-here",
-        "APITO_GRAPHQL_ENDPOINT": "${ENV.VITE_GRAPH_API || "https://api.apito.io/system/graphql"}",
-        "APITO_ALLOWED_PROJECT_IDS": "project-id-1,project-id-2",
-        "APITO_DEFAULT_PROJECT_ID": "optional-read-default-project-id",
-        "TENANT_ID": "optional-saas-tenant-id"
-      }
+      "command": "apito",
+      "args": ["mcp", "serve", "--transport", "http", "--account", "local"]
     }
   }
 }`;
 
-const cursorRemoteConfig = `{
+const remoteURLConfig = `{
   "mcpServers": {
-    "apito-mcp": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "${MCP_REMOTE_SSE}",
-        "--header",
-        "Authorization: Bearer \${APITO_API_KEY}",
-        "--header",
-        "X-Apito-Tenant-ID:\${TENANT_ID}"
-      ],
-      "env": {
-        "APITO_API_KEY": "apt_your-token-here",
-        "TENANT_ID": "optional-tenant-id"
-      }
-    }
+    "apito-cloud": { "type": "http", "url": "https://api.apito.io/mcp" },
+    "apito-local": { "type": "http", "url": "http://localhost:4055/mcp" },
+    "apito-enterprise": { "type": "http", "url": "https://enterprise.example.com/mcp" }
   }
 }`;
 
@@ -67,7 +45,7 @@ const exampleQueries = [
   "Upsert a row in model task after schema is published",
 ];
 
-const McpPage: React.FC = () => {
+const McpDocsPage: React.FC = () => {
   const navigate = useNavigate();
   const tokensQuery = useAccessTokensQuery();
   const revokeMutation = useRevokeAccessTokenMutation();
@@ -89,10 +67,18 @@ const McpPage: React.FC = () => {
           type="info"
           showIcon
           className="console-mb-0"
-          message="Apito MCP uses the system GraphQL API"
+          message="Connect with a URL"
           description={
             <>
-              Create a unified access token on the{" "}
+              Add <Text code>https://api.apito.io/mcp</Text> as an HTTP MCP
+              server. Do not put a token in the config. The first request
+              opens this page so you can approve an{" "}
+              <Text strong>MCP assistant</Text> grant. Local Studio uses{" "}
+              <Text code>http://localhost:4055/mcp</Text>. The npm{" "}
+              <Text code>apito-mcp</Text> package is deprecated and does not
+              serve tools. Write and deploy tools return{" "}
+              <Text code>CAPABILITY_DENIED</Text> until you create a broader
+              token on the{" "}
               <Button
                 type="link"
                 className="console-link-btn"
@@ -100,14 +86,7 @@ const McpPage: React.FC = () => {
               >
                 Access Token
               </Button>{" "}
-              page (preset <Text strong>MCP assistant</Text> for read-only, or
-              custom capabilities). Use it as{" "}
-              <Text code>Authorization: Bearer apt_…</Text> /{" "}
-              <Text code>APITO_API_KEY</Text>. Tool availability follows the
-              token&apos;s capabilities (<Text code>CAPABILITY_DENIED</Text> when
-              missing). The MCP server also requires an explicit{" "}
-              <Text code>APITO_ALLOWED_PROJECT_IDS</Text> allowlist; it can only
-              narrow the token&apos;s engine-side grants.
+              page.
             </>
           }
         />
@@ -142,27 +121,41 @@ const McpPage: React.FC = () => {
           }
         >
           <Paragraph type="secondary">
-            Prefer the <Text strong>MCP assistant</Text> preset (read-only) unless
-            you intentionally grant write/deploy capabilities. Reads identify a
-            project on each tool call. Writes first use{" "}
-            <Text code>prepare_project_scope</Text> then{" "}
-            <Text code>confirm_project_scope</Text> to obtain a short-lived,
-            project-bound lease.
+            Paste the URL into Cursor or Claude. The client discovers OAuth
+            and opens this page. Docs:{" "}
+            <a href="https://apito.io/docs/platform/mcp/">Connect MCP</a>.
           </Paragraph>
           <Collapse
+            defaultActiveKey={["remote"]}
             items={[
               {
-                key: "local",
-                label: "Cursor — local MCP server",
+                key: "remote",
+                label: "URL connection",
                 children: (
-                  <pre className="console-code-block">{cursorLocalConfig}</pre>
+                  <>
+                    <Paragraph type="secondary">
+                      Paste only the URL. The client stores the credential
+                      after you click Give MCP access. Do not paste an{" "}
+                      <Text code>apt_</Text> token or a project{" "}
+                      <Text code>ak_</Text> key.
+                    </Paragraph>
+                    <pre className="console-code-block">{remoteURLConfig}</pre>
+                  </>
                 ),
               },
               {
-                key: "remote",
-                label: "Cursor — remote SSE",
+                key: "local",
+                label: "Older stdio bridge",
                 children: (
-                  <pre className="console-code-block">{cursorRemoteConfig}</pre>
+                  <>
+                    <Paragraph type="secondary">
+                      <Text code>apito mcp serve --transport http</Text>{" "}
+                      bridges a stdio client to the same URL. It does not
+                      embed a token. <Text code>APITO_MCP_RUNTIME=node</Text>{" "}
+                      is the retired Node runtime.
+                    </Paragraph>
+                    <pre className="console-code-block">{cursorLocalConfig}</pre>
+                  </>
                 ),
               },
               {
@@ -182,6 +175,17 @@ const McpPage: React.FC = () => {
       </div>
     </div>
   );
+};
+
+const McpPage: React.FC = () => {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const deviceCode = params.get("device_code")?.trim() ?? "";
+  const requestId = params.get("request_id")?.trim() ?? "";
+  if (deviceCode || requestId) {
+    return <DeviceApprovalPage audience="mcp" />;
+  }
+  return <McpDocsPage />;
 };
 
 export default McpPage;

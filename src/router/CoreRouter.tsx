@@ -17,6 +17,7 @@ import { LoginPage, SignupPage, VerifyPage } from "../pages/auth";
 import { ProjectsPage, StartProjectPage } from "../pages/projects";
 import AccountsPage from "../pages/accounts";
 import SyncPage from "../pages/sync";
+import CliConnectPage from "../pages/sync/CliConnectPage";
 import McpPage from "../pages/mcp";
 import SystemApiPage from "../pages/system-api";
 import { SystemPluginsPage } from "../pages/system-plugins";
@@ -143,6 +144,11 @@ const routeTree = rootRoute.addChildren([
       getParentRoute: () => projectSpaceRoute,
       path: "/access-token",
       component: SyncPage,
+    }),
+    createRoute({
+      getParentRoute: () => projectSpaceRoute,
+      path: "/cli",
+      component: CliConnectPage,
     }),
     createRoute({
       getParentRoute: () => projectSpaceRoute,
