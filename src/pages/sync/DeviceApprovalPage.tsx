@@ -21,7 +21,7 @@ const copy: Record<
   DeviceApprovalAudience,
   {
     approvePath: string;
-    lockedPreset: string;
+    allowedPresets: string[];
     cardLabel: string;
     submitLabel: string;
     successTitle: string;
@@ -29,13 +29,14 @@ const copy: Record<
     missingDescription: string;
     confirmFallback: string;
     scopeDescription: string;
+    grantNote: string;
     namePrefix: string;
     errorFallback: string;
   }
 > = {
   cli: {
     approvePath: "/system/cli/v1/login/approve",
-    lockedPreset: "cli_sync",
+    allowedPresets: ["cli_login", "cli_sync", "custom"],
     cardLabel: "Give CLI access",
     submitLabel: "Give CLI access",
     successTitle: "CLI access granted",
@@ -43,13 +44,14 @@ const copy: Record<
     missingDescription: "Run apito login again and open the link it prints.",
     confirmFallback: "Approve this CLI login",
     scopeDescription:
-      "The token uses the CLI sync preset. Choose the same resource and tenant scope you would when creating an access token.",
+      "Choose CLI login, CLI sync, or Custom. Then choose the projects this token may use.",
+    grantNote: "",
     namePrefix: "CLI",
     errorFallback: "Could not approve the CLI",
   },
   mcp: {
     approvePath: "/system/mcp/v1/login/approve",
-    lockedPreset: "mcp_assistant",
+    allowedPresets: ["mcp_assistant", "mcp_advanced", "custom"],
     cardLabel: "Give MCP access",
     submitLabel: "Give MCP access",
     successTitle: "MCP access granted",
@@ -57,7 +59,8 @@ const copy: Record<
     missingDescription: "Run apito mcp connect again and open the link it prints.",
     confirmFallback: "Approve this MCP connection",
     scopeDescription:
-      "The token uses the read-only MCP assistant preset. Choose the projects and tenants this assistant may read.",
+      "Choose MCP assistant, MCP advanced, or Custom. Then choose the projects and tenants this token may use.",
+    grantNote: "",
     namePrefix: "MCP",
     errorFallback: "Could not approve MCP",
   },
@@ -126,6 +129,11 @@ const DeviceApprovalPage = ({ audience }: DeviceApprovalPageProps) => {
         requestId
           ? {
               request_id: requestId,
+              name: payload.name,
+              description: payload.description,
+              duration: payload.duration,
+              preset: payload.preset,
+              capabilities: payload.preset === "custom" ? payload.capabilities : [],
               project_grant_mode: payload.project_grant_mode,
               project_ids: payload.project_ids,
               tenant_grant_mode: payload.tenant_grant_mode,
@@ -134,6 +142,11 @@ const DeviceApprovalPage = ({ audience }: DeviceApprovalPageProps) => {
             }
           : {
               device_code: deviceCode,
+              name: payload.name,
+              description: payload.description,
+              duration: payload.duration,
+              preset: payload.preset,
+              capabilities: payload.preset === "custom" ? payload.capabilities : [],
               project_grant_mode: payload.project_grant_mode,
               project_ids: payload.project_ids,
               tenant_grant_mode: payload.tenant_grant_mode,
@@ -203,7 +216,8 @@ const DeviceApprovalPage = ({ audience }: DeviceApprovalPageProps) => {
           projectOptions={projectOptions}
           projectsLoading={administrableLoading || projectListLoading}
           isSubmitting={submitting}
-          lockedPreset={text.lockedPreset}
+          allowedPresets={text.allowedPresets}
+          grantNote={text.grantNote}
           defaultName={userCode ? `${text.namePrefix} ${userCode}` : text.namePrefix}
           cardLabel={text.cardLabel}
           submitLabel={text.submitLabel}

@@ -1,19 +1,16 @@
 import type { CodegenConfig } from "@graphql-codegen/cli";
-import dotenv from "dotenv";
-import { existsSync } from "node:fs";
+import { loadConsoleEnv } from "./vite/consoleEnv";
 
-for (const path of [".env.local", ".env"]) {
-  if (existsSync(path)) {
-    dotenv.config({ path });
-  }
-}
+loadConsoleEnv();
 
 const schemaUrl =
   process.env.VITE_GRAPHQL_URL ?? process.env.VITE_GRAPH_API;
 const apiToken = process.env.VITE_API_TOKEN;
 
 if (!schemaUrl) {
-  throw new Error("VITE_GRAPHQL_URL is required for codegen (.env)");
+  throw new Error(
+    "VITE_GRAPH_API is required for codegen (~/.apito/bin/.env.console)",
+  );
 }
 
 const config: CodegenConfig = {

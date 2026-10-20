@@ -27,6 +27,7 @@ import type {
 import {
   capabilityLabel,
   groupCapabilitiesByGroup,
+  FALLBACK_ACCESS_TOKEN_CATALOG,
   hasDangerSelection,
   resolveAccessTokenCatalog,
 } from "./accessTokenUtils";
@@ -89,6 +90,9 @@ export interface CreateAccessTokenFormProps {
   projectsLoading?: boolean;
   isSubmitting?: boolean;
   lockedPreset?: string;
+  /** When set, the form shows only these presets, in this order. Custom stays in the list when included. */
+  allowedPresets?: string[];
+  grantNote?: string;
   defaultName?: string;
   submitLabel?: string;
   cardLabel?: string;
@@ -134,6 +138,8 @@ export function CreateAccessTokenForm({
   projectsLoading,
   isSubmitting,
   lockedPreset,
+  allowedPresets,
+  grantNote = "",
   defaultName = "",
   submitLabel = "Generate access token",
   cardLabel = "Create access token",
@@ -141,7 +147,7 @@ export function CreateAccessTokenForm({
 }: CreateAccessTokenFormProps) {
   const [draft, setDraft] = useState<Draft>({
     ...initialDraft,
-    preset: lockedPreset || initialDraft.preset,
+    preset: lockedPreset || allowedPresets?.[0] || initialDraft.preset,
     name: defaultName,
   });
   const [showErrors, setShowErrors] = useState(false);
@@ -152,9 +158,19 @@ export function CreateAccessTokenForm({
   );
   const usingFallbackCatalog = !catalog?.presets?.length;
 
+  const visiblePresets = useMemo(() => {
+    if (!allowedPresets?.length) return resolvedCatalog.presets;
+    return allowedPresets.flatMap((id) => {
+      const preset =
+        resolvedCatalog.presets.find((item) => item.id === id) ??
+        FALLBACK_ACCESS_TOKEN_CATALOG.presets.find((item) => item.id === id);
+      return preset ? [preset] : [];
+    });
+  }, [allowedPresets, resolvedCatalog.presets]);
+
   const selectedPreset = useMemo<AccessTokenPreset | undefined>(
-    () => resolvedCatalog.presets.find((p) => p.id === draft.preset),
-    [resolvedCatalog, draft.preset],
+    () => visiblePresets.find((p) => p.id === draft.preset),
+    [visiblePresets, draft.preset],
   );
   const isCustomPreset = draft.preset === "custom";
 
@@ -297,8 +313,9 @@ export function CreateAccessTokenForm({
       <div className="token-section">
         <div className="token-section-title">Usage preset</div>
         <Text type="secondary" className="token-section-desc">
-          Click a card (or use the dropdown). Presets bundle common capability sets —
-          choose Custom to hand-pick.
+          {allowedPresets?.length
+            ? "Choose one preset. Custom is the same capability picker used for every token."
+            : "Click a card (or use the dropdown). Presets bundle common capability sets — choose Custom to hand-pick."}
         </Text>
         {usingFallbackCatalog && !catalogLoading ? (
           <Alert
@@ -318,13 +335,13 @@ export function CreateAccessTokenForm({
               value={draft.preset || undefined}
               placeholder="Select a usage preset"
               onChange={(value) => setDraft((d) => ({ ...d, preset: value }))}
-              options={resolvedCatalog.presets.map((p) => ({
+              options={visiblePresets.map((p) => ({
                 value: p.id,
                 label: p.danger ? `${p.label} (danger)` : p.label,
               }))}
             />
             <div className="token-preset-grid">
-              {resolvedCatalog.presets.map((preset) => {
+              {visiblePresets.map((preset) => {
                 const active = draft.preset === preset.id;
                 return (
                   <button
@@ -352,17 +369,6 @@ export function CreateAccessTokenForm({
             </div>
           </>
         )}
-
-        {!isCustomPreset && selectedPreset && selectedPreset.capabilities ? (
-          <div className="console-mt-md">
-            <Text className="console-help-text">Included capabilities</Text>
-            <div className="console-tag-stack console-mt-xs">
-              {selectedPreset.capabilities.map((id) => (
-                <Tag key={id}>{capabilityLabel(id, resolvedCatalog)}</Tag>
-              ))}
-            </div>
-          </div>
-        ) : null}
 
         {isCustomPreset ? (
           <div className="console-mt-md">
@@ -416,6 +422,20 @@ export function CreateAccessTokenForm({
         ) : null}
       </div>
       )}
+
+      {!isCustomPreset && selectedPreset && selectedPreset.capabilities ? (
+        <div className="token-section">
+          <Text className="console-help-text">Included capabilities</Text>
+          <div className="console-tag-stack console-mt-xs">
+            {selectedPreset.capabilities.map((id) => (
+              <Tag key={id}>{capabilityLabel(id, resolvedCatalog)}</Tag>
+            ))}
+          </div>
+          {grantNote ? (
+            <Text className="console-help-text console-mt-xs">{grantNote}</Text>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Resource scope */}
       <div className="token-section">

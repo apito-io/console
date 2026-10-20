@@ -26,7 +26,6 @@ declare global {
     }
 }
 
-// Get environment variable - runtime first, then build-time fallback
 function getEnv(key: string): string {
     // Runtime config from env.js (injected by Docker at container start)
     if (typeof window !== 'undefined' && window.env && window.env[key as keyof Window['env']]) {

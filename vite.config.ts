@@ -1,11 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { apitoConsoleEnvPlugin } from './vite/consoleEnv'
 import { devEngineProxyConfig } from './vite/devEngineProxy'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [apitoConsoleEnvPlugin(), react()],
   resolve: {
     extensions: ['.mjs', '.mts', '.ts', '.tsx', '.js', '.jsx', '.json'],
     dedupe: [
@@ -37,9 +38,8 @@ export default defineConfig({
   },
   server: {
     host: "0.0.0.0",
-    port: 4001,
-    // Forward engine traffic in dev so /api, /system, /secured behave like the studio bundle
-    // (public engine on 5051). Override via VITE_DEV_ENGINE_URL.
+    port: 4055,
+    // Same-origin fallback. Browser API URLs come from ~/.apito/bin/.env.console.
     proxy: devEngineProxyConfig(),
   },
   build: {

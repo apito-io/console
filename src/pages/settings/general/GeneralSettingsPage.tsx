@@ -29,6 +29,95 @@ const { confirm } = Modal;
 const { Text } = Typography;
 const MIN_IDLE_TENANT_RETENTION_DAYS = 90;
 
+const RUNTIME_PLATFORMS = [
+  { id: "android", label: "Android" },
+  { id: "ios", label: "iOS" },
+  { id: "web", label: "Web" },
+] as const;
+
+type ExtraRow = { name?: string; value?: string };
+type RuntimePlatformForm = {
+  min_version_name?: string;
+  min_build_number?: number;
+  force_update?: boolean;
+  store_url?: string;
+  message_en?: string;
+  message_bn?: string;
+  maintenance?: boolean;
+  maintenance_hours?: number;
+  extra_rows?: ExtraRow[];
+};
+
+function extrasToRows(extras: unknown): ExtraRow[] {
+  if (!Array.isArray(extras)) return [];
+  const rows: ExtraRow[] = [];
+  for (const item of extras) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    for (const [name, value] of Object.entries(item as Record<string, unknown>)) {
+      rows.push({ name, value: value == null ? "" : String(value) });
+    }
+  }
+  return rows;
+}
+
+function rowsToExtras(rows: ExtraRow[] | undefined): Array<Record<string, string>> {
+  const out: Array<Record<string, string>> = [];
+  for (const row of rows ?? []) {
+    const name = row.name?.trim() ?? "";
+    if (!name) continue;
+    out.push({ [name]: row.value ?? "" });
+  }
+  return out;
+}
+
+function platformForm(raw: unknown): RuntimePlatformForm {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    min_version_name:
+      typeof value.min_version_name === "string" && value.min_version_name
+        ? value.min_version_name
+        : "0.0.0",
+    min_build_number: Number(value.min_build_number ?? 0) || 0,
+    force_update: value.force_update === true,
+    store_url: typeof value.store_url === "string" ? value.store_url : "",
+    message_en: typeof value.message_en === "string" ? value.message_en : "",
+    message_bn: typeof value.message_bn === "string" ? value.message_bn : "",
+    maintenance: value.maintenance === true,
+    maintenance_hours: Number(value.maintenance_hours ?? 0) || 0,
+    extra_rows: extrasToRows(value.extras),
+  };
+}
+
+function readClientRuntime(settings: unknown) {
+  const runtime = (settings as { client_runtime?: Record<string, unknown> | null } | null)
+    ?.client_runtime;
+  return {
+    android: platformForm(runtime?.android),
+    ios: platformForm(runtime?.ios),
+    web: platformForm(runtime?.web),
+  };
+}
+
+function wireClientRuntime(raw: Record<string, RuntimePlatformForm> | undefined) {
+  const source = raw ?? {};
+  const wire: Record<string, unknown> = {};
+  for (const platform of RUNTIME_PLATFORMS) {
+    const block = source[platform.id] ?? {};
+    wire[platform.id] = {
+      min_version_name: block.min_version_name || "0.0.0",
+      min_build_number: Number(block.min_build_number ?? 0) || 0,
+      force_update: block.force_update === true,
+      store_url: block.store_url?.trim() ?? "",
+      message_en: block.message_en ?? "",
+      message_bn: block.message_bn ?? "",
+      maintenance: block.maintenance === true,
+      maintenance_hours: Number(block.maintenance_hours ?? 0) || 0,
+      extras: rowsToExtras(block.extra_rows),
+    };
+  }
+  return wire;
+}
+
 // Sample locale data - you might want to move this to a constants file
 const localsData = {
   en: "English",
@@ -105,6 +194,7 @@ const GeneralSettingsPage: React.FC = () => {
           MIN_IDLE_TENANT_RETENTION_DAYS,
         auto_soft_delete_idle_tenants:
           project.settings?.auto_soft_delete_idle_tenants ?? false,
+        client_runtime: readClientRuntime(project.settings),
       },
     };
   }, [project]);
@@ -124,7 +214,10 @@ const GeneralSettingsPage: React.FC = () => {
         name: values.name,
         description: values.description,
         project_icon: values.project_icon?.trim() || "",
-        settings: values.settings,
+        settings: {
+          ...values.settings,
+          client_runtime: wireClientRuntime(values.settings?.client_runtime),
+        } as typeof values.settings,
       });
     } catch (error) {
       console.error("Update error:", error);
@@ -379,6 +472,128 @@ const GeneralSettingsPage: React.FC = () => {
               </Text>
             </>
           ) : null}
+
+          <div className="console-mt-lg console-mb-md">
+            <ConsoleCardTitle icon={Settings} label="App release and maintenance" />
+          </div>
+          <Text type="secondary">
+            Each platform is independent. Android can be in maintenance while web stays open.
+            Extra values are saved as one-key objects, such as min_corridor_m = 50.
+            Suggested extras: min_corridor_m, max_corridor_m, accuracy_pad_m, max_accuracy_m,
+            station_yard_pending_m, ad_skip_on_fill_fail, hide_shop, hide_food_orders.
+          </Text>
+          {RUNTIME_PLATFORMS.map((platform) => (
+            <div key={platform.id} style={{ marginTop: 24 }}>
+              <Text strong>{platform.label}</Text>
+              <Row gutter={24}>
+                <Col span={8}>
+                  <Form.Item
+                    name={["settings", "client_runtime", platform.id, "min_version_name"]}
+                    label="Minimum version"
+                  >
+                    <Input placeholder="0.0.0" />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item
+                    name={["settings", "client_runtime", platform.id, "min_build_number"]}
+                    label="Minimum build"
+                  >
+                    <InputNumber min={0} style={{ width: "100%" }} />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item
+                    name={["settings", "client_runtime", platform.id, "maintenance_hours"]}
+                    label="Maintenance hours"
+                  >
+                    <InputNumber min={0} style={{ width: "100%" }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Row gutter={24}>
+                <Col span={12}>
+                  <Form.Item
+                    name={["settings", "client_runtime", platform.id, "force_update"]}
+                    label="Force update"
+                    valuePropName="checked"
+                  >
+                    <Switch />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name={["settings", "client_runtime", platform.id, "maintenance"]}
+                    label="Maintenance"
+                    valuePropName="checked"
+                  >
+                    <Switch />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Form.Item
+                name={["settings", "client_runtime", platform.id, "store_url"]}
+                label="Store URL"
+              >
+                <Input placeholder="https://" />
+              </Form.Item>
+              <Row gutter={24}>
+                <Col span={12}>
+                  <Form.Item
+                    name={["settings", "client_runtime", platform.id, "message_en"]}
+                    label="Message (English)"
+                  >
+                    <Input.TextArea rows={2} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name={["settings", "client_runtime", platform.id, "message_bn"]}
+                    label="Message (Bangla)"
+                  >
+                    <Input.TextArea rows={2} />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Form.List name={["settings", "client_runtime", platform.id, "extra_rows"]}>
+                {(fields, { add, remove }) => (
+                  <div>
+                    {fields.map((field) => (
+                      <Row gutter={12} key={field.key}>
+                        <Col span={8}>
+                          <Form.Item
+                            name={[field.name, "name"]}
+                            label="Extra name"
+                            rules={[
+                              {
+                                pattern: /^[a-z][a-z0-9_]{0,63}$/,
+                                message: "Use a lowercase name such as min_corridor_m",
+                              },
+                            ]}
+                          >
+                            <Input placeholder="min_corridor_m" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item name={[field.name, "value"]} label="Value">
+                            <Input placeholder="50" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={4}>
+                          <Form.Item label=" ">
+                            <Button onClick={() => remove(field.name)}>Remove</Button>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    ))}
+                    <Button onClick={() => add({ name: "", value: "" })}>
+                      Add extra
+                    </Button>
+                  </div>
+                )}
+              </Form.List>
+            </div>
+          ))}
         </Form>
       </ConsoleCard>
 

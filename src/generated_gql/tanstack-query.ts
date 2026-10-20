@@ -4454,6 +4454,11 @@ export const UpdateSettingsDocument = new TypedDocumentString(`
       default_locale
       idle_tenant_retention_days
       auto_soft_delete_idle_tenants
+      client_runtime {
+        android { min_version_name min_build_number force_update store_url message_en message_bn maintenance maintenance_hours extras }
+        ios { min_version_name min_build_number force_update store_url message_en message_bn maintenance maintenance_hours extras }
+        web { min_version_name min_build_number force_update store_url message_en message_bn maintenance maintenance_hours extras }
+      }
     }
   }
 }
@@ -6055,6 +6060,11 @@ export const GetSettingsDocument = new TypedDocumentString(`
       default_locale
       idle_tenant_retention_days
       auto_soft_delete_idle_tenants
+      client_runtime {
+        android { min_version_name min_build_number force_update store_url message_en message_bn maintenance maintenance_hours extras }
+        ios { min_version_name min_build_number force_update store_url message_en message_bn maintenance maintenance_hours extras }
+        web { min_version_name min_build_number force_update store_url message_en message_bn maintenance maintenance_hours extras }
+      }
     }
     created_at
   }

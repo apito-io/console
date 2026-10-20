@@ -4,10 +4,12 @@
 export type AccessTokenPresetId =
   | "full_access"
   | "read_only"
+  | "cli_login"
   | "cli_sync"
   | "function_deploy"
   | "data_import_export"
   | "mcp_assistant"
+  | "mcp_advanced"
   | "sdk_bootstrap"
   | "custom";
 

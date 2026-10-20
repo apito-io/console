@@ -1,7 +1,8 @@
 import type { ProxyOptions } from "vite";
 
-const ENGINE_TARGET =
-  process.env.VITE_DEV_ENGINE_URL || "http://localhost:5051";
+function engineTarget(): string {
+  return process.env.VITE_REST_API || process.env.VITE_DEV_ENGINE_URL || "http://localhost:5055";
+}
 
 /**
  * Console SPA routes whose path starts with `/system` but are not engine APIs.
@@ -25,7 +26,7 @@ function isSystemSpaRoute(url: string | undefined): boolean {
 
 function engineProxy(pathPrefix: string): ProxyOptions {
   return {
-    target: ENGINE_TARGET,
+    target: engineTarget(),
     changeOrigin: true,
     ws: pathPrefix === "/system",
     bypass(req) {
@@ -37,7 +38,7 @@ function engineProxy(pathPrefix: string): ProxyOptions {
 }
 
 function enginePath(): ProxyOptions {
-  return { target: ENGINE_TARGET, changeOrigin: true };
+  return { target: engineTarget(), changeOrigin: true };
 }
 
 /** Dev-server proxy map: engine REST/GraphQL without breaking SPA routes. */
