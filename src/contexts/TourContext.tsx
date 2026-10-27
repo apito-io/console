@@ -297,18 +297,6 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
       return;
     }
 
-    const isSetupIncomplete = !tourProgress.isCompleted;
-    const hasIncompleteSteps =
-      tourProgress.completedSteps.length < tourProgress.totalSteps;
-
-    if (isSetupIncomplete && hasIncompleteSteps) {
-      const timer = setTimeout(() => {
-        startTour();
-      }, 1500);
-
-      return () => clearTimeout(timer);
-    }
-
     if (!isTourActive && sessionStorage.getItem("tour-should-restart") === "true") {
       sessionStorage.removeItem("tour-should-restart");
       const timer = setTimeout(() => {

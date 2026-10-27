@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   Alert,
   Button,
@@ -22,6 +22,7 @@ import {
   useDeleteProjectTokenMutation,
 } from "../../../generated_gql/tanstack-query";
 import { CopyToClipboard } from "react-copy-to-clipboard";
+import { captureConsoleEvent } from "../../../lib/consoleAnalytics";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import duration from "dayjs/plugin/duration";
@@ -89,9 +90,15 @@ const ApiSecretsSettingsPage: React.FC = () => {
     refetch: refetchTokens,
   } = useGetCurrentProjectTokensQuery();
 
+  const pendingKeyRole = useRef("");
+  const analyticsProjectId = useRef("");
   const { mutateAsync: generateAPIKey, isPending: generateLoading } =
     useGenerateProjectTokenMutation({
       onSuccess: (data) => {
+        captureConsoleEvent("api_key_created", {
+          project_id: analyticsProjectId.current,
+          key_role: pendingKeyRole.current,
+        });
         if (data?.generateProjectToken?.token) {
           setRevealedToken(data.generateProjectToken.token);
           setGenerateOpen(false);
@@ -153,6 +160,7 @@ const ApiSecretsSettingsPage: React.FC = () => {
     currentProjectData?.currentProject?.project_secret_key;
 
   const projectId = currentProjectData?.currentProject?.id ?? "";
+  analyticsProjectId.current = projectId;
   const graphqlEndpoint =
     ENV.VITE_PUBLIC_GRAPH_API || getRestUrl("/secured/graphql");
   const restEndpoint = projectId
@@ -178,10 +186,11 @@ const ApiSecretsSettingsPage: React.FC = () => {
     role: string;
     duration?: dayjs.Dayjs | null;
   }) => {
+    pendingKeyRole.current = values.role;
     void generateAPIKey({
       name: values.name,
       role: values.role,
-      duration: values.duration ? values.duration.format("YYYY-MM-DD") : null,
+      duration: values.duration ? values.duration.format("YYYY-MM-DD") : "",
     });
   };
 
@@ -324,15 +333,16 @@ const ApiSecretsSettingsPage: React.FC = () => {
         className="console-mb-md"
         message={
           nonAdminRoles.length === 0
-            ? "Create a non-admin role before minting a login key"
-            : "Login / BFF keys need a non-admin role (prefer login)"
+            ? "Create a role first"
+            : "A role key calls the content API. A login key is only for register and login."
         }
         description={
           <Space direction="vertical" size={4} style={{ width: "100%" }}>
             <Text type="secondary">
-              Project API tokens (`ak_…`) inherit the selected role. Never use{" "}
-              <Text code>admin</Text> for Flutter or Astro login. Preferred
-              role: <Text code>login</Text> (not admin, minimal model CRUD).
+              A role key (`ak_…` for a role such as <Text code>smokerw</Text>)
+              reads and writes <Text code>/secured/graphql</Text> with that
+              role. A <Text code>login</Text> key only calls register and
+              login. Admin and owner roles cannot be minted.
             </Text>
             <Space wrap>
               <Button
@@ -478,9 +488,13 @@ const ApiSecretsSettingsPage: React.FC = () => {
                   showIcon
                   message="Auth header"
                   description={
-                    <Text code>
-                      Authorization: Bearer &lt;ak_…&gt;
-                    </Text>
+                    <Space direction="vertical" size={4}>
+                      <Text code>Authorization: Bearer &lt;ak_…&gt;</Text>
+                      <Text type="secondary">
+                        Use the role key on this content API. The login key is
+                        only for register and login.
+                      </Text>
+                    </Space>
                   }
                 />
                 {projectSecretKey ? (

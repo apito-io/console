@@ -4,6 +4,7 @@ import { createGraphiQLFetcher } from "@graphiql/toolkit";
 import { GraphiQL } from "graphiql";
 import "graphiql/style.css";
 import React, { useMemo, useEffect, useCallback } from "react";
+import { analyticsProduct } from "../../lib/consoleAnalytics";
 import { ENV, getConsoleDomain } from "../../utils/env";
 import { useTourTracking } from "../../hooks/useTourTracking";
 import { useAuth } from "../../contexts/AuthContext";
@@ -59,7 +60,7 @@ const GraphqlApiPage: React.FC = () => {
                 if (guardKey) localStorage.setItem(guardKey, "1");
                 window.posthog?.capture("public_api_first_success", {
                   feature_category: "api",
-                  product: "app",
+                  product: analyticsProduct(),
                   domain: getConsoleDomain(),
                   project_id: projectId,
                   transport: "graphql",
@@ -116,20 +117,14 @@ const GraphqlApiPage: React.FC = () => {
           fetcher={baseFetcher}
           plugins={plugins}
           className="api-graphiql-embed"
-          defaultQuery={`# Welcome to Apito GraphQL API
-# Authorize with a project API key from Settings → API Secrets:
+          defaultQuery={`# Content API. A role key from Settings → API Secrets calls this path.
 # Authorization: Bearer ak_…
+# A login-role key is only for registerUser and loginUser.
 # With no Authorization header, this page uses the console session cookie.
-# 
-# Use this playground to explore your API
-# Try selecting a query from the Explorer on the left, or write your own:
 
 query {
-  # Example: Get all models
-  projectModelsInfo {
-    name
-    description
-  }
+  # Example after you publish a model named note:
+  # noteList { data { id title } }
 }`}
         />
       </div>
