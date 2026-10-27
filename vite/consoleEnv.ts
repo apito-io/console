@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Connect, Plugin } from "vite";
 
 /** Same file Studio mounts and renders as /env.js. */
@@ -11,7 +10,7 @@ export function consoleEnvPath(): string {
 
 export function loadConsoleEnv(): Record<string, string> {
   const homeFile = consoleEnvPath();
-  const repoFile = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.env");
+  const repoFile = path.resolve(process.cwd(), ".env");
   const file = fs.existsSync(homeFile) ? homeFile : repoFile;
   if (!fs.existsSync(file)) {
     throw new Error(
