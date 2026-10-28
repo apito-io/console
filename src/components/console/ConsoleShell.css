@@ -3203,6 +3203,62 @@ button.console-nav-model-item.active,
   position: relative;
 }
 
+.api-rest-frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.api-rest-auth-hint {
+  flex: 0 0 auto;
+  margin: 8px 16px;
+  color: var(--console-text-muted, #666);
+}
+
+.api-rest-scalar {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.api-rest-scalar > *,
+.api-rest-scalar > * > * {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Scalar sizes itself to the viewport. Inside the console pane that hides
+   the tag menu and clips the document. Pin it to this pane and scroll inside. */
+.api-rest-scalar .scalar-api-reference.references-layout {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden;
+  --full-height: 100%;
+  --refs-sidebar-height: 100%;
+  grid-template-rows: var(--scalar-header-height, 0px) minmax(0, 1fr) auto !important;
+}
+
+.api-rest-scalar .t-doc__sidebar {
+  position: relative;
+  top: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.api-rest-scalar .references-rendered {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: auto;
+}
+
 .api-graphiql-embed {
   height: 100%;
   position: absolute;

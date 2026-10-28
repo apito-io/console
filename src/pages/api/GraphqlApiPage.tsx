@@ -5,6 +5,7 @@ import { GraphiQL } from "graphiql";
 import "graphiql/style.css";
 import React, { useMemo, useEffect, useCallback } from "react";
 import { analyticsProduct } from "../../lib/consoleAnalytics";
+import { contentApiRequestInit } from "./contentApiRequest";
 import { ENV, getConsoleDomain } from "../../utils/env";
 import { useTourTracking } from "../../hooks/useTourTracking";
 import { useAuth } from "../../contexts/AuthContext";
@@ -41,14 +42,7 @@ const GraphqlApiPage: React.FC = () => {
       const headers = new Headers(args?.headers);
       headers.set("Accept", "application/json");
       headers.set("Content-Type", "application/json");
-      if (!headers.has("Authorization")) {
-        headers.set("X-Use-Cookies", "true");
-      }
-      return fetch(url, {
-        ...args,
-        headers,
-        credentials: "include",
-      }).then((response) => {
+      return fetch(url, contentApiRequestInit(headers, args)).then((response) => {
         if (response.ok && !isIntrospection) {
           try {
             const host = window.location.hostname;
@@ -123,8 +117,14 @@ const GraphqlApiPage: React.FC = () => {
 # With no Authorization header, this page uses the console session cookie.
 
 query {
-  # Example after you publish a model named note:
-  # noteList { data { id title } }
+  noteList {
+    id
+    data {
+      title
+      body
+      done
+    }
+  }
 }`}
         />
       </div>

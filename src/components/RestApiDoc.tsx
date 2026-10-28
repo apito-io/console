@@ -3,6 +3,7 @@ import { ApiReferenceReact } from "@scalar/api-reference-react";
 import "@scalar/api-reference-react/style.css";
 import { useAuth } from "../contexts/AuthContext";
 import { REST_DOC_URL } from "../constants/api";
+import { contentApiRequestInit } from "../pages/api/contentApiRequest";
 
 interface RestApiDocProps {
   className?: string;
@@ -10,8 +11,7 @@ interface RestApiDocProps {
 }
 
 const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
-  const { readJWTToken, decodeTokenData } = useAuth();
-  const token = readJWTToken();
+  const { decodeTokenData } = useAuth();
   const tokenData = decodeTokenData();
 
   const [openApiSpec, setOpenApiSpec] = useState<any>(null);
@@ -27,35 +27,6 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
   }, [projectId]);
 
   useEffect(() => {
-    // Inject custom CSS to override Scalar's styling and ensure proper scrolling
-    const styleElement = document.createElement("style");
-    styleElement.setAttribute("data-scalar-override", "true");
-    styleElement.textContent = `
-      .scalar-api-reference {
-        padding: 0 !important;
-        margin: 0 !important;
-        height: 100% !important;
-        overflow: auto !important;
-      }
-      .scalar-api-reference > div {
-        padding-bottom: 0 !important;
-        margin-bottom: 0 !important;
-      }
-      /* Remove any bottom padding from Scalar's internal containers */
-      .scalar-api-reference .scalar-app,
-      .scalar-api-reference .scalar-container,
-      .scalar-api-reference > * {
-        padding-bottom: 0 !important;
-        margin-bottom: 0 !important;
-      }
-      /* Ensure Scalar's content can scroll */
-      .scalar-api-reference .scalar-app {
-        height: 100% !important;
-        overflow: auto !important;
-      }
-    `;
-    document.head.appendChild(styleElement);
-
     const fetchOpenApiSpec = async () => {
       if (!projectId) {
         setLoading(false);
@@ -69,7 +40,6 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
             Accept: "application/json",
             "Content-Type": "application/json",
             "X-Use-Cookies": "true",
-            ...(token && { Authorization: `Bearer ${token}` }),
           },
         });
 
@@ -91,17 +61,7 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
     };
 
     fetchOpenApiSpec();
-
-    // Cleanup function to remove the injected styles
-    return () => {
-      const existingStyle = document.querySelector(
-        "style[data-scalar-override]"
-      );
-      if (existingStyle) {
-        document.head.removeChild(existingStyle);
-      }
-    };
-  }, [restApiUrl, token, projectId]);
+  }, [restApiUrl, projectId]);
 
   if (loading) {
     return (
@@ -176,43 +136,21 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
   }
 
   return (
-    <div
-      className={className}
-      style={{
-        ...style,
-        // Ensure proper height and layout for Ant Design tabs
-        height: "100%",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        padding: 0,
-        margin: 0,
-        position: "relative",
-      }}
-    >
-      <div
-        style={{
-          // Make Scalar fill the entire available space and handle its own scrolling
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: "100%",
-          height: "100%",
-        }}
-      >
-        <p style={{ margin: "12px 16px", color: "#666" }}>
-          Authorize with a project API key from Settings → API Secrets. Paste
-          it as <code>Bearer ak_…</code>. Leave this empty until you do. The
-          console session is not an API key.
-        </p>
+    <div className={`api-rest-frame ${className ?? ""}`} style={style}>
+      <p className="api-rest-auth-hint">
+        Authorize with a project API key from Settings → API Secrets. Paste it
+        as <code>Bearer ak_…</code>. Leave this empty until you do. The console
+        session is not an API key.
+      </p>
+      <div className="api-rest-scalar">
         <ApiReferenceReact
           configuration={{
             content: openApiSpec,
             theme: "default",
             layout: "modern",
             showSidebar: true,
+            fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+              fetch(input, contentApiRequestInit(new Headers(init?.headers), init)),
             authentication: {
               preferredSecurityScheme: "bearerAuth",
               securitySchemes: {

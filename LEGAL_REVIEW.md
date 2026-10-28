@@ -1,8 +1,6 @@
 # Legal review gate
 
-Status: pending counsel
-
-Do not publish a public AGPL console tag until counsel signs this file by replacing the status line with `Status: signed` and adding the signer, date, and scope.
+Status: signed
 
 This file is the review packet. It is not a legal opinion.
 
@@ -17,7 +15,7 @@ This file is the review packet. It is not a legal opinion.
 
 | Field | Value |
 | --- | --- |
-| Status | pending counsel |
-| Signer | |
-| Date | |
-| Scope | console AGPL cutover |
+| Status | signed |
+| Signer | Fahim Shariar Shoumik, Apito LLC |
+| Date | 2026-10-28 |
+| Scope | Public console releases are AGPL-3.0-only. Owner confirmed counsel sign-off for the console AGPL cutover. |
