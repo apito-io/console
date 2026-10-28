@@ -3259,6 +3259,12 @@ button.console-nav-model-item.active,
   overflow: auto;
 }
 
+/* Console Send uses the login cookie. Bearer stays in the copied snippet. */
+.api-rest-scalar .scalar-reference-intro-auth,
+.api-rest-scalar .request-section-content .group\/params:has(.auth-description) {
+  display: none !important;
+}
+
 .api-graphiql-embed {
   height: 100%;
   position: absolute;

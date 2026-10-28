@@ -3,7 +3,7 @@ import { ApiReferenceReact } from "@scalar/api-reference-react";
 import "@scalar/api-reference-react/style.css";
 import { useAuth } from "../contexts/AuthContext";
 import { REST_DOC_URL } from "../constants/api";
-import { contentApiRequestInit } from "../pages/api/contentApiRequest";
+import { consoleSessionRequestInit } from "../pages/api/contentApiRequest";
 
 interface RestApiDocProps {
   className?: string;
@@ -62,6 +62,33 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
 
     fetchOpenApiSpec();
   }, [restApiUrl, projectId]);
+
+  useEffect(() => {
+    const previous = window.fetch.bind(window);
+    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      if (!url.includes("/secured/rest/")) {
+        return previous(input, init);
+      }
+      const headers = new Headers(input instanceof Request ? input.headers : undefined);
+      if (init?.headers) {
+        new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+      }
+      const next = consoleSessionRequestInit(headers, init);
+      if (input instanceof Request) {
+        return previous(new Request(input, next));
+      }
+      return previous(input, next);
+    };
+    return () => {
+      window.fetch = previous;
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -138,9 +165,9 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
   return (
     <div className={`api-rest-frame ${className ?? ""}`} style={style}>
       <p className="api-rest-auth-hint">
-        Authorize with a project API key from Settings → API Secrets. Paste it
-        as <code>Bearer ak_…</code>. Leave this empty until you do. The console
-        session is not an API key.
+        Send uses your console login, same as the GraphQL explorer. A copied
+        snippet shows <code>Authorization: Bearer ak_…</code> because that is
+        what an external client sends.
       </p>
       <div className="api-rest-scalar">
         <ApiReferenceReact
@@ -149,16 +176,6 @@ const RestApiDoc: React.FC<RestApiDocProps> = ({ className, style }) => {
             theme: "default",
             layout: "modern",
             showSidebar: true,
-            fetch: (input: RequestInfo | URL, init?: RequestInit) =>
-              fetch(input, contentApiRequestInit(new Headers(init?.headers), init)),
-            authentication: {
-              preferredSecurityScheme: "bearerAuth",
-              securitySchemes: {
-                bearerAuth: {
-                  token: "",
-                },
-              },
-            },
           }}
         />
       </div>
