@@ -1,17 +1,71 @@
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import "@graphiql/plugin-explorer/style.css";
-import { createGraphiQLFetcher } from "@graphiql/toolkit";
+import { createGraphiQLFetcher, type Storage } from "@graphiql/toolkit";
 import { GraphiQL } from "graphiql";
 import "graphiql/style.css";
 import React, { useMemo, useEffect, useCallback } from "react";
 import { analyticsProduct } from "../../lib/consoleAnalytics";
 import { contentApiRequestInit } from "./contentApiRequest";
+import { realtimeGraphqlEndpoints } from "./realtimeEndpoints";
 import { ENV, getConsoleDomain } from "../../utils/env";
 import { useTourTracking } from "../../hooks/useTourTracking";
 import { useAuth } from "../../contexts/AuthContext";
 import "../../components/console/ConsoleShell.css";
 
-const GraphqlApiPage: React.FC = () => {
+const CONTENT_QUERY = `# Content API. A role key from Settings → API Secrets calls this path.
+# Authorization: Bearer ak_…
+# A login-role key is only for registerUser and loginUser.
+# With no Authorization header, this page uses the console session cookie.
+
+query {
+  noteList {
+    id
+    data {
+      title
+      body
+      done
+    }
+  }
+}`;
+
+const REALTIME_QUERY = `# Realtime. Same cookie or role key as GraphQL API.
+# The explorer lists <model>Changed for each model this role can read, plus broadcast.
+# Run stays on the socket. The app receives events until you stop.
+
+subscription {
+  broadcast(channel: "demo") {
+    channel
+    event
+    payload
+    at
+  }
+}`;
+
+function prefixedStorage(prefix: string): Storage {
+  return {
+    getItem: (key) => localStorage.getItem(prefix + key),
+    setItem: (key, value) => localStorage.setItem(prefix + key, value),
+    removeItem: (key) => localStorage.removeItem(prefix + key),
+    clear() {
+      const drop: string[] = [];
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(prefix)) drop.push(key);
+      }
+      drop.forEach((key) => localStorage.removeItem(key));
+    },
+    get length() {
+      let count = 0;
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(prefix)) count += 1;
+      }
+      return count;
+    },
+  };
+}
+
+const GraphqlExplorer: React.FC<{ kind: "content" | "realtime" }> = ({ kind }) => {
   const { trackQueryExecuted } = useTourTracking();
   const { decodeTokenData } = useAuth();
   const projectId = decodeTokenData()?.project_id ?? "";
@@ -27,9 +81,17 @@ const GraphqlApiPage: React.FC = () => {
   const graphqlEndpoint = `${
     ENV.VITE_PUBLIC_GRAPH_API || "/public-graphql"
   }`;
+  const realtime =
+    kind === "realtime"
+      ? realtimeGraphqlEndpoints(
+          graphqlEndpoint,
+          typeof window === "undefined" ? "http://localhost" : window.location.origin
+        )
+      : null;
 
   const baseFetcher = createGraphiQLFetcher({
-    url: graphqlEndpoint,
+    url: realtime?.http ?? graphqlEndpoint,
+    subscriptionUrl: realtime?.socket,
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -97,39 +159,36 @@ const GraphqlApiPage: React.FC = () => {
       explorerPlugin({
         showAttribution: true,
         explorerIsOpen: true,
-        title: "GraphQL API",
+        title: kind === "realtime" ? "Realtime" : "GraphQL API",
       }),
     ],
-    []
+    [kind]
+  );
+  const realtimeStorage = useMemo(
+    () => (kind === "realtime" ? prefixedStorage("graphiql-realtime-v2:") : undefined),
+    [kind]
   );
 
   return (
     <div className="api-page-shell">
       <div className="api-embed-root">
         <GraphiQL
-          key={projectId || "graphiql-instance"}
+          key={`${kind}-${projectId || "graphiql-instance"}`}
           fetcher={baseFetcher}
           plugins={plugins}
+          storage={realtimeStorage}
           className="api-graphiql-embed"
-          defaultQuery={`# Content API. A role key from Settings → API Secrets calls this path.
-# Authorization: Bearer ak_…
-# A login-role key is only for registerUser and loginUser.
-# With no Authorization header, this page uses the console session cookie.
-
-query {
-  noteList {
-    id
-    data {
-      title
-      body
-      done
-    }
-  }
-}`}
+          defaultQuery={kind === "realtime" ? REALTIME_QUERY : CONTENT_QUERY}
         />
       </div>
     </div>
   );
 };
+
+const GraphqlApiPage: React.FC = () => <GraphqlExplorer kind="content" />;
+
+export const RealtimeApiPage: React.FC = () => (
+  <GraphqlExplorer kind="realtime" />
+);
 
 export default GraphqlApiPage;

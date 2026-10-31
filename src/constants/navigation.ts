@@ -72,6 +72,10 @@ export const NAVIGATION_HEADERS: Record<string, NavigationConfig> = {
         title: "REST API",
         subtitle: "Explore and test your REST API endpoints"
     },
+    "realtime": {
+        title: "Realtime",
+        subtitle: "Subscribe to model changes and broadcast channels"
+    },
     "storage": {
         title: "Files",
         subtitle: "Upload and manage project media and files"

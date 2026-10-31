@@ -4,6 +4,7 @@ import { FolderKanban, Plus } from "lucide-react";
 import { useLocation, useNavigate } from "../../router/navigation";
 import { httpService } from "../../services/httpService";
 import { PROJECT_CREATE } from "../../constants/api";
+import { captureConsoleEvent } from "../../lib/consoleAnalytics";
 import {
   findProjectTemplate,
   PROJECT_TEMPLATES,
@@ -94,6 +95,11 @@ const StartProjectPage: React.FC = () => {
       const response = await httpService.post(PROJECT_CREATE, payload);
 
       if (response.data.code === 200) {
+        captureConsoleEvent("project_created", {
+          project_id: projectId,
+          driver: "sqlite",
+          template: selectedTemplateId || "",
+        });
         message.success("Project created successfully!");
         navigate("/projects");
       } else {

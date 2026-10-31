@@ -7,9 +7,7 @@ interface Window {
     group: (type: string, key: string, props?: Record<string, unknown>) => void;
     reset: () => void;
     register: (props: Record<string, unknown>) => void;
+    displaySurvey?: (id: string) => void;
   };
   env?: Record<string, string>;
-  $chatwoot?: {
-    toggle: (state?: "open" | "close") => void;
-  };
 }

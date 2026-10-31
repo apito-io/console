@@ -5,6 +5,7 @@ import {
   filterMarketplace,
   installedVersionLabel,
   pluginActionLabel,
+  projectAttachablePlugins,
   updateButtonLabel,
   type CatalogPlugin,
 } from "../services/pluginCatalog";
@@ -44,6 +45,17 @@ describe("filterMarketplace", () => {
       "all",
     );
     expect(list.map((p) => p.id)).toEqual(["hc-stripe-plugin"]);
+  });
+});
+
+describe("projectAttachablePlugins", () => {
+  it("lists engine installs only", () => {
+    const list = projectAttachablePlugins([
+      discord,
+      { ...discord, id: "hc-cloudinary-plugin", name: "Cloudinary", installed: true },
+      { ...discord, id: "hc-blocked", installed: true, status: "blocked" },
+    ]);
+    expect(list.map((p) => p.id)).toEqual(["hc-cloudinary-plugin"]);
   });
 });
 

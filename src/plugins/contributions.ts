@@ -20,6 +20,7 @@ export type PluginRESTOperation = {
   method: string;
   path: string;
   description?: string;
+  access?: "protected" | "public" | string;
 };
 
 export type PluginAPIContribution = {

@@ -173,7 +173,7 @@ export const usePluginManager = (): [PluginRegistryState, PluginManagerAPI] => {
 
     getPluginComponent(
       pluginName: string,
-      componentType: "pages" | "menu" | "settings" | "fields" | "forms",
+      componentType: "pages" | "menu" | "settings" | "fields" | "forms" | "slots",
       componentName: string
     ) {
       try {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "../router/navigation";
 import { useCookies } from "react-cookie";
@@ -7,7 +7,7 @@ import { deleteAllCookies } from "../services/cookieUtils";
 import { queryClient } from "../lib/queryClient";
 import { redirectAfterAuth } from "../utils/authRedirect";
 import * as authApi from "../api/authApi";
-import { getConsoleDomain } from "../utils/env";
+import { analyticsProduct } from "../lib/consoleAnalytics";
 import type {
   LoginFormData,
   RegistrationFormData,
@@ -72,7 +72,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (typeof window !== "undefined" && window.posthog) {
         window.posthog.capture("signup_completed", {
           auth_method: "password",
-          product: "app",
+          method: "password",
+          product: analyticsProduct(),
         });
       }
       setLoading(false);
@@ -97,16 +98,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const tokenData = decodeTokenData();
       const userId = tokenData?.sub || tokenData?.account;
       if (userId && typeof window !== "undefined" && window.posthog) {
-        window.posthog.identify(String(userId), {
-          product: "app",
-          domain: getConsoleDomain(),
-          cross_product_user: true,
-        });
+        window.posthog.identify(String(userId));
       }
     } catch {
       /* ignore analytics failures */
     }
   };
+
+  useEffect(() => {
+    identifyFromToken();
+  }, []);
 
   const handleSigninAPI = async (
     data: LoginFormData
@@ -121,7 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           window.posthog.capture("user_auth", {
             auth_method: "password",
             success: true,
-            product: "app",
+            product: analyticsProduct(),
           });
         }
         redirectAfterAuth(navigateFrom);

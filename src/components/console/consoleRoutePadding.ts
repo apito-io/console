@@ -5,6 +5,7 @@ const CONSOLE_FULL_BLEED_PREFIXES = [
   "/console/model",
   "/console/graphql",
   "/console/rest",
+  "/console/realtime",
   "/console/api",
 ] as const;
 

@@ -5,8 +5,6 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  BookOpen,
-  HelpCircle,
   Puzzle,
 } from "lucide-react";
 import {
@@ -32,6 +30,7 @@ import SchemaOverlayBadge, {
   schemaOverlayTextStyle,
 } from "../model/SchemaOverlayBadge";
 import ModelOperationsDropdown from "../model/ModelOperationsDropdown";
+import HelpMenu from "./HelpMenu";
 import { assetUrl } from "../../utils/url";
 import { getLogoPath, getProductName } from "../../utils/env";
 import "./ConsoleShell.css";
@@ -430,28 +429,7 @@ const ConsoleSidebar: React.FC<ConsoleSidebarProps> = ({
       </div>
 
       <div className="console-sidebar-footer">
-        <button
-          type="button"
-          className="console-nav-item"
-          onClick={() => window.open("https://apito.io/docs", "_blank")}
-        >
-          <span className="console-nav-item-main">
-            <BookOpen size={16} strokeWidth={1.75} />
-            <span>Docs</span>
-          </span>
-        </button>
-        {showHelpSupport ? (
-          <button
-            type="button"
-            className="console-nav-item"
-            onClick={() => navigate("/support")}
-          >
-            <span className="console-nav-item-main">
-              <HelpCircle size={16} strokeWidth={1.75} />
-              <span>Help &amp; Support</span>
-            </span>
-          </button>
-        ) : null}
+        <HelpMenu showSales={showHelpSupport} />
       </div>
     </aside>
   );

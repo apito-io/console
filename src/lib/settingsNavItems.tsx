@@ -10,6 +10,7 @@ import {
   Puzzle,
   GitBranch,
   Database,
+  Wallet,
 } from "lucide-react";
 import type { ConsoleExtensions } from "../contexts/ConsoleExtensionsContext";
 
@@ -49,6 +50,12 @@ const CORE_SETTINGS: Omit<SettingsNavItem, "icon">[] = [
     description: "Free cloud storage or custom S3-compatible uploads",
   },
   {
+    key: "payments",
+    label: "Payments",
+    path: "/console/settings/payments/providers",
+    description: "Activated payment providers for this project",
+  },
+  {
     key: "api-secrets",
     label: "API Secrets",
     path: "/console/settings/api-secrets",
@@ -84,6 +91,7 @@ const CORE_ICONS: Record<string, ReactNode> = {
   general: <Settings size={16} strokeWidth={1.75} />,
   authentication: <Shield size={16} strokeWidth={1.75} />,
   storage: <Cloud size={16} strokeWidth={1.75} />,
+  payments: <Wallet size={16} strokeWidth={1.75} />,
   "api-secrets": <Key size={16} strokeWidth={1.75} />,
   webhooks: <Webhook size={16} strokeWidth={1.75} />,
   roles: <UserCog size={16} strokeWidth={1.75} />,
@@ -139,8 +147,9 @@ export function buildSettingsNavItems(
     group: it.group ?? (it.key.startsWith("monetization/") ? "monetization" : "project"),
   }));
 
+  const coreKeys = new Set(coreItems.map((item) => item.key));
   const projectExtensions = extensionItems.filter(
-    (it) => it.group !== "monetization",
+    (it) => it.group !== "monetization" && !coreKeys.has(it.key),
   );
   const monetizationItems = extensionItems.filter(
     (it) => it.group === "monetization",

@@ -25,13 +25,12 @@ import {
 import type { Project } from "../../types/project";
 import { Icon } from "@iconify/react";
 import { canOfferRemoteDatabaseDelete } from "./remoteDatabaseDelete";
-import { PROJECT_TEMPLATES } from "../../constants/projectTemplates";
 import { useProjectSpaceMeta } from "../../contexts/ProjectSpaceMetaContext";
+import ProjectStartGuide from "./ProjectStartGuide";
 import { MonoTableCard } from "../../components/console";
 import "../../components/console/ConsoleShell.css";
 import {
   CircleAlert,
-  Copy,
   Database,
   Download,
   Ellipsis,
@@ -45,17 +44,6 @@ import {
 const { Title, Text } = Typography;
 
 type ProjectRowMenuItem = NonNullable<MenuProps["items"]>[number];
-
-function templateInitials(label: string): string {
-  const parts = label.split(/[\s-]+/).filter(Boolean);
-  if (parts.length === 0) return "TP";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-}
 
 const ProjectsPage: React.FC<{
   createAction?: React.ReactNode;
@@ -169,12 +157,6 @@ const ProjectsPage: React.FC<{
   );
 
   useProjectSpaceMeta({ fullWidth: true });
-
-  const handleCopyTemplate = (template: (typeof PROJECT_TEMPLATES)[number]) => {
-    navigate("/projects/new", {
-      state: { template: template.id },
-    });
-  };
 
   const showDeleteConfirmation = (project: Project) => {
     setProjectToDelete(project);
@@ -433,58 +415,6 @@ const ProjectsPage: React.FC<{
     },
   ];
 
-  const getTemplateColumns = (): ColumnsType<
-    (typeof PROJECT_TEMPLATES)[number]
-  > => [
-    {
-      title: "Name",
-      dataIndex: "title",
-      key: "name",
-      width: 280,
-      render: (title: string, template) => (
-        <div className="console-cell-row console-cell-row--md">
-          <div className="mono-avatar">{templateInitials(template.label)}</div>
-          <div className="console-cell-body">
-            <div className="mono-cell-title">{title}</div>
-            {template.description ? (
-              <div className="mono-cell-subtitle">{template.description}</div>
-            ) : null}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Schema design",
-      dataIndex: "models",
-      key: "models",
-      render: (models: string[]) => (
-        <div className="console-template-models">
-          {models.map((model) => (
-            <Tag key={model}>{model}</Tag>
-          ))}
-        </div>
-      ),
-    },
-    {
-      title: "",
-      key: "actions",
-      width: 120,
-      align: "right",
-      render: (_, template) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <Button
-            type="primary"
-            size="small"
-            icon={<Copy size={16} strokeWidth={1.75} />}
-            onClick={() => handleCopyTemplate(template)}
-          >
-            Use this
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
   if (error) {
     return (
       <div className="console-loading-state">
@@ -552,24 +482,7 @@ const ProjectsPage: React.FC<{
         }}
       />
 
-      <div className="mono-templates-section">
-        <h3 className="mono-section-title">Project Templates</h3>
-        <p className="mono-section-desc">Start with proven project structures</p>
-        <MonoTableCard
-          tableProps={{
-            columns: getTemplateColumns(),
-            dataSource: PROJECT_TEMPLATES,
-            rowKey: "id",
-            tableLayout: "fixed",
-            pagination: false,
-            size: "small",
-            onRow: (template) => ({
-              className: "console-table-clickable",
-              onClick: () => handleCopyTemplate(template),
-            }),
-          }}
-        />
-      </div>
+      <ProjectStartGuide />
 
       <Drawer
         title="Update project settings"

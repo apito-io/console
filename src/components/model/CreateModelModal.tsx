@@ -7,6 +7,8 @@ import { useTourTracking } from "../../hooks/useTourTracking";
 import ModelNamePreview from "./ModelNamePreview";
 import { useConsoleExtensions } from "../../contexts/ConsoleExtensionsContext";
 import { invalidateModelQueries } from "../../lib/schemaCache";
+import { captureConsoleEvent } from "../../lib/consoleAnalytics";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface CreateModelModalProps {
   visible: boolean;
@@ -28,6 +30,7 @@ const CreateModelModal: React.FC<CreateModelModalProps> = ({
   const [form] = Form.useForm<CreateModelFormData>();
   const queryClient = useQueryClient();
   const { trackModelCreated } = useTourTracking();
+  const { decodeTokenData } = useAuth();
   const { onSchemaMutationCompleted } = useConsoleExtensions();
   const { mutateAsync: createModelMutation, isPending: loading } =
     useCreateModelMutation();
@@ -48,6 +51,10 @@ const CreateModelModal: React.FC<CreateModelModalProps> = ({
 
         localStorage.removeItem("tour-waiting-for-model");
         trackModelCreated();
+        captureConsoleEvent("model_created", {
+          project_id: decodeTokenData()?.project_id || "",
+          field_count: 0,
+        });
 
         onSuccess();
         await onSchemaMutationCompleted?.();

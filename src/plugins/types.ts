@@ -34,6 +34,8 @@ export interface PluginComponentRegistry {
   settings?: Record<string, React.ComponentType>
   fields?: Record<string, React.ComponentType>
   forms?: Record<string, React.ComponentType>
+  /** Named host slots. Keys are host-defined. Open-core does not name product slots. */
+  slots?: Record<string, React.ComponentType>
 }
 
 export interface PluginConfig {
@@ -105,6 +107,6 @@ export interface PluginManagerAPI {
     pluginName: string
   }>
   getPluginFields: () => PluginFieldDefinition[]
-  getPluginComponent: (pluginName: string, componentType: 'pages' | 'menu' | 'settings' | 'fields' | 'forms', componentName: string) => React.ComponentType | undefined
+  getPluginComponent: (pluginName: string, componentType: 'pages' | 'menu' | 'settings' | 'fields' | 'forms' | 'slots', componentName: string) => React.ComponentType | undefined
 }
  

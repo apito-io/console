@@ -1,0 +1,67 @@
+.project-start-guide {
+  margin-top: 40px;
+}
+
+.project-start-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.project-start-guide-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--console-surface);
+  border: 1px solid var(--console-border-muted);
+  border-radius: var(--console-radius-md);
+}
+
+.project-start-guide-step {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--console-primary);
+}
+
+.project-start-guide-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--console-text);
+}
+
+.project-start-guide-detail {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--console-text-muted);
+}
+
+.project-start-guide-text {
+  width: 100%;
+  margin: 4px 0 8px;
+  padding: 10px 12px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--console-text);
+  background: var(--console-surface-muted);
+  border: 1px solid var(--console-border-muted);
+  border-radius: var(--console-radius-sm);
+}
+
+.project-start-guide-card .ant-btn {
+  margin-top: auto;
+}
+
+@media (max-width: 960px) {
+  .project-start-guide-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -99,6 +99,10 @@ class PluginRegistry {
               ...existing.config.components?.forms,
               ...config.components?.forms,
             },
+            slots: {
+              ...existing.config.components?.slots,
+              ...config.components?.slots,
+            },
           },
           fields: config.fields?.length ? config.fields : existing.config.fields,
           contributions: config.contributions ?? existing.config.contributions,
@@ -221,6 +225,7 @@ class PluginRegistry {
     if (
       entry.activated &&
       !blockedReason &&
+      nav &&
       ((entry.capabilities || []).includes("console.routes") ||
         contributions?.ui?.ui_available)
     ) {

@@ -36,7 +36,7 @@ const copy: Record<
 > = {
   cli: {
     approvePath: "/system/cli/v1/login/approve",
-    allowedPresets: ["cli_login", "cli_sync", "custom"],
+    allowedPresets: ["cli_sync", "cli_login", "custom"],
     cardLabel: "Give CLI access",
     submitLabel: "Give CLI access",
     successTitle: "CLI access granted",

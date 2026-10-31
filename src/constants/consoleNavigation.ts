@@ -8,6 +8,7 @@ import {
   Images,
   Workflow,
   Globe,
+  Radio,
   Terminal,
 } from "lucide-react";
 import { getSettingsHeaderTitle } from "./settingsNavigation";
@@ -20,6 +21,7 @@ export type ConsoleSectionKey =
   | "users"
   | "graphql"
   | "rest"
+  | "realtime"
   | "auth"
   | "storage"
   | "logic"
@@ -85,6 +87,12 @@ export const CONSOLE_PRIMARY_NAV: ConsoleNavItem[] = [
     label: "REST API",
     path: "/console/rest",
     icon: Globe,
+  },
+  {
+    key: "realtime",
+    label: "Realtime",
+    path: "/console/realtime",
+    icon: Radio,
   },
   {
     key: "auth",
@@ -218,6 +226,9 @@ export function isConsoleNavActive(
   }
   if (item.key === "rest") {
     return pathname.startsWith("/console/rest");
+  }
+  if (item.key === "realtime") {
+    return pathname.startsWith("/console/realtime");
   }
   return pathname.startsWith(item.path);
 }

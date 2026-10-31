@@ -17,7 +17,6 @@ import {
 } from "../contexts/ProjectSpaceMetaContext";
 import { useProjectExtensionNavItems } from "../lib/projectExtensionNav";
 import { useAuth } from "../contexts/AuthContext";
-import { getConsoleDomain } from "../utils/env";
 import "../components/console/ConsoleShell.css";
 
 export interface ProjectSpaceLayoutProps {
@@ -41,7 +40,6 @@ const ProjectSpaceChrome: React.FC<ProjectSpaceLayoutProps> = ({
   const { decodeTokenData } = useAuth();
   const token = decodeTokenData();
   const projectId = token?.project_id;
-  const userId = token?.sub || token?.account;
   const contextExtensionItems = useProjectExtensionNavItems();
   const mergedExtensions = extensionNavItems ?? contextExtensionItems;
 
@@ -50,20 +48,13 @@ const ProjectSpaceChrome: React.FC<ProjectSpaceLayoutProps> = ({
     const host = window.location.hostname;
     if (host === "localhost" || host === "127.0.0.1") return;
     try {
-      if (userId) {
-        window.posthog.identify(String(userId), {
-          product: "app",
-          domain: getConsoleDomain(),
-          cross_product_user: true,
-        });
-      }
       if (projectId) {
         window.posthog.group("project", projectId);
       }
     } catch {
       /* ignore analytics failures */
     }
-  }, [userId, projectId]);
+  }, [projectId]);
 
   const showPageHeader = Boolean(
     meta.title || meta.description || meta.actions,

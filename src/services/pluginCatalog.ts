@@ -104,6 +104,11 @@ export async function restartCatalogPlugin(id: string): Promise<PluginOpResponse
 
 export type MarketplaceTab = "browse" | "installed" | "updates";
 
+/** Engine installs only. One install can be activated on many projects. */
+export function projectAttachablePlugins(plugins: CatalogPlugin[]): CatalogPlugin[] {
+  return plugins.filter((p) => p.installed && p.status !== "blocked");
+}
+
 export function filterMarketplace(
   plugins: CatalogPlugin[],
   tab: MarketplaceTab,

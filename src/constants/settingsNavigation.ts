@@ -46,21 +46,9 @@ export const SETTINGS_NAVIGATION: Record<string, SettingsNavigationConfig> = {
         title: "Plans",
         subtitle: "Prices, store SKUs, and tenant plan ceilings"
     },
-    "monetization/plans": {
-        title: "Plans",
-        subtitle: "Prices, store SKUs, and tenant plan ceilings"
-    },
-    "monetization/providers": {
-        title: "Payment providers",
-        subtitle: "Payment providers for tenant subscriptions"
-    },
-    "monetization/invoices": {
-        title: "Invoices",
-        subtitle: "Tenant subscription invoices and cash receipts"
-    },
-    "monetization/subscribers": {
-        title: "Subscribers",
-        subtitle: "Tenant subscription ledger (manual cash and store)"
+    "payments": {
+        title: "Payments",
+        subtitle: "Activated payment providers for this project"
     },
     "schema-changes": {
         title: "Schema Changes",

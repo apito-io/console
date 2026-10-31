@@ -9,7 +9,6 @@ import {
   Drawer,
   List,
   Space,
-  Tag,
   message,
 } from "antd";
 import {
@@ -23,7 +22,12 @@ import PluginSettingsDrawer from "../../components/plugins/PluginSettingsDrawer"
 import type { PluginDetailsRow } from "../../components/plugins/pluginTypes";
 import { Package, Plus } from "lucide-react";
 import { ConsoleCard, ConsoleCardTitle } from "../../components/console";
-import { catalogVersionLabel, fetchPluginCatalog, type CatalogPlugin } from "../../services/pluginCatalog";
+import {
+  catalogVersionLabel,
+  fetchPluginCatalog,
+  projectAttachablePlugins,
+  type CatalogPlugin,
+} from "../../services/pluginCatalog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../contexts/AuthContext";
 import { refreshPluginRegistry } from "../../plugins/queries";
@@ -61,9 +65,7 @@ const ProjectPluginsPage: React.FC = () => {
     [projectPlugins],
   );
 
-  const catalogPlugins = (catalogData?.plugins ?? []).filter(
-    (p) => p.status !== "blocked",
-  );
+  const catalogPlugins = projectAttachablePlugins(catalogData?.plugins ?? []);
 
   const installedPlugins = projectPlugins.filter(
     (plugin) =>
@@ -225,7 +227,7 @@ const ProjectPluginsPage: React.FC = () => {
       />
 
       <Drawer
-        title="Add plugin from registry"
+        title="Add installed plugin"
         placement="right"
         width={440}
         open={addDrawerOpen}
@@ -239,28 +241,26 @@ const ProjectPluginsPage: React.FC = () => {
         ) : (
           <List
             dataSource={catalogPlugins}
-            locale={{ emptyText: "No registry plugins found" }}
+            locale={{
+              emptyText:
+                "No system-installed plugins. An administrator installs a plugin once. Each project activates it on its own.",
+            }}
             renderItem={(item) => {
               const name = item.name || item.id || "Plugin";
               const already = item.id ? installedIds.has(item.id) : false;
-              const hostInstalled = !!item.installed;
               return (
                 <List.Item
                   actions={[
-                    hostInstalled ? (
-                      <Button
-                        key="activate"
-                        type="primary"
-                        size="small"
-                        disabled={already}
-                        loading={installingId === item.id}
-                        onClick={() => void handleActivate(item)}
-                      >
-                        {already ? "Activated" : "Activate"}
-                      </Button>
-                    ) : (
-                      <Tag key="needs-admin">Requires super-admin installation</Tag>
-                    ),
+                    <Button
+                      key="activate"
+                      type="primary"
+                      size="small"
+                      disabled={already}
+                      loading={installingId === item.id}
+                      onClick={() => void handleActivate(item)}
+                    >
+                      {already ? "Activated" : "Activate"}
+                    </Button>,
                   ]}
                 >
                   <List.Item.Meta

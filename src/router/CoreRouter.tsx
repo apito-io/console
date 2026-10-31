@@ -27,7 +27,7 @@ import ProjectSpaceRouteLayout from "../layouts/ProjectSpaceRouteLayout";
 import ConsoleLayout from "../layouts/ConsoleLayout";
 import ContentPage from "../pages/content";
 import ModelPage from "../pages/model";
-import { GraphqlApiPage, RestApiPage } from "../pages/api";
+import { GraphqlApiPage, RealtimeApiPage, RestApiPage } from "../pages/api";
 import SettingsPage from "../pages/settings";
 import GeneralSettingsPage from "../pages/settings/general/GeneralSettingsPage";
 import ApiSecretsSettingsPage from "../pages/settings/api-secrets/ApiSecretsSettingsPage";
@@ -38,6 +38,7 @@ import ProjectSqlPage from "../pages/settings/database/ProjectSqlPage";
 import AuthenticationSettingsPage from "../pages/settings/authentication/AuthenticationSettingsPage";
 import UsersPage from "../pages/users/UsersPage";
 import StorageSettingsPage from "../pages/settings/storage/StorageSettingsPage";
+import PaymentProvidersPage from "../pages/settings/payments/PaymentProvidersPage";
 import LogicPage from "../pages/logic";
 import StoragePage from "../pages/storage";
 import { ProjectPluginsPage } from "../pages/plugins";
@@ -234,6 +235,11 @@ const routeTree = rootRoute.addChildren([
     }),
     createRoute({
       getParentRoute: () => consoleRoute,
+      path: "realtime",
+      component: RealtimeApiPage,
+    }),
+    createRoute({
+      getParentRoute: () => consoleRoute,
       path: "api",
       component: () => <Navigate to="/console/graphql" replace />,
     }),
@@ -297,6 +303,11 @@ const routeTree = rootRoute.addChildren([
         getParentRoute: () => settingsRoute,
         path: "storage",
         component: StorageSettingsPage,
+      }),
+      createRoute({
+        getParentRoute: () => settingsRoute,
+        path: "payments/providers",
+        component: PaymentProvidersPage,
       }),
       createRoute({
         getParentRoute: () => settingsRoute,

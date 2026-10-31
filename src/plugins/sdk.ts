@@ -3,9 +3,9 @@ import * as antd from "antd";
 import { message } from "antd";
 import type { PluginConfig } from "./types";
 import pluginRegistry from "./PluginRegistry";
-import { getRestUrl } from "../constants/api";
+import { getRestUrl, SYSTEM_GRAPHQL_URL } from "../constants/api";
 
-export const APITO_PLUGIN_SDK_VERSION = "1.0.0";
+export const APITO_PLUGIN_SDK_VERSION = "1.1.0";
 
 export type PluginRestClient = {
   get: (path: string, init?: RequestInit) => Promise<unknown>;
@@ -46,8 +46,36 @@ export type ApitoPluginSDK = {
   register: (config: PluginConfig) => void;
   projectId: () => string;
   rest: (pluginId: string) => PluginRestClient;
+  url: (path: string) => string;
+  saveProjectEnv: (pluginId: string, env: Record<string, string>) => Promise<void>;
   notify: typeof message;
 };
+
+async function saveProjectEnv(pluginId: string, env: Record<string, string>) {
+  const env_vars = Object.entries(env).map(([key, value]) => ({ key, value }));
+  const projectId = projectIdReader();
+  const res = await fetch(SYSTEM_GRAPHQL_URL, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-Use-Cookies": "true",
+      ...(projectId ? { "X-Apito-Project-ID": projectId } : {}),
+    },
+    body: JSON.stringify({
+      query:
+        "mutation($id: String!, $env_vars: [PluginConfigEnvVarsPayload]) { upsertPlugin(id: $id, env_vars: $env_vars, enable: true) { id enable } }",
+      variables: { id: pluginId, env_vars },
+    }),
+  });
+  const body = (await res.json().catch(() => ({}))) as {
+    errors?: Array<{ message?: string }>;
+  };
+  if (!res.ok || (body.errors && body.errors.length > 0)) {
+    throw new Error(body.errors?.[0]?.message || `HTTP ${res.status}`);
+  }
+}
 
 let projectIdReader: () => string = () => "";
 
@@ -72,6 +100,8 @@ export function installPluginSDK() {
           body: body === undefined ? undefined : JSON.stringify(body),
         }),
     }),
+    url: (path) => getRestUrl(path),
+    saveProjectEnv,
     notify: message,
   };
   window.ApitoPluginSDK = sdk;

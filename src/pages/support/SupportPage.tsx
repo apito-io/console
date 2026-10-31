@@ -1,8 +1,9 @@
 import React from "react";
 import { Alert, Button, Row, Col } from "antd";
 import {
+  BookOpen,
+  Bug,
   Building2,
-  LifeBuoy,
   Mail,
   MessageCircle,
 } from "lucide-react";
@@ -16,14 +17,6 @@ import {
   isSqliteBuilderProduct,
 } from "../../utils/env";
 import "../../components/console/ConsoleShell.css";
-
-function openChatwoot() {
-  const chat = window.$chatwoot;
-  if (chat && typeof chat.toggle === "function") {
-    chat.toggle("open");
-    return;
-  }
-}
 
 const SupportPage: React.FC = () => {
   const supportEmail = getSupportEmail();
@@ -48,8 +41,7 @@ const SupportPage: React.FC = () => {
                 <p>
                   The engine behind this console is still Apito, so{" "}
                   <strong>support, enterprise sales, and Discord</strong> are
-                  the same people and the same inboxes. Use the addresses below,
-                  or the chat bubble on the bottom right.
+                  the same people and the same inboxes. Use the addresses below.
                 </p>
               </div>
             }
@@ -107,24 +99,30 @@ const SupportPage: React.FC = () => {
 
               <ConsoleCard
                 title={
-                  <ConsoleCardTitle
-                    icon={MessageCircle}
-                    label="Quick conversation"
-                  />
+                  <ConsoleCardTitle icon={BookOpen} label="Docs and bugs" />
                 }
               >
                 <p className="console-text-block">
-                  Fastest path is the chat bubble on the{" "}
-                  <strong>bottom right</strong> of this console (Chatwoot). Use
-                  it for a short question while you stay on the page.
+                  Read the docs, report a bug on GitHub, or ask in Discord.
+                  Questions that need a private answer go to support.
                 </p>
-                <Button
-                  type="primary"
-                  icon={<LifeBuoy size={16} strokeWidth={1.75} />}
-                  onClick={openChatwoot}
-                >
-                  Open chat
-                </Button>
+                <div className="console-inline-row">
+                  <Button
+                    type="primary"
+                    icon={<BookOpen size={16} strokeWidth={1.75} />}
+                    href="https://apito.io/docs"
+                    target="_blank"
+                  >
+                    Docs
+                  </Button>
+                  <Button
+                    icon={<Bug size={16} strokeWidth={1.75} />}
+                    href="https://github.com/apito-io/engine/issues/new"
+                    target="_blank"
+                  >
+                    Report a bug
+                  </Button>
+                </div>
               </ConsoleCard>
             </div>
           </Col>

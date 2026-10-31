@@ -17,6 +17,7 @@ import {
 } from "../../constants/projectNavigation";
 import { getActiveMenuKey } from "../../navigation/getActiveMenuKey";
 import { useAuth } from "../../contexts/AuthContext";
+import HelpMenu from "../console/HelpMenu";
 import { useConsoleExtensions } from "../../contexts/ConsoleExtensionsContext";
 import { useProjectsQuery } from "../../pages/projects/queries";
 import {
@@ -42,7 +43,7 @@ const ProjectSpaceSidebar: React.FC<ProjectSpaceSidebarProps> = ({
   const location = useLocation();
   const { decodeTokenData } = useAuth();
   const tokenData = decodeTokenData();
-  const { resolveConsoleEntryPath } = useConsoleExtensions();
+  const { resolveConsoleEntryPath, showHelpSupport } = useConsoleExtensions();
 
   const [projectsExpanded, setProjectsExpanded] = useState(
     location.pathname.startsWith("/projects"),
@@ -263,6 +264,7 @@ const ProjectSpaceSidebar: React.FC<ProjectSpaceSidebarProps> = ({
 
       <div className="console-sidebar-footer">
         {footerNav.map(renderNavButton)}
+        <HelpMenu showSales={showHelpSupport} />
         <button
           type="button"
           className="console-nav-item console-discord-btn"

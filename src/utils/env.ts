@@ -22,6 +22,7 @@ declare global {
             VITE_APP_TITLE?: string;
             VITE_SUPPORT_EMAIL?: string;
             VITE_ENTERPRISE_EMAIL?: string;
+            VITE_POSTHOG_SURVEY_ID?: string;
         };
     }
 }
