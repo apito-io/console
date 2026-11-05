@@ -58,6 +58,15 @@ export const FALLBACK_ACCESS_TOKEN_CATALOG: AccessTokenCatalog = {
       ],
     },
     {
+      id: "cli_plugin",
+      label: "CLI plugin",
+      description:
+        "List, install, and remove system plugins. Cannot read tenant documents or change schema.",
+      default_days: 30,
+      danger: true,
+      capabilities: ["plugins.read", "plugins.deploy"],
+    },
+    {
       id: "function_deploy",
       label: "Function deploy",
       description: "Read/write/test/deploy edge functions.",

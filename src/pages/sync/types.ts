@@ -6,6 +6,7 @@ export type AccessTokenPresetId =
   | "read_only"
   | "cli_login"
   | "cli_sync"
+  | "cli_plugin"
   | "function_deploy"
   | "data_import_export"
   | "mcp_assistant"

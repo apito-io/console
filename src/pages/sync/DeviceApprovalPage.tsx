@@ -36,7 +36,7 @@ const copy: Record<
 > = {
   cli: {
     approvePath: "/system/cli/v1/login/approve",
-    allowedPresets: ["cli_sync", "cli_login", "custom"],
+    allowedPresets: ["cli_sync", "cli_login", "cli_plugin", "custom"],
     cardLabel: "Give CLI access",
     submitLabel: "Give CLI access",
     successTitle: "CLI access granted",
@@ -44,7 +44,7 @@ const copy: Record<
     missingDescription: "Run apito login again and open the link it prints.",
     confirmFallback: "Approve this CLI login",
     scopeDescription:
-      "Choose CLI login, CLI sync, or Custom. Then choose the projects this token may use.",
+      "Choose CLI login, CLI sync, CLI plugin, or Custom. Then choose the projects this token may use.",
     grantNote: "",
     namePrefix: "CLI",
     errorFallback: "Could not approve the CLI",
