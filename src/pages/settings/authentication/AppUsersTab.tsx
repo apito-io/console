@@ -26,13 +26,20 @@ import type { AppUserRow, AppUsersApi } from "./appUserApi";
 import { useOpenCoreAppUsersApi } from "./openCoreAppUsersApi";
 import { Ellipsis, Key, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { MonoTableCard } from "../../../components/console";
-import { useTenantLabelQuery } from "../../sync/tenantSearch";
+import { useTenantLabelQuery, useTenantNameMap } from "../../sync/tenantSearch";
 
 const { Text } = Typography;
 const { Option } = Select;
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
+
+function formatUserDate(value: string | null | undefined): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "—";
+  const parsed = dayjs(raw);
+  return parsed.isValid() ? parsed.format("MMM D, YYYY, h:mm A") : raw;
+}
 
 export type AppUsersTabProps = {
   /** When set, passed to searchUsers/createUser/updateUser for SaaS tenant scope. */
@@ -121,6 +128,21 @@ const AppUsersTab: React.FC<AppUsersTabProps> = ({
 
   const users = (data?.searchUsers?.users ?? []).filter(Boolean) as AppUserRow[];
   const total = data?.searchUsers?.count ?? 0;
+  const pageTenantKey = users
+    .filter((user) => !user.tenant_missing)
+    .map((user) => String(user.tenant_id ?? "").trim())
+    .filter(Boolean)
+    .sort()
+    .join("\n");
+  const pageTenantIds = useMemo(
+    () => (pageTenantKey ? pageTenantKey.split("\n") : []),
+    [pageTenantKey],
+  );
+  const tenantNames = useTenantNameMap(
+    projectId,
+    pageTenantIds,
+    showTenantColumn,
+  );
 
   const invalidateList = () => void refetch();
 
@@ -292,16 +314,10 @@ const AppUsersTab: React.FC<AppUsersTabProps> = ({
       key: "phone",
       render: (v: string | null | undefined) => v || "—",
     },
-    {
-      title: "Username",
-      dataIndex: "username",
-      key: "username",
-      render: (v: string | null | undefined) => v || "—",
-    },
     ...(showTenantColumn
       ? [
           {
-            title: "Tenant ID",
+            title: "Tenant",
             dataIndex: "tenant_id",
             key: "tenant_id",
             ellipsis: true,
@@ -309,7 +325,11 @@ const AppUsersTab: React.FC<AppUsersTabProps> = ({
               if (record.tenant_missing) {
                 return <Tag color="error">Tenant missing</Tag>;
               }
-              return v ? <Text code>{v}</Text> : "—";
+              const id = String(v ?? "").trim();
+              if (!id) return "—";
+              const name = tenantNames.names.get(id);
+              const label = name && name !== id ? name : tenantNames.loading ? "…" : name || id;
+              return <span title={id}>{label}</span>;
             },
           },
         ]
@@ -351,15 +371,13 @@ const AppUsersTab: React.FC<AppUsersTabProps> = ({
       title: "Created",
       dataIndex: "created_at",
       key: "created_at",
-      render: (v: string | null | undefined) =>
-        v ? dayjs(v).format("YYYY-MM-DD HH:mm") : "—",
+      render: (v: string | null | undefined) => formatUserDate(v),
     },
     {
       title: "Updated",
       dataIndex: "updated_at",
       key: "updated_at",
-      render: (v: string | null | undefined) =>
-        v ? dayjs(v).format("YYYY-MM-DD HH:mm") : "—",
+      render: (v: string | null | undefined) => formatUserDate(v),
     },
     {
       title: "",
@@ -422,7 +440,7 @@ const AppUsersTab: React.FC<AppUsersTabProps> = ({
           placeholder={
             showTenantColumn && !tenantId
               ? "Search any user across all tenants"
-              : "Search by email, username, phone, or id"
+              : "Search by email, phone, or id"
           }
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
