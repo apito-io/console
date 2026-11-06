@@ -41,6 +41,7 @@ class PluginRegistry {
 
   private loadingPlugins: Set<string> = new Set();
   private loadedBundles: Set<string> = new Set();
+  private bundleComponents = new Map<string, PluginConfig["components"]>();
   private listeners: Array<(state: PluginRegistryState) => void> = [];
 
   subscribe(listener: (state: PluginRegistryState) => void) {
@@ -109,6 +110,9 @@ class PluginRegistry {
           menu: config.menu ?? existing.config.menu,
         }
       : config;
+    if (merged.components?.slots && Object.keys(merged.components.slots).length > 0) {
+      this.bundleComponents.set(merged.name, merged.components);
+    }
     const plugin: LoadedPlugin = {
       config: merged,
       loaded: !merged.blockedReason,
@@ -187,17 +191,7 @@ class PluginRegistry {
       return;
     }
     const declarative = !entry.official || !entry.signed || !entry.bundle_url;
-    const blockedReason =
-      entry.blocked_reason ||
-      (!entry.activated &&
-      (entry.extension_points || []).some(
-        (c) =>
-          c.startsWith("project.") ||
-          c.startsWith("console.") ||
-          c === "content.fields",
-      )
-        ? "plugin is not activated for this project"
-        : undefined);
+    const blockedReason = entry.blocked_reason || undefined;
 
     const contributions = entry.contributions;
     const nav = primaryNavPlacement(contributions);
@@ -217,6 +211,7 @@ class PluginRegistry {
       capabilities: entry.capabilities || [],
       official: Boolean(entry.official),
       signed: Boolean(entry.signed),
+      activated: Boolean(entry.activated),
       declarative,
       blockedReason,
       contributions,
@@ -262,9 +257,9 @@ class PluginRegistry {
     }
 
     if (
+      entry.activated &&
       entry.official &&
       entry.signed &&
-      entry.activated &&
       entry.bundle_url &&
       entry.bundle_sha256 &&
       !entry.blocked_reason
@@ -272,13 +267,15 @@ class PluginRegistry {
       try {
         await this.loadSignedBundle(entry.id, entry.bundle_url, entry.bundle_sha256);
         const fromBundle = this.state.plugins.get(entry.id);
+        const components =
+          fromBundle?.config.components ?? this.bundleComponents.get(entry.id);
         this.registerPlugin({
           ...config,
           declarative: false,
           routes: fromBundle?.config.routes?.length
             ? fromBundle.config.routes
             : config.routes,
-          components: fromBundle?.config.components,
+          components,
           fields: fromBundle?.config.fields?.length
             ? fromBundle.config.fields
             : config.fields,

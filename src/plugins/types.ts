@@ -60,6 +60,7 @@ export interface PluginConfig {
   capabilities?: string[]
   official?: boolean
   signed?: boolean
+  activated?: boolean
   declarative?: boolean
   blockedReason?: string
   contributions?: PluginContributions

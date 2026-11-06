@@ -8,17 +8,16 @@ import {
   Input,
   Divider,
   Space,
-  Modal,
   Empty,
 } from "antd";
 import {
   useUpsertPluginDetailsMutation,
-  useRemoveProjectSpecificPluginMutation,
   useGetSystemPluginsQuery,
   Plugin_Activation_Type_Enum,
   type PluginConfigEnvVarsPayload,
 } from "../../generated_gql/tanstack-query";
 import type { PluginDetailsRow } from "./pluginTypes";
+import { isProjectPluginActivated } from "./pluginActivation";
 import { Eye, EyeOff, Plus } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { getRestUrl } from "../../constants/api";
@@ -63,9 +62,10 @@ const PluginSettingsDrawer: React.FC<PluginSettingsDrawerProps> = ({
   >({});
   const { mutateAsync: upsertPluginDetails, isPending: saving } =
     useUpsertPluginDetailsMutation();
-  const { mutateAsync: removeProjectSpecificPlugin, isPending: removing } =
-    useRemoveProjectSpecificPluginMutation();
-  const [deactivating, setDeactivating] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const activated = selectedPlugin
+    ? isProjectPluginActivated(selectedPlugin)
+    : false;
   const [newEnvKey, setNewEnvKey] = useState("");
   const { decodeTokenData } = useAuth();
   const projectId = decodeTokenData()?.project_id ?? "";
@@ -160,47 +160,29 @@ const PluginSettingsDrawer: React.FC<PluginSettingsDrawerProps> = ({
     }
   };
 
-  const handleDeactivate = async () => {
-    if (!selectedPlugin?.id) return;
-    setDeactivating(true);
+  const setActivation = async (turnOn: boolean) => {
+    if (!selectedPlugin?.id || turnOn === activated) return;
+    setToggling(true);
     try {
       await upsertPluginDetails({
         id: selectedPlugin.id,
-        activate_status: Plugin_Activation_Type_Enum.Deactivated,
+        enable: turnOn,
+        activate_status: turnOn
+          ? Plugin_Activation_Type_Enum.Activated
+          : Plugin_Activation_Type_Enum.Deactivated,
       });
-      message.success("Plugin deactivated");
+      message.success(turnOn ? "Plugin activated" : "Plugin deactivated");
       await refreshPluginRegistry(queryClient, projectId);
       await onAfterMutation?.();
       onClose();
     } catch (error) {
-      console.error("Failed to deactivate plugin:", error);
-      message.error("Failed to deactivate plugin");
+      console.error("Failed to change plugin activation:", error);
+      message.error(
+        turnOn ? "Failed to activate plugin" : "Failed to deactivate plugin",
+      );
     } finally {
-      setDeactivating(false);
+      setToggling(false);
     }
-  };
-
-  const handleRemove = () => {
-    if (!selectedPlugin?.id) return;
-    Modal.confirm({
-      title: "Remove plugin from project?",
-      content:
-        "This removes the plugin from this project. You can add it again from the catalog later.",
-      okText: "Remove",
-      okType: "danger",
-      onOk: async () => {
-        try {
-          await removeProjectSpecificPlugin({ id: selectedPlugin.id! });
-          message.success("Plugin removed");
-          await refreshPluginRegistry(queryClient, projectId);
-          await onAfterMutation?.();
-          onClose();
-        } catch (error) {
-          console.error("Failed to remove plugin:", error);
-          message.error("Failed to remove plugin");
-        }
-      },
-    });
   };
 
   return (
@@ -280,19 +262,19 @@ const PluginSettingsDrawer: React.FC<PluginSettingsDrawerProps> = ({
             >
               <Space wrap>
                 <Button
-                  onClick={handleDeactivate}
-                  loading={deactivating}
-                  disabled={removing}
+                  type="primary"
+                  onClick={() => void setActivation(true)}
+                  loading={toggling && !activated}
+                  disabled={activated || toggling}
                 >
-                  Deactivate
+                  Activate
                 </Button>
                 <Button
-                  danger
-                  onClick={handleRemove}
-                  loading={removing}
-                  disabled={deactivating}
+                  onClick={() => void setActivation(false)}
+                  loading={toggling && activated}
+                  disabled={!activated || toggling}
                 >
-                  Remove
+                  Deactivate
                 </Button>
               </Space>
             </Space>

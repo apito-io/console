@@ -2,6 +2,7 @@ import React from "react";
 import { Typography, Tag, Avatar } from "antd";
 import ConsoleCard from "../console/ConsoleCard";
 import type { PluginDetailsRow } from "./pluginTypes";
+import { isProjectPluginActivated } from "./pluginActivation";
 import "../console/ConsoleShell.css";
 
 const { Title, Text } = Typography;
@@ -111,11 +112,9 @@ const PluginCard: React.FC<PluginCardProps> = ({ plugin, onSettingsClick }) => {
               Official
             </Tag>
           ) : null}
-          {plugin.enable !== null && plugin.enable !== undefined && (
-            <Tag className="plugin-card__tag">
-              {plugin.enable ? "Enabled" : "Disabled"}
-            </Tag>
-          )}
+          <Tag className="plugin-card__tag">
+            {isProjectPluginActivated(plugin) ? "Activated" : "Not activated"}
+          </Tag>
           {plugin.role && <Tag className="plugin-card__tag">{plugin.role}</Tag>}
         </div>
       </div>

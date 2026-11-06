@@ -3,7 +3,8 @@ import { Form, Button, Typography, message, Tooltip, App } from "antd";
 import { FolderKanban, Plus } from "lucide-react";
 import { useLocation, useNavigate } from "../../router/navigation";
 import { httpService } from "../../services/httpService";
-import { PROJECT_CREATE } from "../../constants/api";
+import { PROJECT_CREATE, getRestUrl } from "../../constants/api";
+import { useAuth } from "../../contexts/AuthContext";
 import { captureConsoleEvent } from "../../lib/consoleAnalytics";
 import {
   findProjectTemplate,
@@ -34,6 +35,7 @@ type ProjectType = "general" | "saas";
 const StartProjectPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const { notification: notificationApi } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -48,6 +50,56 @@ const StartProjectPage: React.FC = () => {
     "per_tenant_separate_database",
     form,
   );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = params.get("guest_session") || "";
+    const stored = sessionStorage.getItem("apito_guest_session") || "";
+    const id = /^[a-f0-9]{32}$/.test(fromQuery) ? fromQuery : stored;
+    if (!/^[a-f0-9]{32}$/.test(id)) return;
+    sessionStorage.setItem("apito_guest_session", id);
+    if (!isAuthenticated()) return;
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(getRestUrl(`/system/guest/session/${id}/claim`), {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "X-Use-Cookies": "true",
+        },
+        body: "{}",
+      });
+      if (cancelled || res.status === 401) return;
+      if (res.status === 403) {
+        sessionStorage.removeItem("apito_guest_session");
+        message.error("Keeping a mock API needs Pro.");
+        return;
+      }
+      if (!res.ok) {
+        sessionStorage.removeItem("apito_guest_session");
+        message.error("This guest session could not be claimed.");
+        return;
+      }
+      const data = (await res.json()) as {
+        action?: string;
+        kind?: string;
+      };
+      if (data.kind === "sqlite" && !window.location.hostname.includes("sqlitebuilder")) {
+        window.location.href = `https://app.sqlitebuilder.com/projects/new?guest_session=${id}`;
+        return;
+      }
+      sessionStorage.removeItem("apito_guest_session");
+      if (data.action === "clone") {
+        message.info("The sample stays shared. Create a project to copy it.");
+        return;
+      }
+      message.success("This project is on your account.");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const state = location.state as {
