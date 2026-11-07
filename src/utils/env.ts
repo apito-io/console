@@ -6,6 +6,7 @@ declare global {
     interface Window {
         env?: {
             VITE_REST_API?: string;
+            VITE_PUBLIC_API_URL?: string;
             VITE_GRAPH_API?: string;
             VITE_GRAPH_SUBS_API?: string;
             VITE_AUTH_PROVIDER?: string;
@@ -39,6 +40,8 @@ function getEnv(key: string): string {
 // Export as getters for lazy evaluation
 export const ENV = {
     get VITE_REST_API() { return getEnv('VITE_REST_API'); },
+    /** Public engine origin for URLs a browser or provider must open. Unset on split-host consoles (app.apito.io). */
+    get VITE_PUBLIC_API_URL() { return getEnv('VITE_PUBLIC_API_URL'); },
     get VITE_GRAPH_API() { return getEnv('VITE_GRAPH_API'); },
     get VITE_GRAPH_SUBS_API() { return getEnv('VITE_GRAPH_SUBS_API'); },
     get VITE_AUTH_PROVIDER() { return getEnv('VITE_AUTH_PROVIDER'); },

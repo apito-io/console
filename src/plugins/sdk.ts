@@ -3,7 +3,7 @@ import * as antd from "antd";
 import { message } from "antd";
 import type { PluginConfig } from "./types";
 import pluginRegistry from "./PluginRegistry";
-import { getRestUrl, SYSTEM_GRAPHQL_URL } from "../constants/api";
+import { getPublicRestUrl, getRestUrl, SYSTEM_GRAPHQL_URL } from "../constants/api";
 
 export const APITO_PLUGIN_SDK_VERSION = "1.1.0";
 
@@ -47,6 +47,7 @@ export type ApitoPluginSDK = {
   projectId: () => string;
   rest: (pluginId: string) => PluginRestClient;
   url: (path: string) => string;
+  publicUrl: (path: string) => string;
   saveProjectEnv: (pluginId: string, env: Record<string, string>) => Promise<void>;
   notify: typeof message;
 };
@@ -101,6 +102,7 @@ export function installPluginSDK() {
         }),
     }),
     url: (path) => getRestUrl(path),
+    publicUrl: (path) => getPublicRestUrl(path),
     saveProjectEnv,
     notify: message,
   };

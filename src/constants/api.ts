@@ -12,6 +12,19 @@ export const getRestUrl = (path: string) => {
   return base ? `${base.replace(/\/$/, '')}${p}` : p;
 };
 
+// Copy-paste URLs (payment return, provider callbacks).
+// VITE_PUBLIC_API_URL is the engine PUBLIC_API_URL. Studio sets it
+// (https://engine.udbhabon.com). app.apito.io leaves it empty and keeps
+// the absolute VITE_REST_API (https://api.apito.io).
+export const getPublicRestUrl = (path: string) => {
+  const configured = (ENV.VITE_PUBLIC_API_URL || '').trim().replace(/\/$/, '');
+  if (/^https?:\/\//i.test(configured)) {
+    const p = path.startsWith('/') ? path : `/${path}`;
+    return `${configured}${p}`;
+  }
+  return getRestUrl(path);
+};
+
 // For backward compatibility
 export const BASE_URL = ENV.VITE_REST_API;
 
