@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -47,6 +47,10 @@ const SystemPluginsPage: React.FC = () => {
   const [tab, setTab] = useState<MarketplaceTab>("browse");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("category");
+    if (requested) setCategory(requested);
+  }, []);
   const [trust, setTrust] = useState("all");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [detail, setDetail] = useState<CatalogPlugin | null>(null);
@@ -54,8 +58,9 @@ const SystemPluginsPage: React.FC = () => {
   const plugins = catalogQuery.data?.plugins ?? [];
   const categories = useMemo(() => {
     const set = new Set(plugins.map((p) => p.category).filter(Boolean) as string[]);
+    if (category && category !== "all") set.add(category);
     return ["all", ...Array.from(set).sort()];
-  }, [plugins]);
+  }, [plugins, category]);
   const visible = filterMarketplace(plugins, tab, query, category, trust);
   const installedCount = plugins.filter((p) => p.installed).length;
   const updateCount = plugins.filter((p) => p.update_available).length;
@@ -169,7 +174,7 @@ const SystemPluginsPage: React.FC = () => {
           items={[
             { key: "browse", label: "Browse" },
             { key: "installed", label: `Installed (${installedCount})` },
-            { key: "updates", label: `Updates (${updateCount})` },
+            { key: "updates", label: `Updates available (${updateCount})` },
           ]}
         />
 
@@ -179,7 +184,13 @@ const SystemPluginsPage: React.FC = () => {
           </div>
         ) : visible.length === 0 ? (
           <Empty
-            description={query ? "No plugins match that search" : "No plugins match"}
+            description={
+              query
+                ? "No plugins match that search"
+                : tab === "updates"
+                  ? "No updates available"
+                  : "No plugins match"
+            }
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           />
         ) : (

@@ -169,6 +169,9 @@ const routeTree = rootRoute.addChildren([
     createRoute({
       getParentRoute: () => projectSpaceRoute,
       path: "/system/plugins",
+      validateSearch: (search: Record<string, unknown>) => ({
+        category: typeof search.category === "string" ? search.category : undefined,
+      }),
       component: SystemPluginsPage,
     }),
     createRoute({

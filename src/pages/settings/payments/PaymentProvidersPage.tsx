@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button, List, Typography } from "antd";
+import { Alert, Button, Empty, List, Typography } from "antd";
 import { Wallet } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -54,7 +54,20 @@ const PaymentProvidersPage: React.FC = () => {
       <List
         loading={loading}
         dataSource={rows}
-        locale={{ emptyText: "No payment provider is activated." }}
+        locale={{
+          emptyText: (
+            <Empty description="No payment plugins are installed">
+              <Button
+                type="primary"
+                onClick={() => {
+                  void navigate({ to: "/system/plugins", search: { category: "payments" } });
+                }}
+              >
+                Install from Plugins
+              </Button>
+            </Empty>
+          ),
+        }}
         renderItem={(row) => (
           <List.Item
             actions={[
