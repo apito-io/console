@@ -17,6 +17,8 @@ export interface ProjectFilesListResponse {
   files: ProjectFile[];
   total: number;
   message?: string;
+  storage_used_bytes?: number;
+  storage_limit_bytes?: number;
 }
 
 export interface ProjectFileUploadResponse {

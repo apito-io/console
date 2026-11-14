@@ -19,7 +19,7 @@ import type { ProjectFile } from "../../types/projectFile";
 import StorageFileCard from "./StorageFileCard";
 import StorageUploadCard from "./StorageUploadCard";
 import StorageUploadModal from "./StorageUploadModal";
-import { FILE_TYPE_OPTIONS } from "./storageUtils";
+import { FILE_TYPE_OPTIONS, formatBytes, formatStorageLimit } from "./storageUtils";
 import { ConsoleCardTitle } from "../../components/console";
 import { Upload, HardDrive } from "lucide-react";
 import "../../components/console/ConsoleShell.css";
@@ -72,6 +72,8 @@ const StorageGallery: React.FC = () => {
   }, [allFiles, search]);
 
   const total = data?.pages?.[0]?.total ?? filteredFiles.length;
+  const storageUsed = data?.pages?.[0]?.storage_used_bytes;
+  const storageLimit = data?.pages?.[0]?.storage_limit_bytes;
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -94,6 +96,11 @@ const StorageGallery: React.FC = () => {
           <ConsoleCardTitle icon={HardDrive} label="Files" />
           <Text type="secondary" className="console-text-block">
             Upload and manage project media
+            {typeof storageUsed === "number" &&
+            typeof storageLimit === "number" &&
+            storageLimit > 0
+              ? ` · ${formatBytes(storageUsed)} of ${formatStorageLimit(storageLimit)}`
+              : ""}
           </Text>
         </div>
         <Space wrap className="storage-gallery-toolbar-actions">
@@ -140,7 +147,7 @@ const StorageGallery: React.FC = () => {
         </Empty>
       ) : (
         <>
-          <Row gutter={[16, 16]}>
+          <Row gutter={[16, 16]} className="storage-gallery-grid">
             <Col xs={12} sm={8} md={6} lg={6}>
               <StorageUploadCard onClick={openUpload} />
             </Col>

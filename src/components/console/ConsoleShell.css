@@ -1158,13 +1158,30 @@ button.console-nav-model-item.active,
   margin-top: var(--apito-space-lg);
 }
 
+.storage-gallery-grid .ant-col {
+  min-width: 0;
+}
+
 .storage-file-card {
   height: 100%;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .storage-file-card-body {
   min-width: 0;
   flex: 1;
+  overflow: hidden;
+}
+
+.storage-file-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  font-weight: 600;
 }
 
 .storage-file-meta {
@@ -1189,10 +1206,13 @@ button.console-nav-model-item.active,
   overflow: hidden;
 }
 
-.storage-file-preview-image {
+.storage-file-preview .ant-image,
+.storage-file-preview .ant-image-img,
+.storage-file-preview img {
   width: 100%;
   height: 160px;
   object-fit: cover;
+  display: block;
 }
 
 .storage-file-footer {
@@ -1204,15 +1224,20 @@ button.console-nav-model-item.active,
 }
 
 .storage-upload-card {
+  width: 100%;
   height: 100%;
+  box-sizing: border-box;
   cursor: pointer;
   border: 1px dashed var(--console-border-muted);
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   min-height: 220px;
+  padding: 0;
   background: var(--console-surface);
   border-radius: var(--console-radius-md);
+  font: inherit;
+  color: inherit;
 }
 
 .storage-upload-card:hover {
@@ -1261,7 +1286,10 @@ button.console-nav-model-item.active,
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
   min-height: 220px;
+  box-sizing: border-box;
   gap: var(--apito-space-sm);
   background: var(--console-surface-muted);
 }

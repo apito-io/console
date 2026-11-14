@@ -15,6 +15,15 @@ export function formatBytes(size: number): string {
   return `${value.toFixed(precision)} ${units[unitIndex]}`;
 }
 
+export function formatStorageLimit(bytes: number): string {
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb > 0 && gb < 1024) {
+    const rounded = Math.round(gb * 10) / 10;
+    return `${rounded} GB`;
+  }
+  return formatBytes(bytes);
+}
+
 export function formatRelativeTime(iso?: string): string {
   if (!iso) {
     return "";

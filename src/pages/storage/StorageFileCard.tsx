@@ -121,9 +121,9 @@ const StorageFileCard: React.FC<StorageFileCardProps> = ({
       </div>
       <div className="storage-file-footer">
         <div className="storage-file-card-body">
-          <Text strong ellipsis title={displayFileName(file)}>
+          <div className="storage-file-name" title={displayFileName(file)}>
             {displayFileName(file)}
-          </Text>
+          </div>
           <div>
             <Text type="secondary" className="storage-file-meta">
               {formatRelativeTime(file.created_at)}
