@@ -6,7 +6,6 @@ import {
   Flex,
   Progress,
   Skeleton,
-  Spin,
   Table,
   Tag,
   Tooltip,
@@ -18,7 +17,7 @@ import { schemaKeys } from '../../lib/queryKeys';
 import { graphqlFetcher } from '../../lib/graphqlFetcher';
 import { SCHEMA_CHANGE_EXECUTION_RECORDS } from '../../graphql/queries/schemaExecution';
 import { schemaExecutionRecordsFetchLimit } from '../../lib/schemaExecutionLimits';
-import { Check, Cloud, Database, RefreshCw, Rocket, X } from "lucide-react";
+import { Check, Cloud, Database, Loader2, RefreshCw, Rocket, X } from "lucide-react";
 import {
   buildUnifiedPlanRows,
   computeAggregatePublishProgress,
@@ -78,6 +77,12 @@ type Props = {
   onFlushSync?: () => void | Promise<void>;
   retrying?: boolean;
   flushing?: boolean;
+  /**
+   * The host page renders publish progress, the current step and the publish error itself.
+   * The timeline then shows only the plan table (ledger polling and onBlockingStepChange still run),
+   * so the same publish is not drawn twice.
+   */
+  hideProgress?: boolean;
 };
 
 function HighlightedText({ text, highlight }: { text: string; highlight?: string }) {
@@ -103,12 +108,15 @@ function RoundStatusCheck({
   running,
   notApplicable,
   label,
+  error,
 }: {
   done: boolean;
   failed?: boolean;
   running?: boolean;
   notApplicable?: boolean;
   label: string;
+  /** Shown in the tooltip when the step failed. */
+  error?: string;
 }) {
   const { token } = theme.useToken();
 
@@ -129,21 +137,42 @@ function RoundStatusCheck({
       : running
         ? token.colorPrimary
         : token.colorTextQuaternary;
-  const fill = failed ? token.colorError : done ? token.colorSuccess : 'transparent';
+  // One state per circle, in priority order: failed > done > running > pending.
+  const state: 'failed' | 'done' | 'running' | 'pending' = failed
+    ? 'failed'
+    : done
+      ? 'done'
+      : running
+        ? 'running'
+        : 'pending';
+
+  if (state === 'running') {
+    return (
+      <Tooltip title={`${label}: running`}>
+        <Loader2
+          size={20}
+          strokeWidth={1.75}
+          className="lucide-spin"
+          color={token.colorPrimary}
+          aria-label={`${label}: running`}
+        />
+      </Tooltip>
+    );
+  }
+
+  const fill = state === 'failed' ? token.colorError : state === 'done' ? token.colorSuccess : 'transparent';
+  const tooltip =
+    state === 'failed'
+      ? error
+        ? `${label}: failed — ${error}`
+        : `${label}: failed`
+      : `${label}: ${state}`;
 
   return (
-    <Tooltip
-      title={
-        failed
-          ? `${label}: failed`
-          : done
-            ? `${label}: done`
-            : running
-              ? `${label}: running`
-              : `${label}: pending`
-      }
-    >
+    <Tooltip title={tooltip}>
       <span
+        role="img"
+        aria-label={tooltip}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -156,11 +185,11 @@ function RoundStatusCheck({
           verticalAlign: 'middle',
         }}
       >
-        {running && !done && !failed ? (
-          <Spin size="small" style={{ transform: 'scale(0.55)' }} />
+        {state === 'done' ? (
+          <Check size={14} strokeWidth={2} color={token.colorTextLightSolid} />
         ) : null}
-        {done && !failed ? (
-          <Check size={16} strokeWidth={1.75} style={{ color: '#fff', fontSize: 11 }} />
+        {state === 'failed' ? (
+          <X size={14} strokeWidth={2} color={token.colorTextLightSolid} />
         ) : null}
       </span>
     </Tooltip>
@@ -290,6 +319,7 @@ function usePlanColumns(
           running={row.doneRunning}
           notApplicable={!row.doneApplicable}
           label="Done"
+          error={row.error}
         />
       ),
     },
@@ -351,6 +381,7 @@ const SchemaExecutionTimeline: React.FC<Props> = ({
   onFlushSync,
   retrying = false,
   flushing = false,
+  hideProgress = false,
 }) => {
   const { token } = theme.useToken();
   const isActivePublish =
@@ -459,7 +490,10 @@ const SchemaExecutionTimeline: React.FC<Props> = ({
     );
   }
 
-  const showInlineProgress = isActivePublish && aggregate.total > 0;
+  const showInlineProgress = !hideProgress && isActivePublish && aggregate.total > 0;
+  // When the host owns publish status it also shows the publish error; failed rows still carry their
+  // own error under the change and on the Done mark.
+  const showIssuesSummary = summary.hasIssues && !(hideProgress && changesetStatus === 'failed');
 
   return (
     <div style={{ marginTop: embedded ? 0 : 16 }}>
@@ -554,7 +588,7 @@ const SchemaExecutionTimeline: React.FC<Props> = ({
             />
           )}
 
-          {summary.hasIssues && (
+          {showIssuesSummary && (
             <Alert
               type="error"
               showIcon

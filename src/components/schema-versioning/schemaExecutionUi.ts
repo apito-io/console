@@ -545,12 +545,16 @@ export function buildUnifiedPlanRows(
       : useLiveStatus
         ? schemaDone
         : false;
-    const doneRunning = hasDbMigration
-      ? dbRunning || (useLiveStatus && schemaRunning && !schemaDone)
-      : useLiveStatus && schemaRunning;
     const doneFailed = hasDbMigration
       ? dbFailed || (useLiveStatus && schemaFailed)
       : useLiveStatus && schemaFailed;
+    // A failed step is never "running": the DB row can fail while the schema registry row is still
+    // marked running (older engines), which used to keep the Done mark spinning.
+    const doneRunning =
+      !doneFailed &&
+      (hasDbMigration
+        ? dbRunning || (useLiveStatus && schemaRunning && !schemaDone)
+        : useLiveStatus && schemaRunning);
 
     return {
       key: g.key,
