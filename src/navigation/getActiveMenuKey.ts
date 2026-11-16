@@ -21,6 +21,7 @@ export function getActiveMenuKey(pathname: string): string {
   if (path.includes("/instances")) return "instances";
   if (path.includes("/workspace/settings") || path.includes("/administrator/workspace") || path.includes("/workspace"))
     return "workspace-settings";
+  if (path.includes("/administrator/database")) return "database-connections";
   if (path.includes("/system-api")) return "system-api";
   if (path.includes("/system-db")) return "system-db";
   if (path.includes("/backups")) return "backups";

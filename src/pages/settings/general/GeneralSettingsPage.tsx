@@ -23,6 +23,13 @@ import {
 } from "../../../generated_gql/tanstack-query";
 import { ConsoleCard, ConsoleCardTitle } from "../../../components/console";
 import { useNavigate } from "../../../router/navigation";
+import DatabaseEngineCards from "../database/DatabaseEngineCards";
+import {
+  assignProjectDatabase,
+  fetchDatabaseConnections,
+  type DatabaseConnection,
+  type DatabaseEngine,
+} from "../database/api";
 
 const { Option } = Select;
 const { confirm } = Modal;
@@ -172,6 +179,24 @@ const GeneralSettingsPage: React.FC = () => {
   });
 
   const project = settingsData?.currentProject;
+  const [dbConnections, setDbConnections] = useState<DatabaseConnection[]>([]);
+  const [dbEngine, setDbEngine] = useState<DatabaseEngine>("sqlite");
+
+  useEffect(() => {
+    void fetchDatabaseConnections()
+      .then((data) => {
+        setDbConnections(data.connections);
+        if (
+          data.selectedEngine === "sqlite" ||
+          data.selectedEngine === "postgresql" ||
+          data.selectedEngine === "mysql" ||
+          data.selectedEngine === "mongodb"
+        ) {
+          setDbEngine(data.selectedEngine);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   // Derive initial form values from project
   const initialValues = useMemo(() => {
@@ -270,6 +295,28 @@ const GeneralSettingsPage: React.FC = () => {
 
   return (
     <div>
+      <ConsoleCard
+        title={<ConsoleCardTitle icon={Settings} label="Database" />}
+        style={{ marginBottom: 16 }}
+      >
+        <DatabaseEngineCards
+          mode="settings"
+          connections={dbConnections}
+          selected={dbEngine}
+          onSelect={(engine) => {
+            void assignProjectDatabase(engine)
+              .then(() => {
+                setDbEngine(engine);
+                message.success("Project database updated");
+              })
+              .catch((error: unknown) => {
+                message.error(
+                  error instanceof Error ? error.message : "Could not update the database",
+                );
+              });
+          }}
+        />
+      </ConsoleCard>
       <ConsoleCard
         title={
           <ConsoleCardTitle icon={Settings} label="Project Information" />

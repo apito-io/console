@@ -31,12 +31,14 @@ import "../console/ConsoleShell.css";
 export interface ProjectSpaceSidebarProps {
   extensionNavItems?: ProjectExtensionNavItem[];
   extraNavItems?: ProjectNavItem[];
+  databaseNavItems?: ProjectNavItem[];
   adminNavItems?: ProjectNavItem[];
 }
 
 const ProjectSpaceSidebar: React.FC<ProjectSpaceSidebarProps> = ({
   extensionNavItems = [],
   extraNavItems = [],
+  databaseNavItems = [],
   adminNavItems = [],
 }) => {
   const navigate = useNavigate();
@@ -251,6 +253,13 @@ const ProjectSpaceSidebar: React.FC<ProjectSpaceSidebarProps> = ({
               SaaS Monetization
             </div>
             {saasMonetizationNav.map(renderNavButton)}
+          </section>
+        ) : null}
+
+        {databaseNavItems.length > 0 ? (
+          <section className="console-sidebar-section" aria-label="Databases">
+            <div className="console-sidebar-section-label">Databases</div>
+            {databaseNavItems.map(renderNavButton)}
           </section>
         ) : null}
 

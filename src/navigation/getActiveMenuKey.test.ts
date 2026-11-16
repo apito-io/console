@@ -26,6 +26,11 @@ describe("getActiveMenuKey", () => {
     expect(getActiveMenuKey("/system-db")).toBe("system-db");
     expect(getActiveMenuKey("/administrator/system-db")).toBe("system-db");
   });
+  it("maps workspace database connections", () => {
+    expect(getActiveMenuKey("/administrator/database/connections")).toBe(
+      "database-connections",
+    );
+  });
   it("maps administrator accounts separately from profile", () => {
     expect(getActiveMenuKey("/accounts")).toBe("accounts");
     expect(getActiveMenuKey("/administrator/accounts")).toBe("platform-accounts");

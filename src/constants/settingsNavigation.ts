@@ -16,6 +16,10 @@ export const SETTINGS_NAVIGATION: Record<string, SettingsNavigationConfig> = {
         title: "General",
         subtitle: "Configure basic project settings and preferences"
     },
+    "database": {
+        title: "Database",
+        subtitle: "Connections for SQLite, Postgres, MySQL, and MongoDB"
+    },
     "teams": {
         title: "Teams",
         subtitle: "Invite team members to collaborate on your project"

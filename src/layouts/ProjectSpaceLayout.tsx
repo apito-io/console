@@ -22,6 +22,7 @@ import "../components/console/ConsoleShell.css";
 export interface ProjectSpaceLayoutProps {
   navigationOverride?: NavigationConfig;
   extraNavItems?: ProjectNavItem[];
+  databaseNavItems?: ProjectNavItem[];
   adminNavItems?: ProjectNavItem[];
   extensionNavItems?: ProjectExtensionNavItem[];
   topBarTrailing?: React.ReactNode;
@@ -31,6 +32,7 @@ export interface ProjectSpaceLayoutProps {
 const ProjectSpaceChrome: React.FC<ProjectSpaceLayoutProps> = ({
   navigationOverride,
   extraNavItems,
+  databaseNavItems,
   adminNavItems,
   extensionNavItems,
   topBarTrailing,
@@ -64,6 +66,7 @@ const ProjectSpaceChrome: React.FC<ProjectSpaceLayoutProps> = ({
   const sidebar = (
     <ProjectSpaceSidebar
       extraNavItems={extraNavItems}
+      databaseNavItems={databaseNavItems}
       adminNavItems={adminNavItems}
       extensionNavItems={mergedExtensions}
     />
