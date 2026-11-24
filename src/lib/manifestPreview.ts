@@ -71,11 +71,37 @@ function mapFieldType(ft: string): string {
   return "text";
 }
 
-function mapInputType(it: string | undefined, fieldType: string): string {
-  if (it) return it;
+/** Engine INPUT_TYPE_ENUM (open-core schemas/enums/system_enums.go). */
+const ENGINE_INPUT_TYPES = new Set(["int", "bool", "double", "string", "geo", "object", "repeated"]);
+const INPUT_TYPE_ALIASES: Record<string, string> = {
+  float: "double",
+  decimal: "double",
+  number: "double",
+  real: "double",
+  integer: "int",
+  boolean: "bool",
+  text: "string",
+};
+
+/** Exported for tests. Unknown types fall back to the field type default. */
+export function mapInputType(it: string | undefined, fieldType: string): string {
+  const raw = (it || "").trim().toLowerCase();
+  const normalized = INPUT_TYPE_ALIASES[raw] ?? raw;
+  if (ENGINE_INPUT_TYPES.has(normalized)) return normalized;
   if (fieldType === "number") return "double";
   if (fieldType === "boolean") return "bool";
   return "string";
+}
+
+/**
+ * Engine CONNECTION_TYPE_ENUM is has_one | has_many. Older AI proposals put
+ * relation names here ("client", "invoices"); infer the type from plurality.
+ */
+export function mapConnectionType(value: string | undefined, fallback: "has_one" | "has_many"): string {
+  const v = (value || "").trim().toLowerCase();
+  if (v === "has_one" || v === "has_many") return v;
+  if (!v) return fallback;
+  return /s$/.test(v) && !/ss$/.test(v) ? "has_many" : "has_one";
 }
 
 /** Mirrors open-core utility/id_check.go: engine identifier from a field label. */
@@ -167,8 +193,8 @@ export async function stageManifestIntoDraft(
         variables: {
           from: rel.from,
           to: rel.to,
-          forward_connection_type: (rel.forward || "has_many").toLowerCase(),
-          reverse_connection_type: (rel.reverse || "has_one").toLowerCase(),
+          forward_connection_type: mapConnectionType(rel.forward, "has_many"),
+          reverse_connection_type: mapConnectionType(rel.reverse, "has_one"),
           known_as: rel.known_as,
         },
       });

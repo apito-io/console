@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   engineSafeFieldLabel,
+  mapConnectionType,
+  mapInputType,
   stageManifestIntoDraft,
   type BackendManifestPreview,
 } from "./manifestPreview";
@@ -67,5 +69,36 @@ describe("stageManifestIntoDraft", () => {
     const labels = calls.map((v) => v.field_label).filter(Boolean);
     expect(labels).toEqual(["Name", "Item Status"]);
     expect(counts).toEqual({ models: 1, fields: 2, relations: 0 });
+  });
+});
+
+describe("mapInputType", () => {
+  it("maps AI/manifest aliases onto the engine enum", () => {
+    expect(mapInputType("float", "number")).toBe("double");
+    expect(mapInputType("integer", "number")).toBe("int");
+    expect(mapInputType("boolean", "boolean")).toBe("bool");
+    expect(mapInputType("string", "text")).toBe("string");
+  });
+
+  it("falls back to the field type default for unknown values", () => {
+    expect(mapInputType("money", "number")).toBe("double");
+    expect(mapInputType(undefined, "text")).toBe("string");
+  });
+});
+
+describe("mapConnectionType", () => {
+  it("keeps engine values", () => {
+    expect(mapConnectionType("has_many", "has_one")).toBe("has_many");
+    expect(mapConnectionType("HAS_ONE", "has_many")).toBe("has_one");
+  });
+
+  it("infers from relation names used by older AI proposals", () => {
+    expect(mapConnectionType("client", "has_many")).toBe("has_one");
+    expect(mapConnectionType("invoices", "has_one")).toBe("has_many");
+    expect(mapConnectionType("address", "has_many")).toBe("has_one");
+  });
+
+  it("uses the fallback when empty", () => {
+    expect(mapConnectionType(undefined, "has_many")).toBe("has_many");
   });
 });
