@@ -1,4 +1,4 @@
-import { getConsoleDomain } from "../utils/env";
+import { ENV, getConsoleDomain } from "../utils/env";
 
 const ALLOWED_KEYS = new Set([
   "project_id",
@@ -41,7 +41,8 @@ export function allowlistedAnalyticsProps(
 /** New funnel events. Existing captures stay on their current callers. */
 export function analyticsProduct(): "apito" | "sqlitebuilder" {
   if (typeof window === "undefined") return "apito";
-  return window.env?.VITE_PRODUCT === "sqlitebuilder" ? "sqlitebuilder" : "apito";
+  // ENV falls back to the build-time value; Pages consoles have no runtime env.js.
+  return ENV.VITE_PRODUCT === "sqlitebuilder" ? "sqlitebuilder" : "apito";
 }
 
 export function captureConsoleEvent(
