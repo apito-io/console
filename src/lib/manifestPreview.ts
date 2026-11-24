@@ -78,6 +78,35 @@ function mapInputType(it: string | undefined, fieldType: string): string {
   return "string";
 }
 
+/** Mirrors open-core utility/id_check.go: engine identifier from a field label. */
+function engineIdentifier(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/**
+ * Label the engine will accept for a manifest field, or null to skip it.
+ * The engine rejects `status` (publish status), `id`/`_id` (system), `sys_*`,
+ * and names starting with a digit. AI proposals and website manifests use
+ * `status` often, which used to abort staging halfway.
+ */
+export function engineSafeFieldLabel(
+  model: Pick<ManifestModel, "name" | "label">,
+  field: Pick<ManifestField, "identifier" | "label">,
+): string | null {
+  const label = (field.label || field.identifier || "").trim();
+  const id = engineIdentifier(label);
+  if (!id || id === "id") return null;
+  const owner = (model.label || model.name).trim();
+  if (id === "status" || id.startsWith("sys_") || /^\d/.test(id)) {
+    return `${owner} ${label}`;
+  }
+  return label;
+}
+
 /**
  * Stage manifest models, fields, and relations into the current project's schema draft.
  * The caller must already be switched into that project. This does not publish.
@@ -104,6 +133,8 @@ export async function stageManifestIntoDraft(
 
     let serial = 1;
     for (const field of model.fields) {
+      const field_label = engineSafeFieldLabel(model, field);
+      if (!field_label) continue;
       const field_type = mapFieldType(field.field_type);
       const input_type = mapInputType(field.input_type, field_type);
       const validation: Record<string, unknown> = {};
@@ -116,7 +147,7 @@ export async function stageManifestIntoDraft(
         mutation: mutations.upsertField,
         variables: {
           model_name: model.name,
-          field_label: field.label || field.identifier,
+          field_label,
           field_type,
           input_type,
           serial,
