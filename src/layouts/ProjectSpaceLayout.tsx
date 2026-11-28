@@ -17,6 +17,7 @@ import {
 } from "../contexts/ProjectSpaceMetaContext";
 import { useProjectExtensionNavItems } from "../lib/projectExtensionNav";
 import { useAuth } from "../contexts/AuthContext";
+import { posthogClient } from "../lib/consoleAnalytics";
 import "../components/console/ConsoleShell.css";
 
 export interface ProjectSpaceLayoutProps {
