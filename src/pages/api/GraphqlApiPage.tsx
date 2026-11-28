@@ -4,7 +4,7 @@ import { createGraphiQLFetcher, type Storage } from "@graphiql/toolkit";
 import { GraphiQL } from "graphiql";
 import "graphiql/style.css";
 import React, { useMemo, useEffect, useCallback } from "react";
-import { analyticsProduct } from "../../lib/consoleAnalytics";
+import { analyticsProduct, posthogClient } from "../../lib/consoleAnalytics";
 import { contentApiRequestInit } from "./contentApiRequest";
 import { realtimeGraphqlEndpoints } from "./realtimeEndpoints";
 import { ENV, getConsoleDomain } from "../../utils/env";
@@ -114,7 +114,7 @@ const GraphqlExplorer: React.FC<{ kind: "content" | "realtime" }> = ({ kind }) =
                 : "";
               if (!guardKey || localStorage.getItem(guardKey) !== "1") {
                 if (guardKey) localStorage.setItem(guardKey, "1");
-                window.posthog?.capture("public_api_first_success", {
+                posthogClient()?.capture("public_api_first_success", {
                   feature_category: "api",
                   product: analyticsProduct(),
                   domain: getConsoleDomain(),

@@ -46,12 +46,13 @@ const ProjectSpaceChrome: React.FC<ProjectSpaceLayoutProps> = ({
   const mergedExtensions = extensionNavItems ?? contextExtensionItems;
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.posthog) return;
+    const ph = posthogClient();
+    if (!ph) return;
     const host = window.location.hostname;
     if (host === "localhost" || host === "127.0.0.1") return;
     try {
       if (projectId) {
-        window.posthog.group("project", projectId);
+        ph.group("project", projectId);
       }
     } catch {
       /* ignore analytics failures */

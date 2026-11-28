@@ -45,13 +45,26 @@ export function analyticsProduct(): "apito" | "sqlitebuilder" {
   return ENV.VITE_PRODUCT === "sqlitebuilder" ? "sqlitebuilder" : "apito";
 }
 
+/**
+ * The PostHog client when it can actually be called. Undefined when PostHog is
+ * not configured (Studio images have no key) or window.posthog is still only
+ * the loader snippet's array stub, whose methods exist only after init().
+ * Calling the stub's missing capture threw and blanked the whole console.
+ */
+export function posthogClient(): Window["posthog"] | undefined {
+  if (typeof window === "undefined") return undefined;
+  const ph = window.posthog as unknown as { capture?: unknown } | undefined;
+  return ph && typeof ph.capture === "function" ? window.posthog : undefined;
+}
+
 export function captureConsoleEvent(
   eventName: string,
   props: Record<string, unknown> = {},
 ): void {
-  if (typeof window === "undefined" || !window.posthog) return;
+  const ph = posthogClient();
+  if (!ph) return;
   if (analyticsHostBlocked(window.location.hostname)) return;
-  window.posthog.capture(eventName, {
+  ph.capture(eventName, {
     ...allowlistedAnalyticsProps(props),
     product: analyticsProduct(),
     domain: getConsoleDomain(),

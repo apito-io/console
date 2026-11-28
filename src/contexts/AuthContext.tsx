@@ -7,7 +7,7 @@ import { deleteAllCookies } from "../services/cookieUtils";
 import { queryClient } from "../lib/queryClient";
 import { redirectAfterAuth } from "../utils/authRedirect";
 import * as authApi from "../api/authApi";
-import { analyticsProduct } from "../lib/consoleAnalytics";
+import { analyticsProduct, posthogClient } from "../lib/consoleAnalytics";
 import type {
   LoginFormData,
   RegistrationFormData,
@@ -69,8 +69,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await authApi.postRegister(data);
       window.localStorage.setItem("verifyEmail", signupData.email);
-      if (typeof window !== "undefined" && window.posthog) {
-        window.posthog.capture("signup_completed", {
+      if (posthogClient()) {
+        posthogClient()?.capture("signup_completed", {
           auth_method: "password",
           method: "password",
           product: analyticsProduct(),
@@ -97,8 +97,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const tokenData = decodeTokenData();
       const userId = tokenData?.sub || tokenData?.account;
-      if (userId && typeof window !== "undefined" && window.posthog) {
-        window.posthog.identify(String(userId));
+      if (userId && posthogClient()) {
+        posthogClient()?.identify(String(userId));
       }
     } catch {
       /* ignore analytics failures */
@@ -118,8 +118,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (Number(response.status) === 200) {
         setLoading(false);
         identifyFromToken();
-        if (typeof window !== "undefined" && window.posthog) {
-          window.posthog.capture("user_auth", {
+        if (posthogClient()) {
+          posthogClient()?.capture("user_auth", {
             auth_method: "password",
             success: true,
             product: analyticsProduct(),
@@ -167,8 +167,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log("Logout error:", error);
     }
     try {
-      if (typeof window !== "undefined" && window.posthog) {
-        window.posthog.reset();
+      if (posthogClient()) {
+        posthogClient()?.reset();
       }
     } catch {
       /* ignore */
