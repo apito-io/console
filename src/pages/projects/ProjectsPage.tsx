@@ -23,7 +23,7 @@ import {
   useDeleteProjectMutation,
 } from "./queries";
 import type { Project } from "../../types/project";
-import { Icon } from "@iconify/react";
+import { DatabaseEngineIcon } from "../../components/database/DatabaseEngineIcon";
 import { canOfferRemoteDatabaseDelete } from "./remoteDatabaseDelete";
 import { useProjectSpaceMeta } from "../../contexts/ProjectSpaceMetaContext";
 import ProjectStartGuide from "./ProjectStartGuide";
@@ -75,34 +75,17 @@ const ProjectsPage: React.FC<{
   const { onBeforeProjectSwitch, resolveConsoleEntryPath } =
     useConsoleExtensions();
 
-  const getDatabaseIcon = (db: string | undefined) => {
-    const dbLower = (db || "").toLowerCase();
-    const brand = (icon: string, color: string, label: string) => (
-      <Icon icon={icon} width={16} height={16} color={color} aria-label={label} />
-    );
-    if (dbLower.includes("sqlite")) {
-      return brand("simple-icons:sqlite", "#003B57", "SQLite");
-    }
-    if (dbLower.includes("postgres")) {
-      return brand("simple-icons:postgresql", "#4169E1", "PostgreSQL");
-    }
-    if (dbLower.includes("mariadb")) {
-      return brand("simple-icons:mariadb", "#003545", "MariaDB");
-    }
-    if (dbLower.includes("mysql")) {
-      return brand("simple-icons:mysql", "#4479A1", "MySQL");
-    }
-    if (dbLower.includes("mongo")) {
-      return brand("simple-icons:mongodb", "#47A248", "MongoDB");
-    }
-    return <Database size={16} strokeWidth={1.75} className="console-icon-muted" aria-label="Database" />;
-  };
+  const getDatabaseIcon = (db: string | undefined) => <DatabaseEngineIcon engine={db} />;
 
   const getDatabaseName = (db: string | undefined) => {
-    if (!db || db.toLowerCase().includes("coredb")) {
-      return "Apito Managed DB";
-    }
-    return db;
+    const d = (db || "").toLowerCase();
+    if (!d || d.includes("coredb")) return "Apito Managed DB";
+    if (d.includes("sqlite") || d === "libsql" || d === "turso") return "SQLite";
+    if (d.includes("postgres") || d === "neon") return "PostgreSQL";
+    if (d.includes("mariadb")) return "MariaDB";
+    if (d.includes("mysql")) return "MySQL";
+    if (d.includes("mongo")) return "MongoDB";
+    return db as string;
   };
 
   const handleActiveProject = (id: string) => {
@@ -301,12 +284,15 @@ const ProjectsPage: React.FC<{
       dataIndex: "db",
       key: "database",
       width: 132,
-      render: (db: string) => (
-        <div className="console-cell-row console-cell-row--sm">
-          <div className="console-db-icon-wrap">{getDatabaseIcon(db)}</div>
-          <span className="console-cell-text">{getDatabaseName(db)}</span>
-        </div>
-      ),
+      render: (_db: string, project: Project) => {
+        const engine = project.database_engine || project.db;
+        return (
+          <div className="console-cell-row console-cell-row--sm">
+            <div className="console-db-icon-wrap">{getDatabaseIcon(engine)}</div>
+            <span className="console-cell-text">{getDatabaseName(engine)}</span>
+          </div>
+        );
+      },
     },
     {
       title: "Project Type",

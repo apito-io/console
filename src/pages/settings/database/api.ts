@@ -23,6 +23,20 @@ export type DatabaseConnection = {
   username?: string;
   has_password?: boolean;
   uri_set?: boolean;
+  server_version?: string;
+  checked_at?: string;
+  last_error?: string;
+};
+
+export type ConnectionCheck = {
+  engine: string;
+  server_version?: string;
+  latency_ms?: number;
+};
+
+export type ConnectionTestResult = {
+  connection: DatabaseConnection;
+  check?: ConnectionCheck;
 };
 
 export type DatabaseConnectionInput = {
@@ -53,24 +67,30 @@ export async function fetchDatabaseConnections(): Promise<{
   };
 }
 
+/** Saves a connection. The server checks it first and refuses to store one that fails. */
 export async function saveDatabaseConnection(
   engine: DatabaseEngine,
   input: DatabaseConnectionInput,
-): Promise<DatabaseConnection> {
+): Promise<ConnectionTestResult> {
   try {
-    const res = await httpService.put(`${ROOT}/${engine}`, input);
-    return res.data?.body as DatabaseConnection;
+    const res = await httpService.put(`${ROOT}/${engine}`, input, { timeout: 30000 });
+    return res.data?.body as ConnectionTestResult;
   } catch (err) {
     throw apiError(err, "Save failed");
   }
 }
 
+/**
+ * Checks a connection on the server. With `input` it checks those form values
+ * without saving; without it, it re-checks the active connection.
+ */
 export async function testDatabaseConnection(
   engine: DatabaseEngine,
-): Promise<DatabaseConnection> {
+  input?: DatabaseConnectionInput,
+): Promise<ConnectionTestResult> {
   try {
-    const res = await httpService.post(`${ROOT}/${engine}/test`);
-    return res.data?.body as DatabaseConnection;
+    const res = await httpService.post(`${ROOT}/${engine}/test`, input ?? {}, { timeout: 30000 });
+    return res.data?.body as ConnectionTestResult;
   } catch (err) {
     throw apiError(err, "Connection failed");
   }
@@ -82,27 +102,6 @@ export async function assignProjectDatabase(engine: DatabaseEngine): Promise<voi
   } catch (err) {
     throw apiError(err, "Could not update the project database");
   }
-}
-
-export async function spawnDatabaseInstance(input: {
-  database: DatabaseEngine;
-  slug: string;
-  tier: string;
-  region: string;
-}): Promise<{ id?: string; status?: string; database?: string }> {
-  let res;
-  try {
-    res = await httpService.post("/system/dedicated/order", {
-    slug: input.slug,
-    tier: input.tier,
-    region: input.region,
-    database: input.database,
-    provider: "gcp",
-    });
-  } catch (err) {
-    throw apiError(err, "Could not queue the instance");
-  }
-  return (res.data?.body ?? {}) as { id?: string; status?: string; database?: string };
 }
 
 export const DATABASE_SETUP_HINT =

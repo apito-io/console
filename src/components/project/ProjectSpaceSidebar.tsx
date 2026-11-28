@@ -12,6 +12,7 @@ import {
   PROJECT_FOOTER_NAV,
   PROJECT_PRIMARY_NAV,
   isProjectNavActive,
+  isProjectNavChildActive,
   type ProjectExtensionNavItem,
   type ProjectNavItem,
 } from "../../constants/projectNavigation";
@@ -99,8 +100,8 @@ const ProjectSpaceSidebar: React.FC<ProjectSpaceSidebarProps> = ({
   const renderNavButton = (item: ProjectNavItem) => {
     const Icon = item.icon;
     const active = isProjectNavActive(item, location.pathname);
-
-    return (
+    const children = item.children ?? [];
+    const button = (
       <button
         key={item.key}
         type="button"
@@ -111,7 +112,34 @@ const ProjectSpaceSidebar: React.FC<ProjectSpaceSidebarProps> = ({
           <Icon size={16} strokeWidth={1.75} />
           <span>{item.label}</span>
         </span>
+        {children.length > 0 ? (
+          active ? (
+            <ChevronDown size={16} className="console-nav-chevron" />
+          ) : (
+            <ChevronRight size={16} className="console-nav-chevron" />
+          )
+        ) : null}
       </button>
+    );
+    if (children.length === 0 || !active) return button;
+    return (
+      <div key={item.key}>
+        {button}
+        <div className="console-nav-nested">
+          {children.map((child) => (
+            <button
+              key={child.key}
+              type="button"
+              className={`console-nav-model-item${
+                isProjectNavChildActive(child, location.pathname) ? " active" : ""
+              }`}
+              onClick={() => navigate(child.path)}
+            >
+              <span className="console-nav-model-name">{child.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     );
   };
 

@@ -5,6 +5,8 @@ export interface Project {
   created_at: string;
   plan: 'free' | 'pro' | 'enterprise';
   db: string;
+  /** Real engine for display (falls back to db). */
+  database_engine?: string;
   status?: 'LIVE' | 'INACTIVE' | 'DEVELOPMENT';
   avatar?: string;
   color?: string;

@@ -13,6 +13,11 @@ export function normalizeProjectListRow(row: RawListRow): Project {
   const engineFromDriver =
     driver && typeof driver.engine === "string" ? driver.engine : "";
   const db = engineFromDriver || (typeof row.db === "string" ? row.db : "");
+  // database_engine is the real engine for display. Projects on a Connections
+  // server keep a managed "apitoDB" stub driver, so `db` stays the driver
+  // engine (delete/teardown logic depends on it).
+  const databaseEngine =
+    typeof row.database_engine === "string" && row.database_engine ? row.database_engine : db;
 
   const pt = row.project_type;
   let projectType = 0;
@@ -31,6 +36,7 @@ export function normalizeProjectListRow(row: RawListRow): Project {
     created_at: String(row.created_at ?? ""),
     plan: "free",
     db,
+    database_engine: databaseEngine,
     status: row.status as Project["status"],
     project_type: projectType,
     role: typeof row.role === "string" ? row.role : undefined,

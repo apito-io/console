@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { Alert, Button, Form, Input, Tabs, Typography } from "antd";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Button, Form, Input, Space, Tabs, Tag, Typography } from "antd";
 import { Database } from "lucide-react";
 import { ConsoleCard, ConsoleCardTitle } from "../../../components/console";
 import {
   fetchDatabaseConnections,
   saveDatabaseConnection,
-  spawnDatabaseInstance,
   testDatabaseConnection,
+  type ConnectionTestResult,
   type DatabaseConnection,
+  type DatabaseConnectionInput,
   type DatabaseEngine,
 } from "./api";
 
@@ -20,130 +21,269 @@ const TABS: { key: DatabaseEngine; label: string }[] = [
   { key: "mongodb", label: "MongoDB" },
 ];
 
-export type SpawnSlotProps = {
-  engine: DatabaseEngine;
-};
+const FIELDS: (keyof DatabaseConnectionInput)[] = [
+  "uri",
+  "host",
+  "port",
+  "database",
+  "username",
+  "password",
+];
 
-const DefaultSpawn: React.FC<{ engine: DatabaseEngine }> = ({ engine }) => {
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState("");
-  const [error, setError] = useState("");
+/** Stable key for "these exact form values passed a test". */
+export function connectionValuesKey(values: DatabaseConnectionInput): string {
+  return JSON.stringify(FIELDS.map((k) => String(values[k] ?? "").trim()));
+}
+
+function checkedLabel(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
+}
+
+function StatusLine({ row }: { row?: DatabaseConnection }) {
+  if (!row) return null;
+  const version = row.server_version ? ` · ${row.server_version}` : "";
+  const checked = checkedLabel(row.checked_at);
+  if (row.connected) {
+    return (
+      <Space size={8} wrap>
+        <Tag color="green">Active</Tag>
+        <Text type="secondary">
+          {row.source === "env"
+            ? "From the engine configuration (.env)"
+            : row.source === "embedded"
+              ? "Embedded, always available"
+              : "Saved connection"}
+          {version}
+          {checked ? ` · checked ${checked}` : ""}
+        </Text>
+      </Space>
+    );
+  }
+  if (row.last_error) {
+    return (
+      <Space size={8} wrap>
+        <Tag color="red">Failing</Tag>
+        <Text type="secondary">{row.last_error}</Text>
+      </Space>
+    );
+  }
   return (
-    <div>
-      <Text>e2-small · us-central1 · 60 GB · about $45/mo</Text>
-      <div>
-        <Button
-          style={{ marginTop: 8 }}
-          loading={busy}
-          onClick={() => {
-            setBusy(true);
-            setError("");
-            setResult("");
-            const slug = `${engine}-instance-${Date.now().toString(36)}`.slice(0, 48);
-            void spawnDatabaseInstance({
-              database: engine,
-              slug,
-              tier: "starter",
-              region: "us-central1",
-            })
-              .then((order) => setResult(`Queued ${order.id || "order"} as ${order.status || "pending"}.`))
-              .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not queue the instance"))
-              .finally(() => setBusy(false));
-          }}
-        >
-          Spawn instance
-        </Button>
-      </div>
-      {result ? <Alert style={{ marginTop: 12 }} type="success" showIcon message={result} /> : null}
-      {error ? <Alert style={{ marginTop: 12 }} type="error" showIcon message={error} /> : null}
-    </div>
+    <Space size={8} wrap>
+      <Tag>Not set up</Tag>
+      <Text type="secondary">Test the connection, then save it.</Text>
+    </Space>
   );
+}
+
+function resultText(engineLabel: string, res: ConnectionTestResult): string {
+  const c = res.check;
+  const parts = [`Connected to ${engineLabel}`];
+  if (c?.server_version) parts.push(c.server_version);
+  if (typeof c?.latency_ms === "number") parts.push(`${c.latency_ms} ms`);
+  return parts.join(" · ");
+}
+
+type PanelProps = {
+  engine: DatabaseEngine;
+  label: string;
+  row?: DatabaseConnection;
+  onChanged: () => Promise<void>;
 };
 
-type DatabaseConnectionsPageProps = {
-  renderSpawn?: (props: SpawnSlotProps) => React.ReactNode;
-};
-
-const DatabaseConnectionsPage: React.FC<DatabaseConnectionsPageProps> = ({
-  renderSpawn,
-}) => {
-  const [connections, setConnections] = useState<DatabaseConnection[]>([]);
-  const [engine, setEngine] = useState<DatabaseEngine>("sqlite");
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [saving, setSaving] = useState(false);
+const ConnectionPanel: React.FC<PanelProps> = ({ engine, label, row, onChanged }) => {
+  const [form] = Form.useForm<DatabaseConnectionInput>();
   const [testing, setTesting] = useState(false);
-  const [form] = Form.useForm();
-
-  const load = async () => {
-    const data = await fetchDatabaseConnections();
-    setConnections(data.connections);
-    return data.connections;
-  };
-
-  useEffect(() => {
-    void load().catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : "Could not load connections");
-    });
-  }, []);
-
-  const current = connections.find((row) => row.engine === engine);
+  const [saving, setSaving] = useState(false);
+  const [passedKey, setPassedKey] = useState("");
+  const [result, setResult] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const fromEnv = row?.source === "env";
 
   useEffect(() => {
     form.setFieldsValue({
-      host: current?.host ?? "",
-      port: current?.port ?? "",
-      database: current?.database ?? "",
-      username: current?.username ?? "",
+      host: row?.host ?? "",
+      port: row?.port ?? "",
+      database: row?.database ?? "",
+      username: row?.username ?? "",
       password: "",
       uri: "",
     });
-  }, [current?.host, current?.port, current?.database, current?.username, engine, form]);
+    setPassedKey("");
+  }, [form, row?.host, row?.port, row?.database, row?.username, row?.source]);
 
-  const onSave = async () => {
-    const values = await form.validateFields();
-    setSaving(true);
-    setError("");
-    setNotice("");
-    try {
-      await saveDatabaseConnection(engine, values);
-      await load();
-      setNotice("Connection saved. Test it to mark it active.");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Save failed");
-    } finally {
-      setSaving(false);
-    }
-  };
+  const values = Form.useWatch([], form) as DatabaseConnectionInput | undefined;
+  const currentKey = useMemo(() => connectionValuesKey(values ?? {}), [values]);
+  const canSave = !fromEnv && passedKey !== "" && passedKey === currentKey;
 
   const onTest = async () => {
+    setResult(null);
+    setPassedKey("");
+    let input: DatabaseConnectionInput | undefined;
+    if (!fromEnv) {
+      try {
+        input = await form.validateFields();
+      } catch {
+        return;
+      }
+    }
     setTesting(true);
-    setError("");
-    setNotice("");
     try {
-      await testDatabaseConnection(engine);
-      await load();
-      setNotice("Connection is active.");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Connection failed");
-      await load().catch(() => undefined);
+      const res = await testDatabaseConnection(engine, input);
+      setResult({ type: "success", text: resultText(label, res) });
+      if (input) setPassedKey(connectionValuesKey(input));
+      if (fromEnv) await onChanged();
+    } catch (err) {
+      setResult({ type: "error", text: err instanceof Error ? err.message : "Connection failed" });
+      if (fromEnv) await onChanged();
     } finally {
       setTesting(false);
     }
   };
 
+  const onSave = async () => {
+    const input = form.getFieldsValue();
+    setSaving(true);
+    try {
+      await saveDatabaseConnection(engine, input);
+      setResult({
+        type: "success",
+        text: `Saved. ${label} is now available when you create a project.`,
+      });
+      setPassedKey("");
+      await onChanged();
+    } catch (err) {
+      setResult({ type: "error", text: err instanceof Error ? err.message : "Save failed" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <StatusLine row={row} />
+      {fromEnv ? (
+        <Alert
+          style={{ marginTop: 12 }}
+          type="info"
+          showIcon
+          title="This connection comes from the engine's environment (MANAGED_PROJECT_* variables). Change it there; you can still test it here."
+        />
+      ) : null}
+      <Form
+        form={form}
+        name={`connection-${engine}`}
+        layout="vertical"
+        style={{ marginTop: 12 }}
+        disabled={fromEnv}
+        onValuesChange={() => setResult(null)}
+      >
+        {engine === "mongodb" ? (
+          <Form.Item
+            name="uri"
+            label="Connection string (optional)"
+            extra="Overrides the fields below. Leave blank to keep the stored one."
+          >
+            <Input placeholder="mongodb://user:pass@localhost:27017/apito" autoComplete="off" />
+          </Form.Item>
+        ) : null}
+        <Form.Item
+          name="host"
+          label="Host"
+          rules={[
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                if (String(value ?? "").trim() || (engine === "mongodb" && String(getFieldValue("uri") ?? "").trim())) {
+                  return Promise.resolve();
+                }
+                return Promise.reject(new Error("Host is required"));
+              },
+            }),
+          ]}
+        >
+          <Input autoComplete="off" placeholder="localhost" />
+        </Form.Item>
+        <Form.Item name="port" label="Port">
+          <Input autoComplete="off" />
+        </Form.Item>
+        <Form.Item
+          name="database"
+          label="Database"
+          rules={[
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                if (engine === "mongodb" && String(getFieldValue("uri") ?? "").trim()) return Promise.resolve();
+                return String(value ?? "").trim()
+                  ? Promise.resolve()
+                  : Promise.reject(new Error("Database is required"));
+              },
+            }),
+          ]}
+        >
+          <Input autoComplete="off" />
+        </Form.Item>
+        <Form.Item name="username" label="User">
+          <Input autoComplete="off" />
+        </Form.Item>
+        <Form.Item name="password" label="Password">
+          <Input.Password
+            autoComplete="new-password"
+            placeholder={row?.has_password ? "Stored — leave blank to keep it" : ""}
+          />
+        </Form.Item>
+      </Form>
+      {result ? (
+        <Alert style={{ marginBottom: 12 }} type={result.type} showIcon title={result.text} />
+      ) : null}
+      <Space>
+        <Button onClick={() => void onTest()} loading={testing}>
+          Test connection
+        </Button>
+        {!fromEnv ? (
+          <Button type="primary" onClick={() => void onSave()} loading={saving} disabled={!canSave}>
+            Save
+          </Button>
+        ) : null}
+        {!fromEnv && !canSave ? (
+          <Text type="secondary">Save unlocks after these exact values pass a test.</Text>
+        ) : null}
+      </Space>
+    </div>
+  );
+};
+
+type DatabaseConnectionsPageProps = {
+  /** Optional edition content shown under the tabs (for example, where to get a server). */
+  footer?: React.ReactNode;
+};
+
+const DatabaseConnectionsPage: React.FC<DatabaseConnectionsPageProps> = ({ footer }) => {
+  const [connections, setConnections] = useState<DatabaseConnection[]>([]);
+  const [engine, setEngine] = useState<DatabaseEngine>("sqlite");
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetchDatabaseConnections();
+      setConnections(res.connections);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load connections");
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   return (
     <ConsoleCard title={<ConsoleCardTitle icon={Database} label="Connections" />}>
       <Text type="secondary">
-        SQLite is always available. Postgres, MySQL, and MongoDB appear on
-        create project after a connection is active.
+        SQLite is always available. Test a PostgreSQL, MySQL or MongoDB server, save it, and it
+        appears when you create a project. Tests run on the server, through the same driver the
+        project will use.
       </Text>
-      {error ? (
-        <Alert type="error" showIcon message={error} style={{ marginTop: 12 }} />
-      ) : null}
-      {notice ? (
-        <Alert type="success" showIcon message={notice} style={{ marginTop: 12 }} />
-      ) : null}
+      {error ? <Alert type="error" showIcon title={error} style={{ marginTop: 12 }} /> : null}
       <Tabs
         activeKey={engine}
         onChange={(key) => setEngine(key as DatabaseEngine)}
@@ -152,61 +292,25 @@ const DatabaseConnectionsPage: React.FC<DatabaseConnectionsPageProps> = ({
           const row = connections.find((item) => item.engine === tab.key);
           return {
             key: tab.key,
-            label: tab.label,
+            label: (
+              <Space size={6}>
+                {tab.label}
+                {row?.connected ? <Tag color="green" style={{ marginInlineEnd: 0 }}>Active</Tag> : null}
+              </Space>
+            ),
             children:
               tab.key === "sqlite" ? (
-                <Text>
-                  Embedded SQLite. No host to configure.
-                  {row?.connected ? " This connection is active." : ""}
-                </Text>
+                <Space orientation="vertical">
+                  <StatusLine row={row ?? { engine: "sqlite", label: "SQLite", connected: true, source: "embedded" }} />
+                  <Text>Embedded SQLite. Nothing to configure.</Text>
+                </Space>
               ) : (
-                <>
-                  <Text type="secondary">
-                    {row?.source === "env"
-                      ? "Detected from the engine configuration."
-                      : row?.connected
-                        ? "Saved connection is active."
-                        : "Not active yet."}
-                  </Text>
-                  <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
-                    {tab.key === "mongodb" ? (
-                      <Form.Item name="uri" label="URI">
-                        <Input placeholder="mongodb://localhost:27017/apito" autoComplete="off" />
-                      </Form.Item>
-                    ) : null}
-                    <Form.Item name="host" label="Host" rules={[{ required: tab.key !== "mongodb" }]}>
-                      <Input autoComplete="off" />
-                    </Form.Item>
-                    <Form.Item name="port" label="Port">
-                      <Input autoComplete="off" />
-                    </Form.Item>
-                    <Form.Item name="database" label="Database">
-                      <Input autoComplete="off" />
-                    </Form.Item>
-                    <Form.Item name="username" label="User">
-                      <Input autoComplete="off" />
-                    </Form.Item>
-                    <Form.Item name="password" label="Password">
-                      <Input.Password
-                        autoComplete="new-password"
-                        placeholder={row?.has_password ? "Stored" : ""}
-                      />
-                    </Form.Item>
-                    <Button type="primary" onClick={() => void onSave()} loading={saving}>
-                      Save
-                    </Button>
-                    <Button style={{ marginLeft: 8 }} onClick={() => void onTest()} loading={testing}>
-                      Test
-                    </Button>
-                  </Form>
-                  <div style={{ marginTop: 16 }}>
-                    {renderSpawn ? renderSpawn({ engine: tab.key }) : <DefaultSpawn engine={tab.key} />}
-                  </div>
-                </>
+                <ConnectionPanel engine={tab.key} label={tab.label} row={row} onChanged={load} />
               ),
           };
         })}
       />
+      {footer ? <div style={{ marginTop: 16 }}>{footer}</div> : null}
     </ConsoleCard>
   );
 };

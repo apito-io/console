@@ -20,6 +20,26 @@ export interface ProjectNavItem {
   icon: LucideIcon;
   /** Workspace extras default. Channel partners/monetization use `saas-monetization`. */
   group?: "workspace" | "saas-monetization";
+  /** Optional sub-pages, shown under the item while one of its paths is open. */
+  children?: ProjectNavChild[];
+}
+
+export interface ProjectNavChild {
+  key: string;
+  label: string;
+  path: string;
+  /** Match only this exact path (use for the parent's landing page). */
+  exact?: boolean;
+}
+
+/** True when `child` is the open sub-page. */
+export function isProjectNavChildActive(
+  child: ProjectNavChild,
+  pathname: string,
+): boolean {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  if (child.exact) return path === child.path;
+  return path === child.path || path.startsWith(`${child.path}/`);
 }
 
 export interface ProjectBreadcrumbSegment {
